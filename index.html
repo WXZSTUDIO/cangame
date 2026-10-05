@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>江南逆袭 · 강남 역습 | 韩国财阀人生模拟</title>
+<meta name="description" content="文字版韩国人生模拟游戏：从江南半地下室到财阀之巅，事件、投资、存档一条龙。">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<div id="toast"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="kr">강남 역습</span>
+    <span class="cn">江南逆袭</span>
+  </div>
+  <div class="top-actions">
+    <button id="btnSaveGame" class="btn tiny">缓存</button>
+    <button id="btnSaves2" class="btn tiny">存档</button>
+    <button id="btnRestart" class="btn tiny">重开</button>
+    <button id="btnBackTitle" class="btn tiny">标题</button>
+  </div>
+</header>
+
+<!-- ===== 标题页 ===== -->
+<section id="screen-title" class="screen active">
+  <div class="title-wrap">
+    <h1 class="big-title">江南逆袭</h1>
+    <p class="big-sub">강남 역습 · 从半地下室到财阀之巅</p>
+    <p class="lead">1985년，首尔江南区一间没有窗户的半地下室。<br>
+      你带着前世的记忆醒来，知道自己会在某一年死在汉江边。<br>
+      这一世，你的每一岁都会被命运掷骰子——也会掷回去。</p>
+    <div class="title-btns">
+      <button id="btnNew" class="btn primary big">开始新的人生</button>
+      <button id="btnContinue" class="btn big" style="display:none"></button>
+      <button id="btnSaves" class="btn">存档管理</button>
+      <button id="btnHow" class="btn ghost">怎么玩</button>
+    </div>
+    <div id="howBox" class="how">
+      <ul>
+        <li><b>推进</b>：点击「下一年」，每年会触发 1–2 个事件，改变你的智力 / 体魄 / 魅力 / 意志 / 健康 / 压力，以及资产、人脉、声望。</li>
+        <li><b>天赋</b>：开局抽 10 张天赋，用 10 点天赋点自由搭配。负面天赋会返还点数。</li>
+        <li><b>前世记忆</b>：带此天赋时，投资机会会显示「未来的提示」——IMF、江南房价、比特币，逆袭的关键就在这里。</li>
+        <li><b>投资</b>：特定年份出现投资机会，可投入身家的 30% / 60% / 全部，数年后一次性结算。</li>
+        <li><b>存档</b>：每年自动缓存到本机（localStorage），另有 3 个手动存档槽，并可导出/导入存档码跨设备继续。</li>
+        <li><b>结局</b>：活到 80 岁、健康归零或完成财阀线都会走向结局，共 12 种以上。</li>
+      </ul>
+    </div>
+    <p class="foot">本作人物、集团、事件均为虚构。 · v1.0.0</p>
+  </div>
+</section>
+
+<!-- ===== 创建页 ===== -->
+<section id="screen-create" class="screen">
+  <div class="create-wrap">
+    <div class="row-line">
+      <label>이름 姓名</label>
+      <input id="inputName" type="text" maxlength="10" placeholder="김민준">
+      <div class="gender">
+        <label><input type="radio" name="gender" value="M" checked> 남 男</label>
+        <label><input type="radio" name="gender" value="F"> 여 女</label>
+      </div>
+    </div>
+
+    <h3 class="sec">출신 出身 <span class="hint">（随机家庭背景，决定你的起跑线）</span></h3>
+    <div id="familyList" class="fam-list"></div>
+
+    <h3 class="sec">특성 天赋 <span class="hint">剩余点数 <b id="points">10</b> · 点击选择/取消</span></h3>
+    <div id="talentList" class="talent-list"></div>
+
+    <div class="create-btns">
+      <button id="btnReroll" class="btn">重新抽天赋</button>
+      <button id="btnBackFromCreate" class="btn ghost">返回</button>
+      <button id="btnStart" class="btn primary">出生 ▸</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 游戏页 ===== -->
+<section id="screen-game" class="screen">
+  <div class="game-wrap">
+    <aside class="panel">
+      <div id="heroName" class="hero"></div>
+      <div id="statList" class="stats"></div>
+      <div id="resList" class="resources"></div>
+      <div id="tagList" class="tags"></div>
+    </aside>
+    <main class="main">
+      <div id="stream" class="stream"></div>
+      <div id="card" class="card"></div>
+      <div id="actions" class="actions"></div>
+    </main>
+  </div>
+</section>
+
+<!-- ===== 结局页 ===== -->
+<section id="screen-end" class="screen">
+  <div class="end-wrap">
+    <div class="end-head">
+      <div id="endRank" class="rank">A</div>
+      <div>
+        <h2 id="endTitle" class="end-title"></h2>
+        <div class="end-score">人生评分 <b id="endScore">0</b></div>
+      </div>
+    </div>
+    <p id="endText" class="end-text"></p>
+    <div id="endStats" class="end-stats"></div>
+    <h3 class="sec">인생 회고 人生回顾</h3>
+    <div id="endReview" class="stream end-stream"></div>
+    <div class="end-btns">
+      <button id="btnAgain" class="btn primary">再来一世 ▸</button>
+      <button id="btnEndTitle" class="btn ghost">回到标题</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 存档弹窗 ===== -->
+<div id="modal" class="modal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>存档管理</h3>
+      <button id="modalClose" class="btn tiny">关闭</button>
+    </div>
+    <div id="slotList" class="slot-list"></div>
+    <h3 class="sec">存档码（导出 / 导入）</h3>
+    <textarea id="exportBox" placeholder="点击「导出」生成存档码，粘贴到此处后点「导入」即可跨设备继续"></textarea>
+    <div class="modal-btns">
+      <button id="btnExport" class="btn">导出当前存档</button>
+      <button id="btnImport" class="btn primary">导入存档码</button>
+    </div>
+  </div>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/engine.js"></script>
+<script src="assets/ui.js"></script>
+</body>
+</html>
