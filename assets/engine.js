@@ -3,7 +3,7 @@
  *  状态 / 年份推进 / 事件抽取 / 投资 / 结局判定
  * ========================================================= */
 
-const SAVE_VERSION = 1;
+const SAVE_VERSION = 2;
 const END_AGE = GAME_META.endAge;
 const START_YEAR = GAME_META.startYear;
 
@@ -98,8 +98,9 @@ function createGame(opt) {
     alive: true,
     finished: false,
     ending: null,
-    peak: { MONEY: 0, FAME: 0 }
+    peak: { MONEY: 0, FAME: 0, NET: 0 }
   };
+  marketInit(state);
   // 出身
   applyEffects(state, family.eff, true);
   if (family.flags) family.flags.forEach(f => state.flags[f] = true);
@@ -187,6 +188,51 @@ function matchEvent(state, ev) {
   if (ev.once && state.used.indexOf(ev.id) >= 0) return false;
   if (state.used.indexOf(ev.id) >= 0) return false; // 所有事件每人只发生一次
   return matchCond(state, ev);
+}
+
+/* ---------- 三选项系统 ---------- */
+/* 无手写选项的事件（成年后）自动生成：慎重 / 照常 / 豁出去 */
+function scaleEff(eff, gainK, lossK) {
+  const o = {};
+  for (const k in eff || {}) {
+    const v = eff[k];
+    if (typeof v !== 'number') continue;
+    o[k] = v >= 0 ? Math.round(v * gainK) : -Math.round(-v * lossK);
+  }
+  return o;
+}
+
+function eventChoices(state, ev) {
+  if (ev.choices && ev.choices.length) {
+    return ev.choices.map(c => Object.assign({ risk: c.risk || 2 }, c));
+  }
+  if (state.age < 13) return null;             // 童年叙事事件保持单按钮
+  const base = ev.eff || {};
+  const hasMoney = typeof base.MONEY === 'number' && base.MONEY !== 0;
+  const risk3 = Object.assign(scaleEff(base, 1.7, 1.35), { STRESS: (base.STRESS || 0) + 4 });
+  return [
+    {
+      text: '신중하게 · 慎重处理', risk: 1, skipFlags: true,
+      eff: Object.assign(scaleEff(base, 0.6, 0.45), { STRESS: -2 })
+    },
+    { text: '평소대로 · 按部就班', risk: 2, eff: scaleEff(base, 1, 1) },
+    {
+      text: '모든 걸 걸다 · 豁出去', risk: 3, eff: risk3,
+      gamble: {
+        p: 0.45,
+        win: hasMoney
+          ? { MONEY: Math.round(Math.abs(base.MONEY) * 1.5), WILL: 4, INT: 3 }
+          : { WILL: 5, INT: 4, NET: 5, FAME: 3 },
+        lose: hasMoney
+          ? { MONEY: -Math.round(Math.abs(base.MONEY) * 0.7), HP: -2, STRESS: 5 }
+          : { HP: -2, STRESS: 6, CHA: -3 }
+      }
+    }
+  ];
+}
+
+function riskLabel(r) {
+  return ['', '低', '中', '高'][r] || '中';
 }
 
 function pickEvents(state) {
@@ -291,13 +337,21 @@ function yearBase(state) {
   // 自然成长
   if (state.age <= 12) { s.INT += rand(1, 3); s.STR += rand(1, 2); s.HP += 2; }
   else if (state.age <= 18) { s.INT += rand(1, 2); s.CHA += rand(0, 2); s.STR += rand(0, 1); }
-  else if (state.age <= 35) { s.INT += rand(0, 1); s.HP += rand(-1, 1); }
-  else if (state.age <= 55) { s.HP += rand(-2, 0); s.STR += -1; }
-  else { s.HP += rand(-3, 0); s.STR += -1; }
+  else if (state.age <= 35) { s.INT += rand(0, 1); s.HP += s.STRESS < 55 ? rand(0, 2) : rand(-1, 1); }
+  else if (state.age <= 55) { s.HP += s.STRESS < 45 ? rand(0, 1) : rand(-2, 0); s.STR += -1; }
+  else { s.HP += s.STRESS < 35 ? rand(0, 1) : rand(-2, 0); s.STR += -1; }
 
   // 压力伤害
-  if (s.STRESS > 70) { s.HP -= Math.round((s.STRESS - 70) / 4); }
-  s.STRESS = Math.max(0, s.STRESS - 4);
+  if (s.STRESS > 70) { s.HP -= Math.round((s.STRESS - 70) / 6); }
+  s.STRESS = Math.max(0, s.STRESS - 7);
+
+  // 病重时自动就医（有钱才能买回时间）
+  if (s.HP < 35 && s.MONEY >= 20000000 && state.age >= 20) {
+    const fee = Math.min(Math.max(20000000, Math.round(s.MONEY * 0.1)), 500000000);
+    s.MONEY -= fee;
+    s.HP += 20; s.STRESS -= 10;
+    pushLog(state, `【입원 住院】你在医院躺了两周，花了 ${fmtMoney(fee)}。医生说：再晚一个月就晚了。`, 'warn');
+  }
 
   // 成年后自动求职（避免长期无业陷入负债螺旋）
   if (state.age >= 23 && (state.job === '无业' || state.job === '大学生')) {
@@ -324,6 +378,10 @@ function yearBase(state) {
   }
   // 声望自然衰减
   if (s.FAME > 0 && state.age > 30 && chance(0.3)) s.FAME -= 1;
+
+  // 净资产峰值
+  const w = worthOf(state);
+  if (w > (state.peak.NET || 0)) state.peak.NET = w;
 }
 
 /* ---------- 事件推进 ---------- */
@@ -342,6 +400,7 @@ function step(state) {
   state.job = state.job || defaultJob(state.age);
 
   yearBase(state);
+  marketTick(state);
   settleInvestments(state);
 
   const items = [];
@@ -356,19 +415,44 @@ function step(state) {
 
 function resolveEvent(state, ev, choiceIndex) {
   state.used.push(ev.id);
+  const list = eventChoices(state, ev);
   let eff = ev.eff || {};
   let extra = '';
-  if (ev.choices && typeof choiceIndex === 'number' && ev.choices[choiceIndex]) {
-    const ch = ev.choices[choiceIndex];
+  let ch = null;
+
+  if (list && typeof choiceIndex === 'number' && list[choiceIndex]) {
+    ch = list[choiceIndex];
     eff = ch.eff || {};
     applyFlags(state, ch.flags);
-    extra = ' 선택：' + ch.text;
+    extra = ' 【선택 ' + ch.text + '】';
+  } else {
+    eff = ev.eff || {};
   }
-  if (ev.flags) applyFlags(state, ev.flags);
+  // 慎重处理会错过机会：不触发事件的身份/Flag 变化
+  if (!(ch && ch.skipFlags)) {
+    if (ev.flags) applyFlags(state, ev.flags);
+    if (ev.job) state.job = ev.job;
+  }
+  if (ch && ch.job) state.job = ch.job;
+
   applyEffects(state, eff);
   pushLog(state, `[${fmtYear(state)}년 · ${state.age}세] ${ev.text}${extra}`, 'story');
   const d = describeEffects(eff);
   if (d.length) pushLog(state, '  → ' + d.join('，'), 'stat');
+
+  // 概率赌注
+  if (ch && ch.gamble) {
+    const g = ch.gamble;
+    const win = chance(g.p);
+    const res = win ? (g.win || {}) : (g.lose || {});
+    applyEffects(state, res);
+    if (win && g.winJob) state.job = g.winJob;
+    if (win && g.winFlags) applyFlags(state, g.winFlags);
+    if (!win && g.loseFlag) applyFlags(state, [g.loseFlag]);
+    const rd = describeEffects(res);
+    pushLog(state, `  【${win ? '성공 赌赢了' : '실패 赌输了'} · ${Math.round(g.p * 100)}%】${rd.join('，') || '什么也没发生'}`,
+      win ? 'money' : 'warn');
+  }
   checkDeath(state);
 }
 
@@ -399,10 +483,15 @@ function forceEnd(state, ending) {
 }
 
 /* ---------- 结局 ---------- */
+function worthOf(state) {
+  return (typeof netWorth === 'function') ? netWorth(state) : state.stats.MONEY;
+}
+
 function scoreOf(state) {
   const s = state.stats;
+  const worth = worthOf(state);
   let score = 0;
-  score += Math.min(35, Math.sqrt(Math.max(0, s.MONEY) / 1e8) * 3.2);
+  score += Math.min(38, Math.sqrt(Math.max(0, worth) / 1e8) * 3.2);
   score += Math.min(25, s.FAME * 0.35);
   score += Math.min(15, s.NET * 0.12);
   score += Math.min(10, s.WILL * 0.08);
@@ -411,7 +500,11 @@ function scoreOf(state) {
   score += state.flags.took_over ? 15 : 0;
   score += state.flags.exposed ? 8 : 0;
   score += state.flags.gangnam_owner ? 5 : 0;
+  score += state.flags.own_house ? 3 : 0;
+  score += state.flags.own_car ? 1 : 0;
+  score += state.flags.foundation ? 6 : 0;
   score -= state.stats.STRESS > 60 ? 5 : 0;
+  if (state.market && state.market.debt > worth * 2 && worth > 0) score -= 6;
   return Math.round(clamp(score, 0, 100));
 }
 

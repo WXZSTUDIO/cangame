@@ -17,6 +17,7 @@
     <span class="cn">江南逆袭</span>
   </div>
   <div class="top-actions">
+    <button id="btnMarket" class="btn tiny primary">시장 市场</button>
     <button id="btnSaveGame" class="btn tiny">缓存</button>
     <button id="btnSaves2" class="btn tiny">存档</button>
     <button id="btnRestart" class="btn tiny">重开</button>
@@ -40,15 +41,17 @@
     </div>
     <div id="howBox" class="how">
       <ul>
-        <li><b>推进</b>：点击「下一年」，每年会触发 1–2 个事件，改变你的智力 / 体魄 / 魅力 / 意志 / 健康 / 压力，以及资产、人脉、声望。</li>
+        <li><b>推进</b>：点击「下一年」，每年触发 1–2 个事件，改变智力 / 体魄 / 魅力 / 意志 / 健康 / 压力，以及资产、人脉、声望。</li>
+        <li><b>三选一</b>：成年后的每个事件都有 3 个选项——<b>慎重（低风险）</b> / <b>照常（中）</b> / <b>豁出去（高风险，带概率赌注）</b>。收益和风险同时放大。</li>
+        <li><b>市场</b>：20 岁后随时进入「시장 市场」。买房（可贷款）、买车、买金条土地商铺比特币，还能炒股——12 只股票随年代涨跌，遇 IMF / 互联网泡沫 / 金融危机 / 疫情会剧烈波动。</li>
+        <li><b>持有成本</b>：房产要交维护费和贷款利息，车会折旧；商铺和高尔夫会员券能带来租金与人脉。净资产才是你真正的身家。</li>
         <li><b>天赋</b>：开局抽 10 张天赋，用 10 点天赋点自由搭配。负面天赋会返还点数。</li>
-        <li><b>前世记忆</b>：带此天赋时，投资机会会显示「未来的提示」——IMF、江南房价、比特币，逆袭的关键就在这里。</li>
-        <li><b>投资</b>：特定年份出现投资机会，可投入身家的 30% / 60% / 全部，数年后一次性结算。</li>
-        <li><b>存档</b>：每年自动缓存到本机（localStorage），另有 3 个手动存档槽，并可导出/导入存档码跨设备继续。</li>
-        <li><b>结局</b>：活到 80 岁、健康归零或完成财阀线都会走向结局，共 12 种以上。</li>
+        <li><b>前世记忆</b>：带此天赋时，投资机会会显示「未来的提示」——IMF、江南房价、比特币。</li>
+        <li><b>存档</b>：每步自动缓存到本机（localStorage），另有 3 个手动存档槽，并可导出/导入存档码跨设备继续。</li>
+        <li><b>结局</b>：活到 80 岁、健康归零或完成财阀线都会走向结局，共 15 种以上。</li>
       </ul>
     </div>
-    <p class="foot">本作人物、集团、事件均为虚构。 · v1.0.0</p>
+    <p class="foot">本作人物、集团、事件均为虚构。 · v2.0.0 · 시장 시스템</p>
   </div>
 </section>
 
@@ -95,6 +98,28 @@
   </div>
 </section>
 
+<!-- ===== 市场页 ===== -->
+<section id="screen-market" class="screen">
+  <div class="market-wrap">
+    <div class="market-head">
+      <div class="mh-left">
+        <h2>시장 市场</h2>
+        <div class="mh-sub" id="marketYear"></div>
+      </div>
+      <div class="mh-wallet" id="marketWallet"></div>
+      <button id="btnMarketBack" class="btn">返回人生 ◂</button>
+    </div>
+    <div class="market-tabs">
+      <button class="mtab active" data-tab="house">부동산 房产</button>
+      <button class="mtab" data-tab="car">자동차 汽车</button>
+      <button class="mtab" data-tab="good">자산 资产</button>
+      <button class="mtab" data-tab="stock">주식 股市</button>
+      <button class="mtab" data-tab="hold">보유 持有</button>
+    </div>
+    <div id="marketBody" class="market-body"></div>
+  </div>
+</section>
+
 <!-- ===== 结局页 ===== -->
 <section id="screen-end" class="screen">
   <div class="end-wrap">
@@ -134,6 +159,7 @@
 </div>
 
 <script src="assets/data.js"></script>
+<script src="assets/market.js"></script>
 <script src="assets/engine.js"></script>
 <script src="assets/ui.js"></script>
 </body>

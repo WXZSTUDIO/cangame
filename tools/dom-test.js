@@ -24,7 +24,7 @@ const w = dom.window;
 w.addEventListener('error', e => errors.push('window.error: ' + e.message));
 
 // 必须在同一次 eval 中执行：共享 top-level const 词法作用域
-w.eval(['assets/data.js', 'assets/engine.js', 'assets/ui.js']
+w.eval(['assets/data.js', 'assets/market.js', 'assets/engine.js', 'assets/ui.js']
   .map(f => fs.readFileSync(path.join(root, f), 'utf8'))
   .concat(['window.__getState = function(){ return STATE; };'])
   .join('\n;\n'));
@@ -32,7 +32,7 @@ w.document.dispatchEvent(new w.Event('DOMContentLoaded'));
 
 function click(el) { el.dispatchEvent(new w.MouseEvent('click', { bubbles: true })); }
 function activeScreen() {
-  return ['screen-title', 'screen-create', 'screen-game', 'screen-end']
+  return ['screen-title', 'screen-create', 'screen-game', 'screen-market', 'screen-end']
     .find(id => w.document.getElementById(id).classList.contains('active'));
 }
 
@@ -48,19 +48,39 @@ click(fams[2]);
 click(w.document.getElementById('btnStart'));
 console.log('进入:', activeScreen());
 
-// 3 → 一路推进到结局
-let steps = 0;
+// 3 → 一路推进到结局（中途进入市场做买卖）
+let steps = 0, traded = 0;
 while (activeScreen() === 'screen-game' && steps++ < 800) {
+  // 25 岁后试着进市场买一次房 / 买一次股
+  const stNow = w.__getState();
+  if (stNow && stNow.age >= 22 && traded < 4 && steps % 7 === 0) {
+    click(w.document.getElementById('btnMarket'));
+    if (activeScreen() === 'screen-market') {
+      const tab = traded % 2 === 0 ? 'stock' : 'house';
+      w.document.querySelector('.mtab[data-tab="' + tab + '"]').dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+      const items = w.document.querySelectorAll('#marketBody .mk-item .btn');
+      if (items.length) {
+        click(items[0]);
+        traded++;
+        console.log('  市场成交 #' + traded + ' | tab=' + tab + ' | ' + w.document.getElementById('marketWallet').textContent.replace(/\s+/g, ' ').slice(0, 70));
+      }
+      click(w.document.getElementById('btnMarketBack'));
+    }
+  }
   const btns = [...w.document.querySelectorAll('#actions button')].filter(b => !b.disabled);
   if (!btns.length) { click(w.document.getElementById('actions').querySelector('button')) || null; }
   if (!btns.length) break;
   click(btns[btns.length > 1 ? Math.floor(Math.random() * btns.length) : 0]);
 }
+console.log('市场成交次数:', traded);
 console.log('推进次数:', steps, '| 最终页:', activeScreen());
 
 const st = w.__getState();
 console.log('结局:', st && st.ending ? st.ending.title : '(无)');
-console.log('年龄:', st && st.age, '| 资产:', st && w.fmtMoney(st.stats.MONEY), '| 评分:', st && st.score);
+console.log('年龄:', st && st.age, '| 现金:', st && w.fmtMoney(st.stats.MONEY),
+  '| 净资产:', st && w.fmtMoney(w.netWorth(st)), '| 评分:', st && st.score);
+console.log('持有资产:', st && st.market.props.length, '项 | 持仓:', st && st.market.stocks.length,
+  '只 | 贷款:', st && w.fmtMoney(st.market.debt));
 console.log('结局页标题:', w.document.getElementById('endTitle').textContent);
 console.log('存档写入:', !!w.localStorage.getItem('cangame_autosave_v1'));
 

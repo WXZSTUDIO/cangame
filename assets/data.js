@@ -53,7 +53,7 @@ const TALENTS = [
   { id: 'flatfoot', name: '평발 扁平足', cost: -2, desc: '免除兵役的唯一好处，是你能早两年进入社会。', eff: { STR: -3 }, flags: ['no_military'] },
   { id: 'debt',     name: '빚더미 负债之子', cost: -3, desc: '父亲的债，写在你的户口本上。', eff: { MONEY: -4000000, WILL: 5 } },
   { id: 'ugly',     name: '외모 콤플렉스 外貌自卑', cost: -2, desc: '你习惯了被忽略，也因此更懂得观察。', eff: { CHA: -4, INT: 4 } },
-  { id: 'sick',     name: '허약체질 病弱', cost: -2, desc: '医院的走廊你比教室还熟。', eff: { HP: -15, INT: 3 } },
+  { id: 'sick',     name: '허약체질 病弱', cost: -2, desc: '医院的走廊你比教室还熟。', eff: { HP: -9, INT: 3 } },
   { id: 'country',  name: '시골 출신 乡下出身', cost: -2, desc: '庆尚北道的稻田，和首尔的霓虹隔着一整个时代。', eff: { CHA: -2, STR: 4, WILL: 2 } },
   { id: 'temper',   name: '다혈질 暴脾气', cost: -2, desc: '拳头总比脑子先动。', eff: { STR: 5, CHA: -3, WILL: 2 } }
 ];
@@ -199,7 +199,7 @@ const EVENTS = [
     cond: { need: ['startup'], ban: ['lucky'] }, eff: { MONEY: 300000000, STRESS: 14, WILL: 5 } },
   { id: 'b05', age: [32, 46], w: 6, text: '你出版了自传《반지하에서 강남까지》。签售会排了三百人。',
     cond: { min: { FAME: 40 } }, eff: { FAME: 15, MONEY: 150000000 } },
-  { id: 'b06', age: [33, 45], w: 6, text: '体检报告上写着「과로 过劳」和三个红色箭头。医生说：你再这样会死。', eff: { HP: -12, STRESS: 10 } },
+  { id: 'b06', age: [33, 45], w: 6, text: '体检报告上写着「과로 过劳」和三个红色箭头。医生说：你再这样会死。', eff: { HP: -8, STRESS: 10 } },
   { id: 'b07', age: [34, 48], w: 6, text: '你在济州岛休假两周。海风吹过来的时候，你第一次觉得活着是件好事。', eff: { HP: 8, STRESS: -15 } },
   { id: 'b08', age: [35, 46], w: 6, text: '你成立了基金，开始做真正的资本运作。钱第一次开始为你工作。',
     cond: { min: { MONEY: 3000000000, INT: 70 } }, eff: { MONEY: 500000000, NET: 12, FAME: 10 }, flags: ['fund'] },
@@ -239,7 +239,7 @@ const EVENTS = [
       { text: '投进去（万一呢）', eff: { MONEY: -8000000, STRESS: 6, INT: 2 } },
       { text: '拒绝，并拉黑他', eff: { INT: 3, WILL: 2, NET: -3 } }
     ] },
-  { id: 'r03', age: [25, 55], w: 5, text: '你连续三个月每天只睡四小时。身体开始抗议。', eff: { HP: -8, STRESS: 8 } },
+  { id: 'r03', age: [25, 55], w: 5, text: '你连续三个月每天只睡四小时。身体开始抗议。', eff: { HP: -6, STRESS: 8 } },
   { id: 'r04', age: [25, 55], w: 5, text: '你开始跑步。清晨六点的汉江公园，跑着跑着就想通了很多事。', eff: { HP: 8, STR: 3, STRESS: -8 } },
   { id: 'r05', age: [26, 50], w: 5, text: '你参加了一场婚礼，认识了某个人。命运有时候就藏在一句客套话里。', cond: { min: { CHA: 40 } }, eff: { NET: 7 } },
   { id: 'r06', age: [28, 55], w: 4, text: '你的名字第一次出现在报纸上。不是讣告，是新闻。', cond: { min: { FAME: 25 } }, eff: { FAME: 6, CHA: 2 } },
@@ -247,7 +247,7 @@ const EVENTS = [
   { id: 'r08', age: [30, 60], w: 4, text: '你资助了一个老家的孩子读书。没人知道，也不需要知道。', cond: { min: { MONEY: 100000000 } }, eff: { WILL: 4, FAME: 3, MONEY: -5000000 } },
   { id: 'r09', age: [35, 70], w: 5, text: '你在江南的一家清吧遇到了一个说真话的老记者。他告诉你的东西，比任何财报都有用。', eff: { INT: 5, NET: 6 } },
   { id: 'r10', age: [40, 75], w: 6, text: '你有了孩子。你把那个从小就画在纸上的高塔故事，讲给了他听。', cond: { need: ['married'] }, eff: { WILL: 5, STRESS: -6, HP: 3 } },
-  { id: 'r11', age: [45, 75], w: 5, text: '你去医院做了全面体检。医生说：你比你看起来老十岁。', eff: { HP: -6, STRESS: 5 } },
+  { id: 'r11', age: [45, 75], w: 5, text: '你去医院做了全面体检。医生说：你比你看起来老十岁。', eff: { HP: -5, STRESS: 5 } },
   { id: 'r12', age: [55, 80], w: 6, text: '你开始写回忆录。第一句话是：我出生在一个看不见天空的房间里。', eff: { INT: 3, FAME: 5 } },
   { id: 'r13', age: [60, 80], w: 6, text: '你回到老家的巷子。半地下室还在，只是换了人家。', eff: { WILL: 3, STRESS: -5 } },
   { id: 'r14', age: [50, 80], w: 5, text: '有人在电视节目里提到你的名字，说你是「개천에서 용 난 사나이 从泥沟里飞出的龙」。', cond: { min: { FAME: 50 } }, eff: { FAME: 8, WILL: 4 } },
@@ -257,7 +257,7 @@ const EVENTS = [
   { id: 'o01', age: [60, 80], w: 8, text: '你退休了，或者说被退休了。名誉会长，一个没有实权的头衔。', eff: { STRESS: 6, WILL: -2 } },
   { id: 'o02', age: [62, 80], w: 7, text: '你在汉江边的长椅上坐了一下午。江水还是那个江水。', eff: { STRESS: -12, WILL: 3 } },
   { id: 'o03', age: [65, 80], w: 6, text: '你把大部分财产捐了出去，成立了一个帮助半地下室孩子的基金。', cond: { min: { MONEY: 10000000000 } }, eff: { MONEY: -5000000000, FAME: 15, WILL: 6 } },
-  { id: 'o04', age: [70, 80], w: 6, text: '医生把你叫到一边，说了那个词。你反而很平静。', eff: { HP: -20, STRESS: 8 } }
+  { id: 'o04', age: [70, 80], w: 6, text: '医生把你叫到一边，说了那个词。你反而很平静。', eff: { HP: -12, STRESS: 8 } }
 ];
 
 /* ---------------- 投资机会（前世记忆核心玩法） ---------------- */
@@ -297,33 +297,43 @@ const ENDINGS = [
   { id: 'end_avenger', rank: 'S', title: '복수의 설계자 复仇的设计者',
     text: '你没有拿走他们的钱，你拿走了他们的名字。太星集团的招牌被摘下那天，你在汉江大桥上站了很久。',
     cond: s => s.flags.exposed && s.stats.FAME >= 60 },
+  { id: 'end_stock', rank: 'A', title: '주식의 신 股神',
+    text: '你在汝矣岛有一间没有招牌的办公室。屏幕上的曲线你看了四十年，最后它们都变成了你的名字。',
+    cond: s => (s.market && s.market.stocks.length >= 1 ? stockValue(s) : 0) >= 100000000000 },
+  { id: 'end_landlord', rank: 'A', title: '건물주 收租的房东',
+    text: '你名下的收租物业排到了第十九号。每个月的第一天，手机会准时响起——那是租金到账的声音。',
+    cond: s => (s.market ? s.market.props.filter(p => {
+      const r = propRef(p); return r && (r.rent || 0) > 0;
+    }).length : 0) >= 2 && (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) >= 30000000000 },
   { id: 'end_tycoon', rank: 'A', title: '자수성가亿万富豪',
     text: '你不属于任何家族，你只属于你自己。报纸称你为「흙수저의 반란 土勺子的叛乱」。',
-    cond: s => s.stats.MONEY >= 50000000000 },
+    cond: s => (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) >= 150000000000 },
   { id: 'end_vice', rank: 'A', title: '회장의 오른팔 会长之右臂',
     text: '你一生都在别人的影子里，但那个影子覆盖了整个韩国的天际线。',
     cond: s => s.flags.side_second && s.stats.LOY >= 60 },
   { id: 'end_politician', rank: 'A', title: '여의도의 별 汝矣岛之星',
     text: '你走进了国会议事堂。韩国最锋利的权力不在江南的办公室，而在这里的一张票上。',
-    cond: s => s.stats.FAME >= 85 && s.stats.NET >= 110 },
+    cond: s => s.stats.FAME >= 95 && s.stats.NET >= 150 },
   { id: 'end_legend', rank: 'A', title: '전설 传说',
     text: '你的名字被写进了教科书。孩子们不知道你出生在哪儿，只知道你做过什么。',
-    cond: s => s.stats.FAME >= 120 },
+    cond: s => s.stats.FAME >= 160 },
   { id: 'end_escape', rank: 'B', title: '해외 도피 远走他乡',
     text: '你在仁川机场的贵宾室里等着最后一班航班。钱还在，名字臭了。这也是一种活法。',
-    cond: s => s.flags.tax_raid && s.stats.MONEY >= 1000000000 && s.stats.LOY < 0 },
+    cond: s => s.flags.tax_raid && (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) >= 1000000000 && s.stats.LOY < 0 },
   { id: 'end_fund', rank: 'B', title: '은퇴한 투자자 退休投资人',
     text: '你在济州岛有一栋房子和一片橘子园。钱够用，故事也够讲。',
-    cond: s => s.stats.MONEY >= 3000000000 },
+    cond: s => (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) >= 3000000000 },
   { id: 'end_shop', rank: 'B', title: '따뜻한 가게 温暖的店',
     text: '你的咖啡馆还在清潭洞的巷子里。老顾客来了一茬又一茬，你记得每个人的口味。',
-    cond: s => s.flags.own_shop && s.stats.MONEY > 0 && s.stats.MONEY < 3000000000 && s.stats.FAME < 40 },
+    cond: s => s.flags.own_shop && (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) > 0
+      && (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) < 3000000000 && s.stats.FAME < 40 },
   { id: 'end_salary', rank: 'C', title: '평범한 회사원 平凡的会社员',
     text: '你按时上下班，按时退休。回首尔的夜景时，你还是会想起小时候画的那个圈。',
-    cond: s => ['会社员', '公务员', '太星集团社员', '工厂工人', '个体户'].indexOf(s.job) >= 0 && s.stats.FAME < 40 && s.stats.MONEY < 3000000000 },
+    cond: s => ['会社员', '公务员', '太星集团社员', '工厂工人', '个体户'].indexOf(s.job) >= 0
+      && s.stats.FAME < 40 && (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) < 3000000000 },
   { id: 'end_broken', rank: 'D', title: '빚 负债者',
     text: '你奋斗了一辈子，最后只剩下一张催缴单和半地下室的钥匙。',
-    cond: s => s.stats.MONEY < 0 },
+    cond: s => (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) < 0 },
   { id: 'end_lonely', rank: 'C', title: '혼자 独行者',
     text: '你爬得不算高，但每一步都是自己的。天黑了，你给自己倒了一杯烧酒。',
     cond: s => s.stats.WILL >= 60 },
@@ -331,6 +341,530 @@ const ENDINGS = [
     text: '你的一生没有奇迹，也没有崩塌。像汉江的水，平稳地流过。',
     cond: () => true }
 ];
+
+/* =========================================================
+ *  扩展事件库 · 每个事件 3 个选项，风险与回报各不相同
+ *  risk: 1 低 / 2 中 / 3 高   gamble: {p, win, lose} 概率赌注
+ * ========================================================= */
+const EVENTS_EXTRA = [
+
+  /* ===== 주거 居住 / 房产 ===== */
+  { id: 'x_h01', age: [23, 45], w: 8, text: '월세 到期，房东说要涨三成。你在半地下室的墙前站了很久——这里是你的起点，也是你最想逃离的地方。',
+    choices: [
+      { text: '续租，忍一年', eff: { MONEY: -3000000, STRESS: 5 }, risk: 1 },
+      { text: '搬到京畿道，通勤两小时', eff: { MONEY: -1200000, STR: -3, STRESS: 8, WILL: 3 }, risk: 2 },
+      { text: '咬牙凑 전세 押金，一次性解决', eff: { MONEY: -18000000, WILL: 4, STRESS: 10 }, risk: 3,
+        gamble: { p: 0.45, win: { MONEY: 6000000, WILL: 3 }, lose: { MONEY: -8000000, STRESS: 8 } } }
+    ] },
+  { id: 'x_h02', age: [25, 50], w: 8, text: '中介打来电话：大峙洞有一套 24 坪，业主急售，比市价低一成。首付要在三天内到位。',
+    cond: { min: { MONEY: 60000000 } },
+    choices: [
+      { text: '再等等，也许还有更便宜的', eff: { STRESS: 4 }, risk: 1 },
+      { text: '付三成首付，剩下的贷款', eff: { MONEY: -42000000, STRESS: 10, WILL: 4 }, flags: ['mortgage'], risk: 2 },
+      { text: '借遍所有能借的人，全款拿下', eff: { MONEY: -140000000, WILL: 8, STRESS: 16 }, flags: ['own_house', 'allin_house'], risk: 3,
+        gamble: { p: 0.55, win: { MONEY: 80000000, CHA: 5, FAME: 3 }, lose: { MONEY: -30000000, HP: -5 } } }
+    ] },
+  { id: 'x_h03', age: [27, 55], w: 7, text: '房价连续三年上涨。办公室里所有人不谈工作，只谈房子。你手里有一笔钱，也有一个判断。',
+    cond: { min: { MONEY: 50000000 } },
+    choices: [
+      { text: '不追高，把钱留在手里', eff: { INT: 2, WILL: 2 }, risk: 1 },
+      { text: '买一套江北的小户型收租', eff: { MONEY: -50000000, NET: 3 }, risk: 2 },
+      { text: '加杠杆，同时吃下两套', eff: { MONEY: -80000000, STRESS: 14 }, flags: ['leveraged'], risk: 3,
+        gamble: { p: 0.42, win: { MONEY: 260000000, CHA: 4 }, lose: { MONEY: -60000000, HP: -6, STRESS: 10 } } }
+    ] },
+  { id: 'x_h04', age: [30, 60], w: 6, text: '政府出台了新的房产税。你持有的房产，每年的持有成本会明显上升。',
+    cond: { need: ['own_house'] },
+    choices: [
+      { text: '卖掉一套，降低负担', eff: { MONEY: 40000000, STRESS: -6 }, risk: 1 },
+      { text: '硬扛，赌长期还是涨的', eff: { MONEY: -12000000, WILL: 4 }, risk: 2 },
+      { text: '全部换成商铺，转收租模式', eff: { MONEY: -20000000, NET: 6, INT: 3 }, risk: 3,
+        gamble: { p: 0.5, win: { MONEY: 70000000 }, lose: { MONEY: -25000000 } } }
+    ] },
+  { id: 'x_h05', age: [33, 58], w: 6, text: '你所住的那片老公寓贴出了「재건축 重建」公告。业主大会要投票，你的一票很关键。',
+    cond: { need: ['own_house'] },
+    choices: [
+      { text: '反对，重建期间没地方住', eff: { STRESS: 4, WILL: -2 }, risk: 1 },
+      { text: '赞成，等五年', eff: { MONEY: -15000000, WILL: 5, STRESS: 8 }, risk: 2 },
+      { text: '赞成，并低价收购邻居的份额', eff: { MONEY: -90000000, INT: 5, STRESS: 12 }, flags: ['rebuild_player'], risk: 3,
+        gamble: { p: 0.48, win: { MONEY: 420000000, FAME: 5 }, lose: { MONEY: -40000000, STRESS: 10 } } }
+    ] },
+  { id: 'x_h06', age: [40, 70], w: 6, text: '你在中介那里看到一套汉南洞的房子。价格是你十年前想都不敢想的数字，而你居然买得起了。',
+    cond: { min: { MONEY: 2000000000 } },
+    choices: [
+      { text: '买，这是给自己一个交代', eff: { MONEY: -1800000000, CHA: 10, FAME: 8, WILL: 6 }, flags: ['own_house'], risk: 2 },
+      { text: '不买，钱应该继续生钱', eff: { INT: 4, WILL: 3 }, risk: 1 },
+      { text: '买两套，一套住一套租', eff: { MONEY: -2600000000, CHA: 12, NET: 8 }, flags: ['own_house'], risk: 3,
+        gamble: { p: 0.5, win: { MONEY: 900000000 }, lose: { MONEY: -400000000, STRESS: 10 } } }
+    ] },
+  { id: 'x_h07', age: [24, 40], w: 6, text: '母亲从老家来首尔看你。她在半地下室里坐了一晚，第二天说：这地方，怎么住人。',
+    cond: { need: ['poor'] },
+    choices: [
+      { text: '笑着说，快了', eff: { WILL: 4, STRESS: 5 }, risk: 1 },
+      { text: '带她去看江南的样板房', eff: { MONEY: -500000, WILL: 6, INT: 2 }, risk: 2 },
+      { text: '当场签下一套首付合同', eff: { MONEY: -60000000, WILL: 8, STRESS: 14 }, flags: ['own_house', 'mortgage'], risk: 3,
+        gamble: { p: 0.45, win: { MONEY: 50000000, CHA: 4 }, lose: { MONEY: -20000000, HP: -5 } } }
+    ] },
+  { id: 'x_h08', age: [28, 50], w: 5, text: '老家传来消息：那条规划了十年的地铁线，终于要动工了。你手里有一块京畿道的地。',
+    cond: { min: { MONEY: 30000000 } },
+    choices: [
+      { text: '不折腾，继续持有', eff: { INT: 2 }, risk: 1 },
+      { text: '追加买入周边的地', eff: { MONEY: -60000000, STRESS: 8 }, risk: 2 },
+      { text: '抵押房子，把整条线吃下来', eff: { MONEY: -150000000, WILL: 6, STRESS: 16 }, flags: ['leveraged'], risk: 3,
+        gamble: { p: 0.4, win: { MONEY: 620000000, NET: 8 }, lose: { MONEY: -90000000, HP: -7 } } }
+    ] },
+
+  /* ===== 자동차 汽车 ===== */
+  { id: 'x_c01', age: [23, 40], w: 7, text: '你攒够了第一辆车的钱。销售员说：在首尔，车不是交通工具，是名片。',
+    cond: { min: { MONEY: 15000000 } },
+    choices: [
+      { text: '买一辆二手小排量，能开就行', eff: { MONEY: -8000000, STR: 1 }, flags: ['own_car'], risk: 1 },
+      { text: '买国产中型车，体面且够用', eff: { MONEY: -22000000, CHA: 3, NET: 2 }, flags: ['own_car'], risk: 2 },
+      { text: '贷款上进口车，先像那个人', eff: { MONEY: -30000000, CHA: 7, NET: 3, STRESS: 10 }, flags: ['own_car', 'car_loan'], risk: 3,
+        gamble: { p: 0.4, win: { NET: 10, CHA: 4 }, lose: { MONEY: -12000000, STRESS: 8 } } }
+    ] },
+  { id: 'x_c02', age: [28, 50], w: 6, text: '客户在电话里问：「你开什么车来？」你看着窗外的旧车，停顿了三秒。',
+    cond: { min: { NET: 30 } },
+    choices: [
+      { text: '如实说，靠方案说话', eff: { WILL: 3, INT: 2 }, risk: 1 },
+      { text: '租一辆好车去见他', eff: { MONEY: -1500000, CHA: 4, NET: 5 }, risk: 2 },
+      { text: '直接换车，一次到位', eff: { MONEY: -95000000, CHA: 9, NET: 8 }, flags: ['own_car'], risk: 3,
+        gamble: { p: 0.5, win: { NET: 14, MONEY: 60000000 }, lose: { MONEY: -20000000, STRESS: 6 } } }
+    ] },
+  { id: 'x_c03', age: [30, 55], w: 5, text: '你在清潭洞的红灯前停着，隔壁车道是一辆和你同款的车。对方摇下车窗，是太星集团的人。',
+    cond: { min: { MONEY: 120000000 } },
+    choices: [
+      { text: '点头示意，各自开走', eff: { WILL: 2 }, risk: 1 },
+      { text: '递上名片，说一句久仰', eff: { NET: 8, LOY: 4, CHA: 2 }, risk: 2 },
+      { text: '摇下车窗，问他要不要喝一杯', eff: { NET: 12, LOY: 8, HP: -4, STRESS: 6 }, risk: 3,
+        gamble: { p: 0.45, win: { LOY: 15, NET: 10 }, lose: { LOY: -8, CHA: -3 } } }
+    ] },
+  { id: 'x_c04', age: [35, 65], w: 5, text: '你终于买下了那辆小时候贴在墙上的车。钥匙放在手里，比想象中轻。',
+    cond: { min: { MONEY: 180000000 } },
+    choices: [
+      { text: '买下，但不开去公司', eff: { MONEY: -190000000, WILL: 5, CHA: 5 }, flags: ['own_car'], risk: 1 },
+      { text: '买下，并开去所有该去的地方', eff: { MONEY: -190000000, CHA: 10, NET: 6, FAME: 4 }, flags: ['own_car'], risk: 2 },
+      { text: '一次买两辆，一辆给母亲', eff: { MONEY: -340000000, CHA: 12, WILL: 8, FAME: 5 }, flags: ['own_car'], risk: 3,
+        gamble: { p: 0.5, win: { WILL: 10, NET: 8 }, lose: { MONEY: -40000000, STRESS: 8 } } }
+    ] },
+  { id: 'x_c05', age: [26, 45], w: 5, text: '同事聚会，大家都在谈股票和车。有人说：没贷款买车的人，是没野心的人。',
+    choices: [
+      { text: '笑而不语', eff: { INT: 3, WILL: 2 }, risk: 1 },
+      { text: '附和几句，混个脸熟', eff: { NET: 4, CHA: 2 }, risk: 2 },
+      { text: '当场宣布：我今年要买两辆', eff: { CHA: 5, NET: 6, STRESS: 10 }, risk: 3,
+        gamble: { p: 0.35, win: { NET: 12, FAME: 6 }, lose: { CHA: -6, NET: -5, STRESS: 8 } } }
+    ] },
+
+  /* ===== 주식 股市 ===== */
+  { id: 'x_s01', age: [20, 40], w: 9, text: '你在证券公司开了户。营业厅的屏幕上全是红绿数字，客户经理递给你一杯速溶咖啡。',
+    choices: [
+      { text: '只买大盘 ETF，慢慢来', eff: { INT: 3, MONEY: -5000000 }, flags: ['investor'], risk: 1 },
+      { text: '买一只你研究过的行业龙头', eff: { INT: 4, MONEY: -15000000, STRESS: 5 }, flags: ['investor'], risk: 2 },
+      { text: '全部押在当下最火的那只', eff: { INT: 3, MONEY: -30000000, STRESS: 12 }, flags: ['investor', 'degen'], risk: 3,
+        gamble: { p: 0.38, win: { MONEY: 60000000, INT: 5 }, lose: { MONEY: -18000000, STRESS: 10 } } }
+    ] },
+  { id: 'x_s02', age: [21, 45], w: 7, text: '你买的第一只股票连跌三天。论坛里全是「존버 死扛」和「손절 止损」的声音。',
+    cond: { need: ['investor'] },
+    choices: [
+      { text: '死扛，等它回来', eff: { WILL: 4, STRESS: 8 }, risk: 2 },
+      { text: '止损，认赔离场', eff: { INT: 4, STRESS: -5, WILL: 2 }, risk: 1 },
+      { text: '越跌越买，摊平成本', eff: { MONEY: -20000000, WILL: 6, STRESS: 14 }, risk: 3,
+        gamble: { p: 0.42, win: { MONEY: 90000000, INT: 6 }, lose: { MONEY: -40000000, HP: -5 } } }
+    ] },
+  { id: 'x_s03', age: [22, 50], w: 7, text: '一个在券商工作的学长偷偷告诉你：有家公司下周会有大消息。他说完就后悔了，让你当没听过。',
+    choices: [
+      { text: '当没听过，合规性第一', eff: { WILL: 3, INT: 2 }, risk: 1 },
+      { text: '买一点点，试一试', eff: { MONEY: -10000000, NET: 5, STRESS: 6 }, flags: ['insider'], risk: 2 },
+      { text: '重仓，这是改变命运的消息', eff: { MONEY: -80000000, WILL: 6, STRESS: 16 }, flags: ['insider', 'degen'], risk: 3,
+        gamble: { p: 0.4, win: { MONEY: 400000000, INT: 8 }, lose: { MONEY: -60000000, FAME: -10, STRESS: 14 }, loseFlag: 'insider_risk' } }
+    ] },
+  { id: 'x_s04', age: [23, 55], w: 7, text: '你的账户在一年内翻了一倍。你开始觉得自己懂市场了——这是最危险的时候。',
+    cond: { need: ['investor'], min: { MONEY: 100000000 } },
+    choices: [
+      { text: '取出本金，只留利润在场上', eff: { INT: 6, WILL: 4 }, risk: 1 },
+      { text: '继续按照原来的节奏', eff: { INT: 3, STRESS: 4 }, risk: 2 },
+      { text: '加大仓位，用信用融资再上杠杆', eff: { WILL: 6, STRESS: 18 }, flags: ['leveraged'], risk: 3,
+        gamble: { p: 0.35, win: { MONEY: 500000000, FAME: 6 }, lose: { MONEY: -280000000, HP: -8, STRESS: 16 } } }
+    ] },
+  { id: 'x_s05', age: [24, 60], w: 6, text: '市场暴跌，你的账户一天少了三成。手机屏幕上的绿色，比任何颜色都刺眼。',
+    cond: { min: { MONEY: 30000000 } },
+    choices: [
+      { text: '关掉软件，去跑步', eff: { HP: 6, STRESS: -10, WILL: 3 }, risk: 1 },
+      { text: '减仓一半，保留子弹', eff: { INT: 4, STRESS: -4 }, risk: 2 },
+      { text: '别人恐惧我贪婪，全仓抄底', eff: { WILL: 8, STRESS: 18 }, flags: ['bottom_fisher'], risk: 3,
+        gamble: { p: 0.45, win: { MONEY: 320000000, INT: 8 }, lose: { MONEY: -150000000, HP: -7 } } }
+    ] },
+  { id: 'x_s06', age: [25, 60], w: 6, text: '你手里那只股票一年涨了四倍。办公室的人开始问你买了什么。',
+    cond: { min: { MONEY: 200000000 } },
+    choices: [
+      { text: '卖掉一半，落袋为安', eff: { INT: 5, WILL: 3, STRESS: -6 }, risk: 1 },
+      { text: '一股不卖，让它继续跑', eff: { WILL: 5, STRESS: 8 }, risk: 2 },
+      { text: '追加买入，把胜利推到极致', eff: { WILL: 8, STRESS: 16 }, flags: ['degen'], risk: 3,
+        gamble: { p: 0.38, win: { MONEY: 700000000, FAME: 8 }, lose: { MONEY: -220000000, STRESS: 14 } } }
+    ] },
+  { id: 'x_s07', age: [26, 58], w: 6, text: '有人在论坛贴出一张截图：他做空了整个市场，赚了十倍。评论区一半在膜拜，一半在骂。',
+    choices: [
+      { text: '关掉，继续上班', eff: { INT: 3 }, risk: 1 },
+      { text: '小仓位试一次做空', eff: { MONEY: -20000000, INT: 4, STRESS: 8 }, risk: 2 },
+      { text: '跟着他，全仓做空', eff: { MONEY: -100000000, WILL: 6, STRESS: 20 }, flags: ['short_player'], risk: 3,
+        gamble: { p: 0.3, win: { MONEY: 580000000, FAME: 10 }, lose: { MONEY: -260000000, HP: -8 } } }
+    ] },
+  { id: 'x_s08', age: [22, 45], w: 6, text: '一个「股票直播间」的主播说：跟着我操作，一个月翻倍，不赚包赔。',
+    choices: [
+      { text: '举报，然后关掉', eff: { INT: 4, WILL: 2 }, risk: 1 },
+      { text: '进群看看，一分钱不投', eff: { INT: 5, NET: 3 }, risk: 2 },
+      { text: '交了两百万的会员费', eff: { MONEY: -2000000, STRESS: 10 }, risk: 3,
+        gamble: { p: 0.15, win: { MONEY: 30000000 }, lose: { MONEY: -12000000, INT: -4 } } }
+    ] },
+  { id: 'x_s09', age: [28, 60], w: 6, text: '你被拉进一个「江南投资俱乐部」。入场条件是：账户里至少要有十亿。',
+    cond: { min: { MONEY: 1000000000 } },
+    choices: [
+      { text: '婉拒，圈子是有代价的', eff: { INT: 4, WILL: 3 }, risk: 1 },
+      { text: '加入，只听不出手', eff: { NET: 10, INT: 6, MONEY: -20000000 }, risk: 2 },
+      { text: '加入，并参与他们的联合建仓', eff: { MONEY: -500000000, NET: 18, LOY: 8, STRESS: 12 }, flags: ['club_member'], risk: 3,
+        gamble: { p: 0.45, win: { MONEY: 1400000000, NET: 12 }, lose: { MONEY: -350000000, NET: -8 } } }
+    ] },
+  { id: 'x_s10', age: [30, 62], w: 6, text: '你重仓的那家公司爆出会计造假，股价开盘跌停。新闻里，你的名字出现在「受害个人股东」名单中。',
+    cond: { min: { MONEY: 200000000 } },
+    choices: [
+      { text: '认赔，永远记住这一课', eff: { INT: 8, WILL: 5, STRESS: 10 }, risk: 1 },
+      { text: '联合其他散户发起集体诉讼', eff: { FAME: 8, NET: 10, WILL: 6, STRESS: 12 }, flags: ['lawsuit'], risk: 2 },
+      { text: '反向加仓，赌它不会退市', eff: { MONEY: -150000000, WILL: 8, STRESS: 20 }, risk: 3,
+        gamble: { p: 0.28, win: { MONEY: 900000000, FAME: 12 }, lose: { MONEY: -300000000, HP: -8 } } }
+    ] },
+  { id: 'x_s11', age: [32, 65], w: 6, text: '你开始写投资专栏。第一篇的题目是《我如何在五年内把一千万变成十亿》。',
+    cond: { min: { MONEY: 1000000000, INT: 60 } },
+    choices: [
+      { text: '只写方法，不写标的', eff: { FAME: 8, INT: 4 }, risk: 1 },
+      { text: '公开你的持仓', eff: { FAME: 15, NET: 8, STRESS: 8 }, risk: 2 },
+      { text: '顺势发行自己的基金', eff: { FAME: 20, NET: 14, MONEY: 300000000, STRESS: 14 }, flags: ['fund'], risk: 3,
+        gamble: { p: 0.48, win: { MONEY: 2200000000, FAME: 15 }, lose: { FAME: -12, MONEY: -400000000, STRESS: 12 } } }
+    ] },
+  { id: 'x_s12', age: [20, 35], w: 6, text: '朋友在用一款新的海外券商 App，可以做空、可以加二十倍杠杆、可以买美股。他给你看了他的收益率。',
+    choices: [
+      { text: '不碰，看不懂的东西不碰', eff: { INT: 5, WILL: 3 }, risk: 1 },
+      { text: '开个户，只放一点点钱', eff: { MONEY: -10000000, INT: 4 }, risk: 2 },
+      { text: '二十倍杠杆，一把定生死', eff: { MONEY: -30000000, STRESS: 22, WILL: 6 }, flags: ['degen', 'leveraged'], risk: 3,
+        gamble: { p: 0.25, win: { MONEY: 900000000, FAME: 10 }, lose: { MONEY: -30000000, HP: -9, STRESS: 18 } } }
+    ] },
+  { id: 'x_s13', age: [30, 60], w: 5, text: '你在股东大会上第一次举手发言。会场很小，麦克风很凉，你的声音在抖。',
+    cond: { min: { MONEY: 500000000, INT: 60 } },
+    choices: [
+      { text: '问一个温和的问题', eff: { NET: 6, FAME: 4 }, risk: 1 },
+      { text: '当众质疑管理层', eff: { FAME: 12, NET: 8, LOY: -6, WILL: 5 }, risk: 2 },
+      { text: '提案罢免一名董事', eff: { FAME: 22, WILL: 8, LOY: -18, STRESS: 14 }, flags: ['activist'], risk: 3,
+        gamble: { p: 0.35, win: { MONEY: 600000000, FAME: 15 }, lose: { LOY: -15, MONEY: -200000000 } } }
+    ] },
+  { id: 'x_s14', age: [26, 50], w: 5, text: '你在汝矣岛的券商大厅遇见一个老人。他看了你一眼，说：小伙子，你是来赚钱的，还是来证明什么的？',
+    choices: [
+      { text: '赚钱', eff: { INT: 4 }, risk: 1 },
+      { text: '都有', eff: { INT: 3, WILL: 4, NET: 4 }, risk: 2 },
+      { text: '证明一些事', eff: { WILL: 8, INT: 2, STRESS: 8 }, flags: ['prove_self'], risk: 3,
+        gamble: { p: 0.4, win: { WILL: 10, INT: 6, MONEY: 80000000 }, lose: { WILL: -4, STRESS: 12 } } }
+    ] },
+  { id: 'x_s15', age: [24, 55], w: 5, text: '同事都在买同一只「국민주 国民股」。有人说不买就落伍了。',
+    choices: [
+      { text: '不买，落伍就落伍', eff: { INT: 4, WILL: 2 }, risk: 1 },
+      { text: '买一点，随大流', eff: { MONEY: -10000000, NET: 3 }, risk: 2 },
+      { text: '反向思考，做空它', eff: { MONEY: -30000000, INT: 6, STRESS: 12 }, risk: 3,
+        gamble: { p: 0.32, win: { MONEY: 260000000, INT: 8 }, lose: { MONEY: -120000000, NET: -5 } } }
+    ] },
+
+  /* ===== 직장 职场 ===== */
+  { id: 'x_w01', age: [23, 45], w: 8, text: '上司把一份不属于你的错误，压到了你头上。会议室里所有人都在看你。',
+    choices: [
+      { text: '认下来，记在心里', eff: { WILL: 5, STRESS: 8, NET: 4 }, risk: 1 },
+      { text: '当场解释清楚', eff: { INT: 4, WILL: 3, NET: -4, STRESS: 6 }, risk: 2 },
+      { text: '把证据发给会长的秘书', eff: { WILL: 8, INT: 6, LOY: 6, STRESS: 16 }, risk: 3,
+        gamble: { p: 0.35, win: { NET: 15, LOY: 15, MONEY: 60000000 }, lose: { NET: -12, STRESS: 14, job: '无业' } } }
+    ] },
+  { id: 'x_w02', age: [25, 50], w: 7, text: '一家竞争对手开出两倍的薪水挖你。合同就在邮箱里，回信期限是今晚十二点。',
+    cond: { min: { INT: 45 } },
+    choices: [
+      { text: '拒绝，忠诚也是有价的', eff: { LOY: 8, WILL: 3, NET: 4 }, risk: 1 },
+      { text: '谈一个更好的价，留下来', eff: { MONEY: 30000000, NET: 6, INT: 3 }, risk: 2 },
+      { text: '跳过去，并把团队一起带走', eff: { MONEY: 80000000, NET: 10, LOY: -12, WILL: 6 }, risk: 3,
+        gamble: { p: 0.45, win: { MONEY: 200000000, FAME: 8 }, lose: { LOY: -20, NET: -10, STRESS: 12 } } }
+    ] },
+  { id: 'x_w03', age: [26, 48], w: 7, text: '部门要选一个人去海外分公司。那里有机会，也有两年回不来的代价。',
+    choices: [
+      { text: '不去，守住眼前的位置', eff: { WILL: 2, STRESS: 3 }, risk: 1 },
+      { text: '去，见识比安稳重要', eff: { INT: 6, NET: 8, CHA: 4, STRESS: 6 }, risk: 2 },
+      { text: '主动请缨去最苦的那个市场', eff: { INT: 10, WILL: 8, NET: 12, HP: -6, STRESS: 12 }, risk: 3,
+        gamble: { p: 0.5, win: { MONEY: 180000000, FAME: 10, LOY: 10 }, lose: { HP: -8, STRESS: 14 } } }
+    ] },
+  { id: 'x_w04', age: [28, 52], w: 7, text: '회식 聚餐。上司把一杯烧酒推到你面前，说：喝了这杯，这个单子就是你的。',
+    choices: [
+      { text: '以身体为由，换成水', eff: { WILL: 3, CHA: -3, STRESS: 5 }, risk: 1 },
+      { text: '喝了，然后去洗手间吐掉', eff: { NET: 6, HP: -4, CHA: 2 }, risk: 2 },
+      { text: '连干三杯，把气氛推到最高', eff: { NET: 12, LOY: 6, CHA: 4, HP: -7, STRESS: 6 }, risk: 3,
+        gamble: { p: 0.42, win: { NET: 14, MONEY: 70000000 }, lose: { HP: -9, STRESS: 10 } } }
+    ] },
+  { id: 'x_w05', age: [30, 50], w: 6, text: '一个供应商塞给你一个信封。他说：这是行业规矩，大家都这样。',
+    choices: [
+      { text: '当场退回去', eff: { WILL: 5, INT: 3, NET: -3 }, risk: 1 },
+      { text: '收下，但原样上缴公司', eff: { INT: 4, LOY: 6, FAME: 3 }, risk: 2 },
+      { text: '收下，装进自己的口袋', eff: { MONEY: 40000000, WILL: -3, STRESS: 10 }, flags: ['took_bribe'], risk: 3,
+        gamble: { p: 0.25, win: { MONEY: 150000000 }, lose: { MONEY: -200000000, FAME: -20, STRESS: 18 }, loseFlag: 'bribe_risk' } }
+    ] },
+  { id: 'x_w06', age: [30, 55], w: 6, text: '公司要裁掉十分之一的人。名单由你所在的部门出，而你的名字也在候选里。',
+    choices: [
+      { text: '保住下属，自己走', eff: { WILL: 8, NET: 10, MONEY: -20000000, FAME: 6 }, job: '无业', risk: 2 },
+      { text: '按绩效如实上报', eff: { INT: 4, WILL: 3, NET: -4 }, risk: 1 },
+      { text: '把对手的名字写上去', eff: { WILL: 5, INT: 5, NET: -8, LOY: 4 }, risk: 3,
+        gamble: { p: 0.4, win: { MONEY: 90000000, LOY: 10 }, lose: { NET: -14, FAME: -8 } } }
+    ] },
+  { id: 'x_w07', age: [27, 45], w: 6, text: '你连续三个月睡在办公室。体检报告出来了，医生用红笔圈了四项。',
+    choices: [
+      { text: '休假两周，好好睡觉', eff: { HP: 12, STRESS: -12, MONEY: -3000000 }, risk: 1 },
+      { text: '继续，但开始吃药', eff: { HP: -4, STRESS: 4, MONEY: 20000000 }, risk: 2 },
+      { text: '什么都不管，项目必须上线', eff: { MONEY: 120000000, FAME: 8, HP: -11, STRESS: 16 }, risk: 3,
+        gamble: { p: 0.42, win: { MONEY: 400000000, FAME: 15, LOY: 10 }, lose: { HP: -14, STRESS: 20 } } }
+    ] },
+  { id: 'x_w08', age: [29, 48], w: 6, text: '你有一个创业的想法，写在笔记本的第 47 页。问题是：要不要真的辞掉工作。',
+    cond: { min: { WILL: 35 } },
+    choices: [
+      { text: '先做副业，验证一下', eff: { INT: 4, MONEY: 8000000, STRESS: 6 }, risk: 1 },
+      { text: '辞职，给自己一年', eff: { MONEY: -30000000, WILL: 6, STRESS: 12 }, job: '创业者', flags: ['startup'], risk: 2 },
+      { text: '抵押房子创业，不留退路', eff: { MONEY: -120000000, WILL: 10, STRESS: 20 }, job: '创业者', flags: ['startup', 'allin_startup'], risk: 3,
+        gamble: { p: 0.32, win: { MONEY: 1800000000, FAME: 20, NET: 15 }, lose: { MONEY: -200000000, HP: -8, STRESS: 18 } } }
+    ] },
+  { id: 'x_w09', age: [33, 55], w: 6, text: '你带的一个后辈犯了致命错误。他跪在你办公室门口，说家里还有生病的母亲。',
+    choices: [
+      { text: '让他自己承担后果', eff: { INT: 3, WILL: -2, NET: -3 }, risk: 1 },
+      { text: '替他扛下来', eff: { WILL: 5, NET: 10, STRESS: 8, MONEY: -10000000 }, risk: 2 },
+      { text: '让他承担，但私下把他的母亲安排好', eff: { INT: 6, WILL: 6, NET: 12, MONEY: -30000000 }, risk: 3,
+        gamble: { p: 0.5, win: { NET: 16, WILL: 8 }, lose: { NET: -6, MONEY: -20000000 } } }
+    ] },
+  { id: 'x_w10', age: [35, 58], w: 6, text: '你的名字出现在理事的候选名单上。要上去，还得再跨过一个人。',
+    cond: { min: { LOY: 20 } },
+    choices: [
+      { text: '等，等到该轮到你', eff: { WILL: 4, INT: 3 }, risk: 1 },
+      { text: '主动向会长汇报一次', eff: { LOY: 10, FAME: 6, NET: 6 }, risk: 2 },
+      { text: '把对手的问题整理成一份材料', eff: { LOY: 14, INT: 6, WILL: 5, STRESS: 14 }, flags: ['backstab'], risk: 3,
+        gamble: { p: 0.45, win: { MONEY: 300000000, LOY: 15 }, lose: { LOY: -20, FAME: -10, NET: -12 } } }
+    ] },
+
+  /* ===== 관계 / 가족 关系与家庭 ===== */
+  { id: 'x_f01', age: [24, 45], w: 7, text: '相恋三年的女友坐下来认真地说：我们要不要先买房，再结婚？房价每天都在变。',
+    cond: { min: { CHA: 30 } },
+    choices: [
+      { text: '说再等等，我不想负债', eff: { WILL: 3, STRESS: 8, CHA: -2 }, risk: 1 },
+      { text: '答应，一起去银行', eff: { MONEY: -60000000, WILL: 5, STRESS: 12 }, flags: ['married', 'mortgage'], risk: 2 },
+      { text: '当场签下一套江南的合约', eff: { MONEY: -200000000, CHA: 10, WILL: 8, STRESS: 18 }, flags: ['married', 'own_house'], risk: 3,
+        gamble: { p: 0.45, win: { MONEY: 300000000, WILL: 8 }, lose: { MONEY: -80000000, STRESS: 14 } } }
+    ] },
+  { id: 'x_f02', age: [26, 50], w: 6, text: '母亲住院了。缴费单上的数字，比你第一次买房的首付还让人心慌。',
+    choices: [
+      { text: '用最好的药，钱可以再赚', eff: { MONEY: -40000000, WILL: 5, HP: -4, STRESS: 8 }, risk: 2 },
+      { text: '选普通方案，能治就行', eff: { MONEY: -15000000, WILL: 3, STRESS: 12 }, risk: 1 },
+      { text: '把房子抵押出去，请国外专家', eff: { MONEY: -120000000, WILL: 8, STRESS: 18 }, flags: ['leveraged'], risk: 3,
+        gamble: { p: 0.42, win: { WILL: 12, HP: 8, NET: 6 }, lose: { MONEY: -60000000, HP: -7 } } }
+    ] },
+  { id: 'x_f03', age: [28, 48], w: 6, text: '孩子的학원 补习班。妻子说：别人都在上，我们不能不上。账单是每月两百万。',
+    cond: { need: ['married'] },
+    choices: [
+      { text: '只上一个，其他的自己教', eff: { INT: 4, WILL: 3, MONEY: -12000000 }, risk: 1 },
+      { text: '上全套，砸进去', eff: { MONEY: -48000000, WILL: 5, STRESS: 10 }, risk: 2 },
+      { text: '直接送进国际学校', eff: { MONEY: -200000000, CHA: 6, NET: 8, FAME: 5 }, risk: 3,
+        gamble: { p: 0.45, win: { NET: 16, FAME: 10 }, lose: { MONEY: -100000000, STRESS: 12 } } }
+    ] },
+  { id: 'x_f04', age: [30, 55], w: 6, text: '老家的弟弟打电话来借钱创业。他说：哥，你是我唯一的希望。',
+    choices: [
+      { text: '拒绝，钱救不了所有人', eff: { WILL: -2, INT: 4, NET: -4 }, risk: 1 },
+      { text: '给一小笔，量力而行', eff: { MONEY: -10000000, WILL: 4, NET: 4 }, risk: 2 },
+      { text: '给他一大笔，并帮他写商业计划', eff: { MONEY: -80000000, NET: 8, WILL: 6, STRESS: 10 }, risk: 3,
+        gamble: { p: 0.4, win: { MONEY: 260000000, NET: 12 }, lose: { MONEY: -50000000, NET: -6 } } }
+    ] },
+  { id: 'x_f05', age: [32, 58], w: 5, text: '你在孩子的家长会上迟到。其他家长在用一种你熟悉的眼神看你——那是当年看你母亲的眼神。',
+    cond: { need: ['married'] },
+    choices: [
+      { text: '坦然坐下', eff: { WILL: 4, CHA: 2 }, risk: 1 },
+      { text: '主动赞助一场活动', eff: { MONEY: -20000000, NET: 8, FAME: 4 }, risk: 2 },
+      { text: '站起来做自我介绍，把生意谈成', eff: { NET: 14, CHA: 6, FAME: 6, MONEY: 60000000 }, risk: 3,
+        gamble: { p: 0.42, win: { NET: 18, MONEY: 300000000 }, lose: { CHA: -6, NET: -5 } } }
+    ] },
+  { id: 'x_f06', age: [34, 60], w: 5, text: '妻子说，你已经三年没有在家吃过晚饭了。她没有哭，只是很平静。',
+    cond: { need: ['married'] },
+    choices: [
+      { text: '答应这个周末一定回来', eff: { WILL: 2, STRESS: -4 }, risk: 1 },
+      { text: '把周末全空出来，带她去济州', eff: { MONEY: -8000000, WILL: 5, HP: 5, STRESS: -10 }, risk: 2 },
+      { text: '什么也不说，关掉手机陪她一整天', eff: { WILL: 8, HP: 8, STRESS: -16, MONEY: -50000000 }, risk: 3,
+        gamble: { p: 0.5, win: { WILL: 10, HP: 10 }, lose: { MONEY: -120000000, STRESS: 8 } } }
+    ] },
+  { id: 'x_f07', age: [35, 62], w: 5, text: '你在父亲坟前站了很久。他一辈子没离开过那条巷子，而你走得太远了。',
+    choices: [
+      { text: '说一句：我过得不错', eff: { WILL: 4, STRESS: -6 }, risk: 1 },
+      { text: '说：我会让他们都知道你的名字', eff: { WILL: 8, FAME: 4 }, risk: 2 },
+      { text: '什么也不说，把那栋楼的照片烧给他', eff: { WILL: 10, HP: -4, STRESS: -12 }, risk: 3,
+        gamble: { p: 0.45, win: { WILL: 12, FAME: 8 }, lose: { HP: -7, STRESS: 10 } } }
+    ] },
+
+  /* ===== 도박 / 사기 风险金钱 ===== */
+  { id: 'x_g01', age: [24, 55], w: 6, text: '朋友带你去了一间地下赌场。他说：就玩一把，输赢都不超过十万。',
+    choices: [
+      { text: '转身就走', eff: { WILL: 4, INT: 3 }, risk: 1 },
+      { text: '玩一把就走', eff: { MONEY: -2000000, STRESS: 6 }, risk: 2 },
+      { text: '越玩越大，直到天亮', eff: { STRESS: 16, WILL: -3 }, flags: ['gambler'], risk: 3,
+        gamble: { p: 0.28, win: { MONEY: 280000000 }, lose: { MONEY: -180000000, HP: -8, STRESS: 18 } } }
+    ] },
+  { id: 'x_g02', age: [26, 55], w: 6, text: '一个「稳赚不赔」的海外项目找上门，年化 30%，合同很厚，印章很红。',
+    choices: [
+      { text: '不看，直接拉黑', eff: { INT: 5, WILL: 3 }, risk: 1 },
+      { text: '投一小笔试试', eff: { MONEY: -20000000, INT: 4 }, risk: 2 },
+      { text: '全押，并拉朋友一起', eff: { MONEY: -200000000, NET: 6, STRESS: 16 }, risk: 3,
+        gamble: { p: 0.18, win: { MONEY: 900000000 }, lose: { MONEY: -260000000, NET: -20, FAME: -10 } } }
+    ] },
+  { id: 'x_g03', age: [25, 50], w: 5, text: '大学同学找你做担保人。他说只是走个流程，不会真的要你还。',
+    choices: [
+      { text: '拒绝，担保就是负债', eff: { INT: 5, NET: -3 }, risk: 1 },
+      { text: '只担保一个很小的额度', eff: { MONEY: -10000000, NET: 4 }, risk: 2 },
+      { text: '签了，朋友就该这样', eff: { NET: 8, WILL: 4, STRESS: 12 }, flags: ['guarantor'], risk: 3,
+        gamble: { p: 0.3, win: { NET: 14, MONEY: 50000000 }, lose: { MONEY: -300000000, NET: -10 } } }
+    ] },
+  { id: 'x_g04', age: [27, 52], w: 5, text: '急用钱。银行的门关着，街边的「대출 小额贷款」招牌亮着，月息三分。',
+    cond: { max: { MONEY: 20000000 } },
+    choices: [
+      { text: '去找朋友借', eff: { MONEY: 15000000, NET: -4, WILL: 3 }, risk: 1 },
+      { text: '找正规银行的小额贷', eff: { MONEY: 20000000, STRESS: 8 }, risk: 2 },
+      { text: '借高利贷，先过这关', eff: { MONEY: 40000000, STRESS: 20, WILL: -4 }, flags: ['loan_shark'], risk: 3,
+        gamble: { p: 0.3, win: { MONEY: 120000000 }, lose: { MONEY: -90000000, HP: -7, STRESS: 20 } } }
+    ] },
+  { id: 'x_g05', age: [24, 45], w: 5, text: '共同基金的申购日。销售说这是「国民理财产品」，闭着眼买都不会错。',
+    choices: [
+      { text: '不买，先看说明书', eff: { INT: 5, WILL: 2 }, risk: 1 },
+      { text: '买一点点', eff: { MONEY: -10000000, INT: 2 }, risk: 2 },
+      { text: '重仓，反正是「国民」级别', eff: { MONEY: -60000000, STRESS: 10 }, risk: 3,
+        gamble: { p: 0.35, win: { MONEY: 180000000 }, lose: { MONEY: -40000000 } } }
+    ] },
+  { id: 'x_g06', age: [28, 50], w: 5, text: '你发现公司账上有笔说不清的支出。查下去，可能会查到自己人。',
+    cond: { min: { INT: 50 } },
+    choices: [
+      { text: '装作没看见', eff: { WILL: -2, LOY: 6 }, risk: 1 },
+      { text: '匿名举报', eff: { FAME: 6, WILL: 4, LOY: -8, STRESS: 8 }, risk: 2 },
+      { text: '把材料握在手里，等到需要那天', eff: { INT: 8, WILL: 6, STRESS: 12 }, flags: ['blackmail'], risk: 3,
+        gamble: { p: 0.42, win: { MONEY: 400000000, LOY: 12 }, lose: { MONEY: -100000000, FAME: -14, HP: -6 } } }
+    ] },
+
+  /* ===== 재벌선 财阀线 ===== */
+  { id: 'x_t10', age: [34, 58], w: 7, text: '太星集团的股价异动。你在屏幕上看到那条熟悉的曲线——前世它没有出现在这一天。',
+    cond: { need: ['past_life'], min: { MONEY: 300000000 } },
+    choices: [
+      { text: '不动，看着', eff: { INT: 4, WILL: 2 }, risk: 1 },
+      { text: '买入一部分，跟着感觉走', eff: { MONEY: -150000000, INT: 5 }, risk: 2 },
+      { text: '满仓买入，这是你等了半辈子的机会', eff: { MONEY: -600000000, WILL: 8, STRESS: 18 }, flags: ['taeseong_stake'], risk: 3,
+        gamble: { p: 0.55, win: { MONEY: 3200000000, LOY: 8, INT: 8 }, lose: { MONEY: -300000000, STRESS: 16 } } }
+    ] },
+  { id: 'x_t11', age: [36, 60], w: 7, text: '会长的长子约你喝酒。他推过来一份文件，说：签了，你就是自己人。',
+    cond: { min: { LOY: 25 } },
+    choices: [
+      { text: '不签，我谁的账都不买', eff: { WILL: 6, LOY: -8, INT: 4 }, risk: 2 },
+      { text: '签，先站进去再说', eff: { LOY: 14, NET: 10, MONEY: 80000000, WILL: -3 }, flags: ['side_elder'], risk: 1 },
+      { text: '签，但把文件多复印一份', eff: { LOY: 12, INT: 8, NET: 12, STRESS: 12 }, flags: ['side_elder', 'has_copy'], risk: 3,
+        gamble: { p: 0.48, win: { LOY: 18, MONEY: 600000000 }, lose: { LOY: -25, FAME: -10, HP: -6 } } }
+    ] },
+  { id: 'x_t12', age: [38, 62], w: 7, text: '二女儿在美术馆闭馆后见你。她只说了一句：我父亲的位置，不会传给废物。',
+    cond: { min: { LOY: 30 } },
+    choices: [
+      { text: '保持距离', eff: { INT: 4, WILL: 3 }, risk: 1 },
+      { text: '表示支持', eff: { LOY: 14, NET: 12, INT: 4 }, flags: ['side_second'], risk: 2 },
+      { text: '当场承诺：我会让你坐上那个位置', eff: { LOY: 22, WILL: 10, NET: 14, STRESS: 14 }, flags: ['side_second', 'oath'], risk: 3,
+        gamble: { p: 0.5, win: { LOY: 25, MONEY: 900000000, NET: 12 }, lose: { LOY: -20, STRESS: 16 } } }
+    ] },
+  { id: 'x_t13', age: [40, 64], w: 7, text: '股东大会前夜。你手里有 7.4% 的股份，还差最后一点点，就能改掉这个国家的财阀史。',
+    cond: { min: { MONEY: 3000000000 } },
+    choices: [
+      { text: '收手，把股份卖掉落袋', eff: { MONEY: 800000000, WILL: -4 }, risk: 1 },
+      { text: '再买 2%，站到台前', eff: { MONEY: -2000000000, FAME: 20, WILL: 8, LOY: -15 }, flags: ['buying_stake'], risk: 2 },
+      { text: '全押，明天之后不再有退路', eff: { MONEY: -6000000000, FAME: 30, WILL: 12, LOY: -25, STRESS: 20 }, flags: ['buying_stake', 'showdown'], risk: 3,
+        gamble: { p: 0.42, win: { FAME: 40, MONEY: 3000000000, flags: ['took_over'], job: '太星集团会长' }, lose: { MONEY: -3000000000, LOY: -30, HP: -8 } } }
+    ] },
+  { id: 'x_t14', age: [40, 65], w: 6, text: '检察官请你喝了一杯茶。他说：我们知道一些事，也想知道一些事。',
+    cond: { min: { FAME: 40 } },
+    choices: [
+      { text: '什么也不说', eff: { WILL: 5, STRESS: 10, LOY: 6 }, risk: 1 },
+      { text: '只说别人的', eff: { LOY: -6, NET: -6, WILL: -3, STRESS: 6 }, flags: ['snitch'], risk: 2 },
+      { text: '把手里的账本交出去', eff: { FAME: 25, LOY: -40, WILL: 8, STRESS: 16 }, flags: ['whistleblower'], risk: 3,
+        gamble: { p: 0.5, win: { FAME: 30, WILL: 10, NET: 10 }, lose: { MONEY: -800000000, HP: -8 } } }
+    ] },
+
+  /* ===== 시대 时代 ===== */
+  { id: 'x_e01', age: [12, 14], w: 10, once: true, text: '1997년。街头的电视都在放同一条新闻：国家向 IMF 求助。父亲的工厂关门了，母亲把金戒指放进募捐箱。',
+    choices: [
+      { text: '把零花钱全部交给母亲', eff: { WILL: 6, MONEY: -100000, STRESS: 6 }, risk: 1 },
+      { text: '跟着父亲去街头摆摊', eff: { WILL: 8, CHA: 3, MONEY: 800000, STRESS: 10 }, risk: 2 },
+      { text: '把家里最后一点钱拿去买美元', eff: { MONEY: -500000, INT: 8, WILL: 6, STRESS: 14 }, flags: ['imf_buyer'], risk: 3,
+        gamble: { p: 0.6, win: { MONEY: 12000000, INT: 6 }, lose: { MONEY: -400000, STRESS: 8 } } }
+    ] },
+  { id: 'x_e02', age: [23, 25], w: 9, once: true, text: '2008년。雷曼兄弟倒下的那个秋天，办公室里没人说话。你的账户每天少掉一个月的工资。',
+    choices: [
+      { text: '清仓，保住剩下的', eff: { INT: 5, WILL: 3, STRESS: -6 }, risk: 1 },
+      { text: '不动，等它过去', eff: { WILL: 6, STRESS: 12 }, risk: 2 },
+      { text: '借钱抄底，赌国运', eff: { WILL: 10, STRESS: 20 }, flags: ['bottom_fisher', 'leveraged'], risk: 3,
+        gamble: { p: 0.55, win: { MONEY: 700000000, INT: 10 }, lose: { MONEY: -220000000, HP: -8 } } }
+    ] },
+  { id: 'x_e03', age: [35, 37], w: 9, once: true, text: '2020년。三月，股市熔断两次。四月，所有人都在家里打开证券 App。你的手机也在推送开户广告。',
+    choices: [
+      { text: '关掉推送，去阳台上透气', eff: { HP: 6, STRESS: -8 }, risk: 1 },
+      { text: '小仓位进场', eff: { MONEY: -30000000, INT: 4 }, risk: 2 },
+      { text: '满仓，这是十年一次的价钱', eff: { MONEY: -200000000, WILL: 8, STRESS: 18 }, flags: ['bottom_fisher'], risk: 3,
+        gamble: { p: 0.55, win: { MONEY: 1200000000, INT: 8 }, lose: { MONEY: -120000000, HP: -7 } } }
+    ] },
+  { id: 'x_e04', age: [17, 19], w: 8, once: true, text: '2002년 世界杯。整个首尔变成了红色的海，你在光化门前和几十万人一起喊「대한민국」。',
+    choices: [
+      { text: '喊到嗓子哑，然后回家背书', eff: { WILL: 4, INT: 3, STRESS: -10 }, risk: 1 },
+      { text: '跟着人群跑遍整座城市', eff: { CHA: 5, NET: 6, WILL: 4, HP: -3 }, risk: 2 },
+      { text: '在街头摆摊卖国旗，赚第一桶金', eff: { MONEY: 1200000, CHA: 4, INT: 4, NET: 3 }, risk: 3,
+        gamble: { p: 0.5, win: { MONEY: 5000000, CHA: 5 }, lose: { MONEY: -300000, STRESS: 5 } } }
+    ] },
+  { id: 'x_e05', age: [27, 29], w: 7, once: true, text: '《江南 Style》火遍全球。全世界的综艺都在跳骑马舞，江南的房价在半年里又涨了一成。',
+    choices: [
+      { text: '笑一笑，继续上班', eff: { STRESS: -5 }, risk: 1 },
+      { text: '买一点娱乐股', eff: { MONEY: -20000000, INT: 4 }, risk: 2 },
+      { text: '重仓韩流概念，赌它还能再翻倍', eff: { MONEY: -80000000, WILL: 6, STRESS: 12 }, risk: 3,
+        gamble: { p: 0.45, win: { MONEY: 400000000 }, lose: { MONEY: -50000000 } } }
+    ] },
+  { id: 'x_e06', age: [38, 40], w: 7, once: true, text: 'AI 的时代来了。所有公司都在谈算力，而你手里的钱，第一次变成了「入场券」。',
+    cond: { min: { MONEY: 500000000 } },
+    choices: [
+      { text: '观望，等技术落地', eff: { INT: 5, WILL: 2 }, risk: 1 },
+      { text: '买行业龙头', eff: { MONEY: -200000000, INT: 6 }, risk: 2 },
+      { text: 'all in，这是最后一场大周期', eff: { MONEY: -800000000, WILL: 10, STRESS: 18 }, flags: ['ai_bet'], risk: 3,
+        gamble: { p: 0.45, win: { MONEY: 4000000000, FAME: 15 }, lose: { MONEY: -500000000, HP: -7 } } }
+    ] },
+
+  /* ===== 말년 晚年 ===== */
+  { id: 'x_o05', age: [58, 72], w: 7, text: '你开始考虑交接。把公司交给职业经理人，还是留给自己的孩子？',
+    cond: { min: { MONEY: 3000000000 } },
+    choices: [
+      { text: '交给职业经理人', eff: { INT: 5, NET: 8, WILL: -2 }, risk: 1 },
+      { text: '交给孩子，血脉优先', eff: { WILL: 6, NET: 4, FAME: 4 }, risk: 2 },
+      { text: '成立财团，谁也拿不走', eff: { FAME: 15, NET: 10, WILL: 8, MONEY: -500000000 }, flags: ['foundation'], risk: 3,
+        gamble: { p: 0.5, win: { FAME: 20, WILL: 10 }, lose: { FAME: -8, MONEY: -1200000000 } } }
+    ] },
+  { id: 'x_o06', age: [60, 76], w: 6, text: '一个年轻人写信给你，说他在半地下室里读完了你的自传。他问：我还有机会吗？',
+    cond: { min: { FAME: 30 } },
+    choices: [
+      { text: '回一句：有', eff: { WILL: 4, FAME: 3 }, risk: 1 },
+      { text: '资助他读完大学', eff: { MONEY: -30000000, WILL: 6, FAME: 6 }, risk: 2 },
+      { text: '成立一个资助半地下室孩子的基金', eff: { MONEY: -2000000000, FAME: 20, WILL: 10 }, flags: ['foundation'], risk: 3,
+        gamble: { p: 0.5, win: { FAME: 25, WILL: 12 }, lose: { MONEY: -1000000000, STRESS: 8 } } }
+    ] },
+  { id: 'x_o07', age: [62, 80], w: 6, text: '医生给了你两个选择：手术，或者剩下的时间。',
+    choices: [
+      { text: '不做手术，回家', eff: { HP: -11, WILL: 6, STRESS: -10 }, risk: 2 },
+      { text: '做手术，赌一把', eff: { MONEY: -80000000, HP: 10, STRESS: 10 }, risk: 2 },
+      { text: '去国外找最好的医生', eff: { MONEY: -500000000, HP: 20, STRESS: 6 }, risk: 3,
+        gamble: { p: 0.45, win: { HP: 28, WILL: 8 }, lose: { MONEY: -300000000, HP: -7 } } }
+    ] },
+  { id: 'x_o08', age: [65, 80], w: 6, text: '你回到那条巷子。半地下室还在，只是换了人家。门口晒着别人的鞋。',
+    choices: [
+      { text: '站一会儿就走', eff: { WILL: 3, STRESS: -5 }, risk: 1 },
+      { text: '敲开门，和里面的人聊几句', eff: { WILL: 5, CHA: 3, NET: 3, STRESS: -8 }, risk: 2 },
+      { text: '买下整条巷子，改成青年公寓', eff: { MONEY: -3000000000, FAME: 20, WILL: 12, NET: 10 }, flags: ['foundation'], risk: 3,
+        gamble: { p: 0.5, win: { FAME: 25, WILL: 14 }, lose: { MONEY: -800000000, STRESS: 10 } } }
+    ] }
+];
+EVENTS.push.apply(EVENTS, EVENTS_EXTRA);
 
 /* ---------------- 称号（按人生阶段显示身份） ---------------- */
 const TITLES = [
