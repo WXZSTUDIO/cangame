@@ -1,0 +1,6 @@
+.sync/
+.gh_token
+__pycache__/
+.workbuddy/
+node_modules/
+.DS_Store

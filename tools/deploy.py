@@ -53,25 +53,28 @@ def run(args, cwd=None, check=False, quiet=True):
     return p
 
 
-def ensure_clone(repo):
+def ensure_clone(repo, sub=''):
+    """浅克隆并按需稀疏检出，避免整仓下载（主站仓库体积很大）"""
     url = f'https://github.com/{repo}.git'
     path = os.path.join(CACHE, repo.split('/')[1])
     if os.path.isdir(os.path.join(path, '.git')):
         run(['git', 'fetch', '--depth', '1', 'origin'], cwd=path, check=True)
         run(['git', 'reset', '--hard', 'origin/HEAD'], cwd=path, check=True)
+        return path
+    os.makedirs(path, exist_ok=True)
+    if sub:
+        run(['git', 'clone', '--depth', '1', '--filter=blob:none', '--sparse', url, path], check=True)
+        run(['git', 'sparse-checkout', 'set', sub], cwd=path, check=True)
     else:
-        if os.path.exists(path):
-            shutil.rmtree(path)
-        os.makedirs(path, exist_ok=True)
         run(['git', 'clone', '--depth', '1', url, path], check=True)
-        run(['git', 'config', 'user.email', 'ro3eandcat@gmail.com'], cwd=path)
-        run(['git', 'config', 'user.name', 'WXZ STUDIO'], cwd=path)
+    run(['git', 'config', 'user.email', 'ro3eandcat@gmail.com'], cwd=path)
+    run(['git', 'config', 'user.name', 'WXZ STUDIO'], cwd=path)
     return path
 
 
 def sync(repo, sub, msg):
     print(f'==> {repo}' + (f'  (/{sub})' if sub else '  (根目录)'))
-    path = ensure_clone(repo)
+    path = ensure_clone(repo, sub)
     dest_root = os.path.join(path, sub) if sub else path
 
     if sub:
@@ -85,14 +88,13 @@ def sync(repo, sub, msg):
         run(['git', 'add', '-A', sub], cwd=path, check=True)
     else:
         for entry in os.listdir(ROOT):
-            if entry in SKIP_DIRS or entry.startswith('.'):
+            if entry in SKIP_DIRS or entry in {'.git', '.sync', '.gh_token'}:
                 continue
             src = os.path.join(ROOT, entry)
             dst = os.path.join(path, entry)
             if os.path.isdir(src):
-                if os.path.exists(dst):
-                    shutil.rmtree(dst)
-                shutil.copytree(src, dst, ignore=shutil.ignore_patterns('.git', '__pycache__'))
+                shutil.copytree(src, dst, dirs_exist_ok=True,
+                                ignore=shutil.ignore_patterns('.git', '__pycache__'))
             else:
                 shutil.copyfile(src, dst)
         run(['git', 'add', '-A'], cwd=path, check=True)

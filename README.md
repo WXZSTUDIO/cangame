@@ -56,6 +56,15 @@ python -m http.server 8000   # 然后打开 http://localhost:8000
 仓库 `cangame` 为源码主仓库；线上版本同步在 `wxzstudio.github.io/cangame/`，
 由 GitHub Pages 直接托管静态文件，推送即生效。
 
+改完代码后一条命令同步两个仓库（走本机 git 凭据，不需要令牌）：
+
+```bash
+python tools/deploy.py                      # 只推有变动的文件
+python tools/deploy.py --msg="修复投资结算"   # 自定义提交信息
+```
+
+首次运行会在 `.sync/` 建立缓存克隆，之后增量推送；`.sync/` 已在 `.gitignore` 中忽略。
+
 ---
 
 本作所有人物、集团（太星集团）、事件均为虚构，与现实无关。
