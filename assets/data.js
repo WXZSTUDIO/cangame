@@ -6,9 +6,9 @@
 const GAME_META = {
   title: '江南逆袭',
   subtitle: '강남 역습 · 从半地下室到财阀之巅',
-  version: '1.0.0',
+  version: '1.1.0',
   startYear: 1985,
-  endAge: 80
+  endAge: 105
 };
 
 /* ---------------- 随机姓名库 ---------------- */
@@ -22,9 +22,9 @@ const GIVEN_NAMES = {
 
 /* ---------------- 出生叙事素材（随机人生故事） ---------------- */
 const BIRTH_OPENERS = [
-  '1985년 겨울，首尔的雪盖住了整条巷子。你在江南区一间看不见天空的半地下室里，第一次睁开了眼睛。',
+  '首尔的雪盖住了整条巷子。你在江南区一间看不见天空的半地下室里，第一次睁开了眼睛。',
   '那一年汉江还没那么多桥。母亲说，你哭得很大声，像是不情愿来到这个世界。',
-  '1985년，父亲的工厂还在运转，家里勉强供得起一盏暖黄色的灯。你就在那盏灯下出生。',
+  '父亲的工厂还在运转，家里勉强供得起一盏暖黄色的灯。你就在那盏灯下出生。',
   '庆尚北道的稻花香里，你降生在老家的厢房。接生婆说：这孩子命硬，能走出去。',
   '首尔大雨的夜里，你提前三周来到人间。护士把你裹进一条旧毛毯，说活着就好。',
   '教会孤儿院的钟声响起时，你被放在门口的篮子里。没有人知道你的父母是谁。',
@@ -73,6 +73,26 @@ const RESOURCES = [
   { key: 'NET',   name: '인맥 人脉', hint: '关键时刻能调动的人' },
   { key: 'FAME',  name: '명성 声望', hint: '社会知名度' },
   { key: 'LOY',   name: '太星好感', hint: '与太星家族的关系' }
+];
+
+/* ---------------- 8 项人生指标（主面板） ---------------- */
+const LIFE_METRICS = [
+  { key: 'HP',   name: '건강 健康',     hint: '归零即人生结束' },
+  { key: 'CUR',  name: '호기심 好奇心', hint: '探索与学习欲' },
+  { key: 'LOVE', name: '애정 关爱',     hint: '爱与归属感' },
+  { key: 'SEC',  name: '안전감 安全感', hint: '内心的安稳' },
+  { key: 'FAME', name: '명성 声望',     hint: '社会知名度' },
+  { key: 'AUTO', name: '자율성 自主性', hint: '掌控自己的人生' },
+  { key: 'CHA',  name: '대인관계 人际关系', hint: '与人相处' },
+  { key: 'GROW', name: '성장 成长',     hint: '一辈子的积累' }
+];
+
+/* ---------------- 擅长领域（开局选择，影响人生倾向） ---------------- */
+const PRIORITIES = [
+  { key: 'career',   name: '사업 事业', desc: '把精力押在学习与事业上，财富与能力滚雪球。' },
+  { key: 'relation', name: '관계 关系', desc: '重视爱、家庭与朋友，关爱与安全感更高。' },
+  { key: 'balance',  name: '균형 平衡', desc: '健康与心境并重，少一点挣扎，稳稳地走。' },
+  { key: 'success',  name: '성공 成功', desc: '追逐名望与人脉，离聚光灯更近。' }
 ];
 
 /* ---------------- 天赋 ---------------- */
@@ -374,6 +394,9 @@ const ENDINGS = [
     text: '你的咖啡馆还在清潭洞的巷子里。老顾客来了一茬又一茬，你记得每个人的口味。',
     cond: s => s.flags.own_shop && (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) > 0
       && (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) < 3000000000 && s.stats.FAME < 40 },
+  { id: 'end_family', rank: 'A', title: '대대로 家族绵延',
+    text: '你儿孙满堂。年夜饭的桌上，三代人抢着给你夹菜。你这辈子没当上财阀，但你种下的根，扎得很深。',
+    cond: s => s.grandCount > 0 && s.stats.LOVE >= 45 },
   { id: 'end_salary', rank: 'C', title: '평범한 회사원 平凡的会社员',
     text: '你按时上下班，按时退休。回首尔的夜景时，你还是会想起小时候画的那个圈。',
     cond: s => ['会社员', '公务员', '太星集团社员', '工厂工人', '个体户'].indexOf(s.job) >= 0
@@ -1161,6 +1184,202 @@ const EVENTS_FAMILY = [
     ] }
 ];
 EVENTS.push.apply(EVENTS, EVENTS_FAMILY);
+
+/* ===== 亲友/孩子/孙辈/宠物/人生（第二波，强化关系与8项指标） ===== */
+const EVENTS_FAMILY2 = [
+  /* ---- 兄弟姐妹的婚事：替他们选伴侣、张罗 ---- */
+  { id: 'f2_sib1', age: [22, 40], w: 5, text: '你的哥哥要结婚了。对方家庭你只见过一次，总觉得门第差得有点远。',
+    choices: [
+      { text: '劝哥哥再想想', eff: { WILL: 3, SEC: 2 }, risk: 1 },
+      { text: '帮忙张罗婚礼', eff: { MONEY: -10000000, LOVE: 3 }, risk: 2 },
+      { text: '出面替哥哥把关', eff: { CHA: 4, NET: 3, AUTO: 4 }, risk: 3,
+        gamble: { p: 0.5, win: { CHA: 6, NET: 5 }, lose: { STRESS: 8, CHA: -2 } } }
+    ] },
+  { id: 'f2_sib2', age: [24, 42], w: 4, text: '妹妹交了个你很不放心的男朋友，她说「你别管」。',
+    choices: [
+      { text: '尊重她的选择', eff: { AUTO: 3, LOVE: 2 }, risk: 1 },
+      { text: '旁敲侧击提醒', eff: { WILL: 3, LOVE: -1, SEC: 1 }, risk: 2 },
+      { text: '直接摊牌反对', eff: { WILL: 5, LOVE: -4, STRESS: 6 }, risk: 3,
+        gamble: { p: 0.45, win: { WILL: 6, SEC: 4 }, lose: { LOVE: -6, STRESS: 10 } } }
+    ] },
+  { id: 'f2_sib3', age: [26, 45], w: 4, text: '姐姐一家搬去了澳洲，临走前把老家的钥匙交给了你。',
+    choices: [
+      { text: '收下，常回去看看', eff: { SEC: 4, LOVE: 2 }, risk: 1 },
+      { text: '把老屋租出去', eff: { MONEY: 8000000, NET: 2 }, risk: 2 },
+      { text: '卖了分钱', eff: { MONEY: 40000000, LOVE: -3, AUTO: 3 }, risk: 3 }
+    ] },
+
+  /* ---- 亲戚往来 ---- */
+  { id: 'f2_rel1', age: [25, 48], w: 4, text: '表弟要创业，红着脸问你能不能投一点。',
+    choices: [
+      { text: '婉拒，但送他几句实话', eff: { WILL: 2, NET: 1 }, risk: 1 },
+      { text: '借一小笔当启动', eff: { MONEY: -15000000, LOVE: 3 }, risk: 2 },
+      { text: '大方入股', eff: { MONEY: -60000000, NET: 4 }, risk: 3,
+        gamble: { p: 0.5, win: { MONEY: 180000000, NET: 8 }, lose: { MONEY: -20000000, STRESS: 8 } } }
+    ] },
+  { id: 'f2_rel2', age: [22, 55], w: 4, text: '远房舅舅做生意失败，找你周转。',
+    choices: [
+      { text: '量力而行帮一点', eff: { MONEY: -8000000, LOVE: 2 }, risk: 1 },
+      { text: '介绍他去别的亲戚那', eff: { NET: 2, AUTO: 1 }, risk: 2 },
+      { text: '装作没听见', eff: { STRESS: 4, AUTO: 2 }, risk: 3 }
+    ] },
+  { id: 'f2_rel3', age: [30, 55], w: 3, text: '家族团聚，二叔当众说你「忘本」。',
+    choices: [
+      { text: '一笑而过', eff: { WILL: 3, STRESS: -2 }, risk: 1 },
+      { text: '私下请二叔喝酒化解', eff: { NET: 3, LOVE: 2 }, risk: 2 },
+      { text: '当场回怼', eff: { WILL: 5, CHA: 2, FAME: 2, STRESS: 6 }, risk: 3 }
+    ] },
+
+  /* ---- 朋友 ---- */
+  { id: 'f2_fr1', age: [22, 36], w: 5, text: '你最好的朋友要结婚，非要你当伴郎/伴娘。',
+    choices: [
+      { text: '一口答应', eff: { LOVE: 4, CHA: 2 }, risk: 1 },
+      { text: '忙，但尽力到场', eff: { LOVE: 1 }, risk: 2 },
+      { text: '随个厚礼就算了', eff: { MONEY: -5000000, LOVE: -2 }, risk: 3 }
+    ] },
+  { id: 'f2_fr2', age: [26, 50], w: 4, text: '朋友离婚，半夜敲开你的门哭了一宿。',
+    choices: [
+      { text: '陪他熬过这一夜', eff: { LOVE: 4, SEC: 2 }, risk: 1 },
+      { text: '帮他找律师', eff: { NET: 3, MONEY: -3000000 }, risk: 2 },
+      { text: '劝他想开点', eff: { WILL: 2 }, risk: 3 }
+    ] },
+  { id: 'f2_fr3', age: [24, 42], w: 4, text: '你给单身的闺蜜/兄弟牵了条线，俩人居然看对眼了。',
+    choices: [
+      { text: '乐见其成', eff: { LOVE: 3, CHA: 3 }, risk: 1 },
+      { text: '暗中帮他们制造机会', eff: { CHA: 4, NET: 2 }, risk: 2 },
+      { text: '提醒彼此慢点', eff: { WILL: 2, SEC: 1 }, risk: 3 }
+    ] },
+  { id: 'f2_fr4', age: [28, 52], w: 3, text: '老同学群里有人发起「毕业二十周年」聚会，AA 制。',
+    choices: [
+      { text: '去，见见老熟人', eff: { CHA: 3, NET: 2, MONEY: -2000000 }, risk: 1 },
+      { text: '转钱但不去', eff: { MONEY: -1000000, NET: 1 }, risk: 2 },
+      { text: '假装没看见', eff: { AUTO: 2, STRESS: 1 }, risk: 3 }
+    ] },
+
+  /* ---- 孩子的成长里程碑 ---- */
+  { id: 'f2_ch1', age: [30, 46], w: 5, cond: { need: ['married'] }, text: '孩子上小学第一天，背着比你当年大十倍的书包。',
+    choices: [
+      { text: '亲手送进校门', eff: { LOVE: 4, WILL: 2 }, risk: 1 },
+      { text: '请家教提前补', eff: { MONEY: -8000000, CUR: 3 }, risk: 2 },
+      { text: '放养，让他自己闯', eff: { AUTO: 4, GROW: 3 }, risk: 3,
+        gamble: { p: 0.5, win: { GROW: 6, AUTO: 4 }, lose: { STRESS: 6 } } }
+    ] },
+  { id: 'f2_ch2', age: [38, 54], w: 5, cond: { need: ['married'] }, text: '孩子到了叛逆期，把你的话当耳旁风，门一摔就是一整天。',
+    choices: [
+      { text: '耐心沟通', eff: { LOVE: 3, WILL: 2, STRESS: 2 }, risk: 1 },
+      { text: '立规矩', eff: { WILL: 4, LOVE: -1, AUTO: 1 }, risk: 2 },
+      { text: '干脆不理，等他撞墙', eff: { WILL: 5, LOVE: -3, STRESS: 8 }, risk: 3,
+        gamble: { p: 0.45, win: { WILL: 7, AUTO: 5 }, lose: { LOVE: -6, STRESS: 12 } } }
+    ] },
+  { id: 'f2_ch3', age: [40, 56], w: 5, cond: { need: ['married'], min: { MONEY: 30000000 } }, text: '孩子面临高考/升学，补习班的账单像雪片。',
+    choices: [
+      { text: '砸钱上最好的', eff: { MONEY: -30000000, CUR: 4, STRESS: 4 }, risk: 1 },
+      { text: '量力而行', eff: { MONEY: -10000000, WILL: 2 }, risk: 2 },
+      { text: '相信孩子自己', eff: { AUTO: 4, GROW: 3, LOVE: 2 }, risk: 3 }
+    ] },
+  { id: 'f2_ch4', age: [42, 58], w: 4, cond: { need: ['married'] }, text: '孩子第一次带对象回家，你偷偷打量对方的家庭。',
+    choices: [
+      { text: '热情款待', eff: { LOVE: 3, CHA: 2 }, risk: 1 },
+      { text: '保持观察', eff: { WILL: 2, SEC: 1 }, risk: 2 },
+      { text: '事后悄悄打听', eff: { NET: 3, STRESS: 2 }, risk: 3 }
+    ] },
+  { id: 'f2_ch5', age: [45, 66], w: 5, cond: { need: ['married'] }, grand: true, text: '你的孩子结婚了。你站在礼堂最后一排，忽然想起自己当年的那场简陋婚礼。',
+    choices: [
+      { text: '体面地办一场', eff: { MONEY: -40000000, LOVE: 5, FAME: 2 }, risk: 1 },
+      { text: '简简单单', eff: { LOVE: 4, AUTO: 2 }, risk: 2 },
+      { text: '倾尽全力撑场面', eff: { MONEY: -120000000, FAME: 4, STRESS: 8 }, risk: 3,
+        gamble: { p: 0.5, win: { FAME: 8, NET: 6 }, lose: { MONEY: -30000000, STRESS: 12 } } }
+    ] },
+  { id: 'f2_ch6', age: [48, 68], w: 3, cond: { need: ['married'] }, text: '孩子事业受挫，拖着行李回来了，说「想在家住一阵」。',
+    choices: [
+      { text: '敞开家门', eff: { LOVE: 5, SEC: 3 }, risk: 1 },
+      { text: '让他先想清楚', eff: { WILL: 3, AUTO: 2 }, risk: 2 },
+      { text: '趁机催婚', eff: { LOVE: -2, STRESS: 4 }, risk: 3 }
+    ] },
+
+  /* ---- 孙辈 ---- */
+  { id: 'f2_gr1', age: [55, 80], w: 5, cond: { need: ['married'], grand: true }, text: '孙辈扑进你怀里，奶声奶气叫了声「爷爷/奶奶」。',
+    choices: [
+      { text: '高兴地抱起来', eff: { LOVE: 6, SEC: 4, GROW: 2 }, risk: 1 },
+      { text: '偷偷塞零花钱', eff: { MONEY: -3000000, LOVE: 3 }, risk: 2 },
+      { text: '教他认字', eff: { CUR: 4, GROW: 3 }, risk: 3 }
+    ] },
+  { id: 'f2_gr2', age: [58, 85], w: 3, cond: { need: ['married'], grand: true }, text: '你带着孙辈去公园喂鸽子，路过的年轻人喊你「好福气」。',
+    choices: [
+      { text: '享受这天伦', eff: { LOVE: 5, SEC: 3, STRESS: -4 }, risk: 1 },
+      { text: '拍张照发朋友圈', eff: { FAME: 2, CHA: 1 }, risk: 2 },
+      { text: '顺便讲讲你年轻时的狠事', eff: { WILL: 3, FAME: 1 }, risk: 3 }
+    ] },
+
+  /* ---- 岳父母 / 婆媳 ---- */
+  { id: 'f2_il1', age: [28, 50], w: 4, cond: { need: ['married'] }, text: '岳母想搬来同住「帮忙带孩子」，你妻子也点头了。',
+    choices: [
+      { text: '欣然同意', eff: { LOVE: 3, SEC: 2, STRESS: 5 }, risk: 1 },
+      { text: '婉拒，说请保姆', eff: { MONEY: -10000000, AUTO: 3, STRESS: -2 }, risk: 2 },
+      { text: '坚持分房住', eff: { AUTO: 4, LOVE: -2, STRESS: 4 }, risk: 3 }
+    ] },
+  { id: 'f2_il2', age: [35, 62], w: 3, cond: { need: ['married'] }, text: '岳父/家公中风住院，治疗和陪护的重担落了下来。',
+    choices: [
+      { text: '全程守着', eff: { LOVE: 5, SEC: 3, MONEY: -15000000 }, risk: 1 },
+      { text: '出钱请护工', eff: { MONEY: -30000000, LOVE: 2 }, risk: 2 },
+      { text: '和兄弟姐妹分摊', eff: { NET: 3, STRESS: 4 }, risk: 3 }
+    ] },
+
+  /* ---- 宠物 ---- */
+  { id: 'f2_pet1', age: [8, 16], w: 6, text: '你在巷口捡到一只瑟瑟发抖的小家伙，眼睛还没睁开。',
+    choices: [
+      { text: '领养小狗回家', pet: 'dog', eff: { LOVE: 3, SEC: 2 }, risk: 1 },
+      { text: '领养小猫回家', pet: 'cat', eff: { LOVE: 3, SEC: 2 }, risk: 1 },
+      { text: '送给动物保护协会', eff: { WILL: 3, LOVE: 1 }, risk: 2 }
+    ] },
+  { id: 'f2_pet2', age: [10, 32], w: 4, cond: { pet: true }, text: '你家的毛孩子趁门缝溜了出去，一整天没回来。',
+    choices: [
+      { text: '满街贴寻宠启事', eff: { MONEY: -2000000, LOVE: 3, STRESS: 4 }, risk: 1,
+        gamble: { p: 0.6, win: { LOVE: 4, SEC: 3 }, lose: { LOVE: -4, STRESS: 6 } } },
+      { text: '在门口放碗水和粮', eff: { WILL: 2, LOVE: 1 }, risk: 2 },
+      { text: '认命，不再等', eff: { WILL: 2, LOVE: -3, STRESS: 4 }, risk: 3 }
+    ] },
+  { id: 'f2_pet3', age: [42, 78], w: 4, cond: { pet: true }, petDeath: true, text: '陪了你大半辈子的老伙伴，这阵子连楼梯都爬不动了。',
+    choices: [
+      { text: '陪它走完最后一程', eff: { WILL: 4, STRESS: -2, LOVE: 2 }, risk: 1 },
+      { text: '请医生让它少受苦', eff: { MONEY: -5000000, WILL: 3, STRESS: -4 }, risk: 2 },
+      { text: '不敢面对，交给别人', eff: { WILL: -2, STRESS: 6, LOVE: -2 }, risk: 3 }
+    ] },
+
+  /* ---- 一般人生（强化新指标） ---- */
+  { id: 'f2_lf1', age: [18, 42], w: 5, text: '你报了个夜校的插花/编程班，下班后多了一处去处。',
+    choices: [
+      { text: '认真学一门', eff: { CUR: 5, AUTO: 3 }, risk: 1 },
+      { text: '随便听听', eff: { CUR: 2 }, risk: 2 },
+      { text: '拉着同事一起', eff: { NET: 3, CHA: 2, CUR: 2 }, risk: 3 }
+    ] },
+  { id: 'f2_lf2', age: [20, 60], w: 4, text: '社区招募志愿者，去敬老院陪老人说话。',
+    choices: [
+      { text: '每周去一次', eff: { LOVE: 4, SEC: 2, GROW: 2 }, risk: 1 },
+      { text: '偶尔参加', eff: { LOVE: 2 }, risk: 2 },
+      { text: '捐钱了事', eff: { MONEY: -3000000, LOVE: 1 }, risk: 3 }
+    ] },
+  { id: 'f2_lf3', age: [22, 55], w: 4, text: '你请了年假，一个人去了没去过的城市。',
+    choices: [
+      { text: '随性漫游', eff: { AUTO: 4, CUR: 4, STRESS: -4 }, risk: 1 },
+      { text: '做足攻略', eff: { CUR: 3, WILL: 2 }, risk: 2 },
+      { text: '报个高端团', eff: { MONEY: -20000000, FAME: 2, STRESS: -2 }, risk: 3 }
+    ] },
+  { id: 'f2_lf4', age: [40, 56], w: 4, text: '人到中年，你忽然不知道自己这些年到底在追什么。',
+    choices: [
+      { text: '找老友深谈', eff: { LOVE: 3, SEC: 3, STRESS: -3 }, risk: 1 },
+      { text: '去做心理咨询', eff: { MONEY: -5000000, SEC: 4, STRESS: -4 }, risk: 2 },
+      { text: '硬扛过去', eff: { WILL: 4, STRESS: 6 }, risk: 3,
+        gamble: { p: 0.5, win: { WILL: 6, AUTO: 4 }, lose: { STRESS: 10, HP: -3 } } }
+    ] },
+  { id: 'f2_lf5', age: [30, 60], w: 3, text: '你决定原谅一个多年前伤害过你的人。',
+    choices: [
+      { text: '当面握手言和', eff: { LOVE: 4, SEC: 4, CHA: 2 }, risk: 1 },
+      { text: '在心里放下', eff: { WILL: 4, SEC: 3, STRESS: -3 }, risk: 2 },
+      { text: '装作没事，其实没忘', eff: { WILL: 1, STRESS: 2 }, risk: 3 }
+    ] }
+];
+EVENTS.push.apply(EVENTS, EVENTS_FAMILY2);
 
 /* ---------------- 称号（按人生阶段显示身份） ---------------- */
 const TITLES = [

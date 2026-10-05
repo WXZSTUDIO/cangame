@@ -24,6 +24,12 @@ function randomSpouseName(gender) {
   const pool = GIVEN_NAMES[opp];
   return SURNAMES[randInt(0, SURNAMES.length - 1)] + pool[randInt(0, pool.length - 1)];
 }
+function randomPetName(type) {
+  const dog = ['복순', '만두', '콩이', '뽀삐', '바둑', '몽이', '치즈'];
+  const cat = ['나비', '루이', '냥이', '호두', '시루', '고양', '모카'];
+  const pool = (type === 'cat') ? cat : dog;
+  return pool[randInt(0, pool.length - 1)];
+}
 
 /* ---------- 出生叙事（随机人生故事） ---------- */
 function pushBirthStory(state) {
@@ -51,7 +57,7 @@ function fmtMoney(v) {
   if (n >= 1e4) return sign + (n / 1e4).toFixed(0) + '만원';
   return sign + n + '원';
 }
-function fmtYear(state) { return START_YEAR + state.age; }
+function fmtYear(state) { return (state.startYear || START_YEAR) + state.age; }
 function grade(score) {
   if (score >= 90) return 'S';
   if (score >= 75) return 'A';
@@ -69,6 +75,7 @@ const JOBS = {
   '大学生': { salary: 0, cost: 9000000 },
   '军人': { salary: 1500000, cost: 0 },
   '无业': { salary: 0, cost: 12000000 },
+  '退休': { salary: 26000000, cost: 13000000 },
   '工厂工人': { salary: 26000000, cost: 16000000 },
   '会社员': { salary: 42000000, cost: 20000000 },
   '公务员': { salary: 38000000, cost: 19000000 },
@@ -112,11 +119,14 @@ function createGame(opt) {
     updatedAt: Date.now(),
     name: opt.name || '김민준',
     gender: opt.gender || 'M',
+    startYear: opt.startYear || randInt(1955, 2005),
+    priority: opt.priority || 'balance',
     age: 0,
     familyId: family.id,
     familyName: family.name,
     talents: opt.talents || [],
-    stats: { INT: 5, STR: 5, CHA: 5, WILL: 5, HP: 60, STRESS: 10, MONEY: 0, NET: 0, FAME: 0, LOY: 0 },
+    stats: { INT: 5, STR: 5, CHA: 5, WILL: 5, HP: 60, STRESS: 10, MONEY: 0, NET: 0, FAME: 0, LOY: 0,
+             CUR: 5, LOVE: 5, SEC: 5, AUTO: 5, GROW: 0 },
     flags: { parents_alive: true },
     job: '婴儿',
     log: [],
@@ -126,6 +136,8 @@ function createGame(opt) {
     investments: [],
     spouseName: null,
     childCount: 0,
+    grandCount: 0,
+    pet: null,
     alive: true,
     finished: false,
     ending: null,
@@ -144,14 +156,14 @@ function createGame(opt) {
   });
   state.stats.HP = clamp(state.stats.HP, 20, 100);
   state.stats.STRESS = clamp(state.stats.STRESS, 0, 100);
-  pushLog(state, `1985년 겨울 · ${state.name} 出生在${family.name.split(' ')[1] || family.name}。`, 'system');
+  pushLog(state, `${state.startYear}년 · ${state.name} 出生在${family.name.split(' ')[1] || family.name}。`, 'system');
   pushLog(state, family.desc, 'story');
   pushBirthStory(state);
   return state;
 }
 
 function pushLog(state, text, type) {
-  state.log.push({ age: state.age, year: START_YEAR + state.age, text, type: type || 'story' });
+  state.log.push({ age: state.age, year: (state.startYear || START_YEAR) + state.age, text, type: type || 'story' });
   if (state.log.length > 400) state.log.shift();
 }
 
@@ -171,6 +183,9 @@ function applyEffects(state, eff, silent) {
   s.CHA = clamp(s.CHA, 0, 200); s.WILL = clamp(s.WILL, 0, 200);
   s.NET = clamp(s.NET, 0, 200); s.FAME = clamp(s.FAME, 0, 200);
   s.LOY = clamp(s.LOY, -50, 150);
+  s.CUR = clamp(s.CUR, 0, 100); s.LOVE = clamp(s.LOVE, 0, 100);
+  s.SEC = clamp(s.SEC, 0, 100); s.AUTO = clamp(s.AUTO, 0, 100);
+  s.GROW = clamp(s.GROW, 0, 100);
   s.MONEY = Math.round(s.MONEY);
   // 记录峰值
   if (s.MONEY > state.peak.MONEY) state.peak.MONEY = s.MONEY;
@@ -186,7 +201,8 @@ function describeEffects(eff) {
   const names = {
     INT: '지력', STR: '체력', CHA: '매력', WILL: '의지',
     HP: '건강', STRESS: '스트레스', MONEY: '자산',
-    NET: '인맥', FAME: '명성', LOY: '太星好感'
+    NET: '인맥', FAME: '명성', LOY: '太星好感',
+    CUR: '호기심', LOVE: '애정', SEC: '안전감', AUTO: '자율성', GROW: '성장'
   };
   const parts = [];
   for (const k in eff || {}) {
@@ -209,6 +225,9 @@ function matchCond(state, ev) {
   if (c.need && !c.need.every(f => state.flags[f])) return false;
   if (c.need2 && !c.need2.every(f => state.flags[f])) return false;
   if (c.ban && c.ban.some(f => state.flags[f])) return false;
+  if (c.pet && !(state.pet && state.pet.alive)) return false;
+  if (c.noPet && state.pet && state.pet.alive) return false;
+  if (c.grand && !(state.grandCount > 0)) return false;
   if (c.min) for (const k in c.min) if (state.stats[k] < c.min[k]) return false;
   if (c.max) for (const k in c.max) if (state.stats[k] > c.max[k]) return false;
   return true;
@@ -366,12 +385,39 @@ function doInvest(state, invId, amount) {
 /* ---------- 年度基础结算 ---------- */
 function yearBase(state) {
   const s = state.stats;
-  // 自然成长
-  if (state.age <= 12) { s.INT += rand(1, 3); s.STR += rand(1, 2); s.HP += 2; }
-  else if (state.age <= 18) { s.INT += rand(1, 2); s.CHA += rand(0, 2); s.STR += rand(0, 1); }
-  else if (state.age <= 35) { s.INT += rand(0, 1); s.HP += s.STRESS < 55 ? rand(0, 2) : rand(-1, 1); }
-  else if (state.age <= 55) { s.HP += s.STRESS < 45 ? rand(0, 1) : rand(-2, 0); s.STR += -1; }
-  else { s.HP += s.STRESS < 35 ? rand(0, 1) : rand(-2, 0); s.STR += -1; }
+  // 自然成长 + 人生指标自然培养
+  if (state.age <= 12) {
+    s.INT += rand(1, 3); s.STR += rand(1, 2); s.HP += 2;
+    s.CUR += rand(1, 3); s.LOVE += rand(0, 2); s.SEC += rand(0, 2); s.AUTO += rand(0, 2); s.GROW += rand(1, 2);
+  }
+  else if (state.age <= 18) {
+    s.INT += rand(1, 2); s.CHA += rand(0, 2); s.STR += rand(0, 1);
+    s.CUR += rand(1, 2); s.LOVE += rand(0, 1); s.SEC += rand(0, 1); s.GROW += rand(0, 2);
+  }
+  else if (state.age <= 35) {
+    s.INT += rand(0, 1); s.HP += s.STRESS < 55 ? rand(0, 2) : rand(-1, 1);
+    s.GROW += rand(0, 2); s.AUTO += rand(0, 1);
+  }
+  else if (state.age <= 55) {
+    s.HP += s.STRESS < 45 ? rand(0, 1) : rand(-2, 0); s.STR += -1;
+    s.GROW += rand(0, 1); s.AUTO += rand(0, 1);
+  }
+  else {
+    s.HP += s.STRESS < 35 ? rand(0, 1) : rand(-2, 0); s.STR += -1;
+    s.GROW += rand(0, 1);
+  }
+
+  // 擅长领域倾向（priority）
+  if (state.priority === 'career') { s.INT += rand(0, 1); }
+  else if (state.priority === 'relation') { s.LOVE += rand(0, 2); s.CHA += rand(0, 1); s.SEC += rand(0, 1); }
+  else if (state.priority === 'balance') { s.STRESS = Math.max(0, s.STRESS - 2); s.HP += 1; }
+  else if (state.priority === 'success') { s.FAME += rand(0, 1); s.NET += rand(0, 1); }
+
+  // 宠物陪伴
+  if (state.pet && state.pet.alive) {
+    s.LOVE += rand(0, 2); s.SEC += rand(0, 1); s.GROW += rand(0, 1);
+    s.MONEY -= 1500000; // 饲养费
+  }
 
   // 压力伤害
   if (s.STRESS > 70) { s.HP -= Math.round((s.STRESS - 70) / 6); }
@@ -395,11 +441,21 @@ function yearBase(state) {
     state.job = j;
     pushLog(state, `【求职】你终于找到了一份工作：${j}。`, 'muted');
   }
+  // 退休
+  if (state.age >= 60 && state.job !== '退休' && state.job !== '太星集团会长') {
+    state.job = '退休';
+    pushLog(state, `【은퇴 退休】你把工牌交了上去。从此，时间第一次真正属于你自己。`, 'muted');
+  }
 
   // 收支
   const j = JOBS[state.job] || { salary: 0, cost: 12000000 };
-  let income = j.salary * (1 + Math.max(0, state.age - 23) * 0.06);
-  income = Math.round(income * (1 + s.INT / 400) * (1 + s.NET / 800));
+  let income;
+  if (state.job === '退休') {
+    income = j.salary; // 固定年金，不随工龄膨胀
+  } else {
+    income = j.salary * (1 + Math.max(0, state.age - 23) * 0.06);
+    income = Math.round(income * (1 + s.INT / 400) * (1 + s.NET / 800));
+  }
   let cost = j.cost;
   if (state.flags.gangnam_owner) cost += 15000000;
   if (state.flags.married) cost += 12000000;
@@ -414,6 +470,17 @@ function yearBase(state) {
   // 净资产峰值
   const w = worthOf(state);
   if (w > (state.peak.NET || 0)) state.peak.NET = w;
+
+  // 晚年自然死亡（健康越低、年纪越大，风险越高；身体好的人常可活过百岁）
+  if (state.age >= 76) {
+    const risk = (state.age - 76) * 0.0016 * (1 + Math.max(0, 60 - s.HP) / 25);
+    if (chance(risk)) {
+      forceEnd(state, {
+        id: 'end_elder', rank: 'B', title: '별세 安然离世',
+        text: `你在 ${fmtYear(state)}년 闭上了眼睛。儿孙环绕，窗外是你看了一辈子的那棵树。这一生，值了。`
+      });
+    }
+  }
 }
 
 /* ---------- 事件推进 ---------- */
@@ -432,6 +499,7 @@ function step(state) {
   state.job = state.job || defaultJob(state.age);
 
   yearBase(state);
+  if (state.finished) return { type: 'end' };
   marketTick(state);
   settleInvestments(state);
 
@@ -456,9 +524,21 @@ function resolveEvent(state, ev, choiceIndex) {
     ch = list[choiceIndex];
     eff = ch.eff || {};
     applyFlags(state, ch.flags);
+    if (ch.pet) {
+      state.pet = { type: ch.pet, name: randomPetName(ch.pet), alive: true, since: state.age };
+      const t = (ch.pet === 'cat') ? '고양이 猫' : '강아지 狗';
+      pushLog(state, `【입양 领养】你领养了一只${t}，给它取名 ${state.pet.name}。从此多了一个等你回家的生命。`, 'muted');
+    }
     extra = ' 【선택 ' + ch.text + '】';
   } else {
     eff = ev.eff || {};
+  }
+  // 宠物离世
+  if ((ev.petDeath || (ch && ch.petDeath)) && state.pet && state.pet.alive) {
+    const nm = state.pet.name;
+    state.pet.alive = false;
+    applyEffects(state, { LOVE: -6, SEC: -4 });
+    pushLog(state, `【이별 永别】陪伴了你多年的 ${nm} 先一步走了。你把它埋在后山，很久没说话。`, 'muted');
   }
   // 慎重处理会错过机会：不触发事件的身份/Flag 变化
   if (!(ch && ch.skipFlags)) {
@@ -491,19 +571,28 @@ function resolveEvent(state, ev, choiceIndex) {
     state.spouseName = randomSpouseName(state.gender);
     const sp = state.spouseName;
     delete state.flags.dating; // 已成家，结束恋爱阶段
+    applyEffects(state, { LOVE: 6, SEC: 3 });
     pushLog(state, `【결혼 结婚】你与 ${sp} 结为连理。从此，人生不再是你一个人的战场。`, 'muted');
   }
   if ((ev.baby || (ch && ch.baby)) && state.flags.married) {
     state.childCount = (state.childCount || 0) + 1;
+    applyEffects(state, { LOVE: 4, GROW: 3 });
     pushLog(state, `【출산 新生命】第 ${state.childCount} 个孩子降生。${state.spouseName || 'TA'} 说：像极了你小时候。`, 'muted');
+  }
+  if ((ev.grand || (ch && ch.grand)) && state.flags.married && state.childCount > 0) {
+    state.grandCount = (state.grandCount || 0) + 1;
+    applyEffects(state, { LOVE: 5, GROW: 4 });
+    pushLog(state, `【손주 孙辈】你的第 ${state.grandCount} 个孙辈出生了。你抱着那个小家伙，忽然觉得自己这辈子没白活。`, 'muted');
   }
   if (ev.killParents || (ch && ch.killParents)) {
     if (state.flags.parents_alive) {
       state.flags.parents_alive = false;
+      applyEffects(state, { SEC: -12 });
       pushLog(state, '【상가 丧亲】父母都已离世。你成了真正意义上的一家之主。', 'muted');
     }
   }
   if ((ev.widow || (ch && ch.widow)) && state.flags.married) {
+    applyEffects(state, { LOVE: -10, SEC: -6 });
     pushLog(state, `【이별 永别】${state.spouseName || 'TA'} 先你一步走了。余生，你带着两个人的份活着。`, 'muted');
   }
 
@@ -533,6 +622,9 @@ function forceEnd(state, ending) {
   state.finished = true;
   state.alive = false;
   state.ending = ending;
+  // 死亡类结局也要有评分/评级，便于结算页与存档保持一致
+  state.score = scoreOf(state);
+  state.rank = grade(state.score);
   pushLog(state, `【结局】${ending.title} — ${ending.text}`, 'end');
 }
 
@@ -551,6 +643,9 @@ function scoreOf(state) {
   score += Math.min(10, s.WILL * 0.08);
   score += Math.min(8, s.INT * 0.05);
   score += Math.min(7, s.CHA * 0.05);
+  score += Math.min(8, s.LOVE * 0.06);
+  score += Math.min(6, s.GROW * 0.06);
+  score += Math.min(5, s.SEC * 0.04);
   score += state.flags.took_over ? 15 : 0;
   score += state.flags.exposed ? 8 : 0;
   score += state.flags.gangnam_owner ? 5 : 0;

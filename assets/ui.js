@@ -103,7 +103,7 @@ function renderTitle() {
   const save = loadAuto();
   if (save && !save.finished) {
     btn.style.display = '';
-    btn.innerHTML = `继续人生 <span class="sub">${save.name} · ${START_YEAR + save.age}년 · ${save.age}세 · ${fmtMoney(save.stats.MONEY)}</span>`;
+    btn.innerHTML = `继续人生 <span class="sub">${save.name} · ${(save.startYear || START_YEAR) + save.age}년 · ${save.age}세 · ${fmtMoney(save.stats.MONEY)}</span>`;
   } else {
     btn.style.display = 'none';
   }
@@ -119,6 +119,7 @@ function startCreate() {
   document.querySelectorAll('[name=gender]').forEach(r => r.checked = (r.value === (pref.gender || 'M')));
   renderFamilies();
   renderTalents();
+  renderPriorities();
   showScreen('screen-create');
 }
 
@@ -135,7 +136,7 @@ function renderFamilies() {
     d.innerHTML = `<div class="fam-name">${esc(f.name)}</div><div class="fam-desc">${esc(f.desc)}</div>` +
       `<div class="fam-eff">${describeEffects(f.eff).join(' · ') || '—'}</div>`;
     d.onclick = () => {
-      document.querySelectorAll('.fam').forEach(x => x.classList.remove('sel'));
+      document.querySelectorAll('#familyList .fam').forEach(x => x.classList.remove('sel'));
       d.classList.add('sel');
       d.dataset.sel = '1';
       wrap.dataset.pick = f.id;
@@ -143,6 +144,24 @@ function renderFamilies() {
     wrap.appendChild(d);
   });
   wrap.dataset.pick = FAMILIES[0].id;
+  wrap.firstChild.classList.add('sel');
+}
+
+function renderPriorities() {
+  const wrap = $('priorityList');
+  wrap.innerHTML = '';
+  PRIORITIES.forEach(p => {
+    const d = document.createElement('div');
+    d.className = 'fam';
+    d.innerHTML = `<div class="fam-name">${esc(p.name)}</div><div class="fam-desc">${esc(p.desc)}</div>`;
+    d.onclick = () => {
+      wrap.querySelectorAll('.fam').forEach(x => x.classList.remove('sel'));
+      d.classList.add('sel');
+      wrap.dataset.pick = p.key;
+    };
+    wrap.appendChild(d);
+  });
+  wrap.dataset.pick = PRIORITIES[0].key;
   wrap.firstChild.classList.add('sel');
 }
 
@@ -183,8 +202,9 @@ function confirmCreate() {
   const name = ($('inputName').value || '').trim() || randomName();
   const gender = (document.querySelector('[name=gender]:checked') || {}).value || 'M';
   const familyId = $('familyList').dataset.pick || FAMILIES[0].id;
+  const priority = $('priorityList').dataset.pick || 'balance';
   lsSet(LS.pref, { name, gender });
-  STATE = createGame({ name, gender, familyId, talents: SELECTED.slice() });
+  STATE = createGame({ name, gender, familyId, priority, talents: SELECTED.slice() });
   autosave();
   enterGame();
 }
@@ -212,12 +232,11 @@ function renderStats() {
   const s = STATE.stats;
   const box = $('statList');
   let html = '';
-  STATS.forEach(st => {
+  LIFE_METRICS.forEach(st => {
     const v = s[st.key];
-    let max = 120;
-    if (['INT', 'STR', 'CHA', 'WILL'].indexOf(st.key) >= 0) max = 120;
+    const max = st.key === 'HP' ? 120 : (st.key === 'FAME' ? 200 : 100);
     const pct = clamp(v / max * 100, 0, 100);
-    const cls = st.key === 'STRESS' ? (v > 60 ? 'bad' : '') : (st.key === 'HP' ? (v < 30 ? 'bad' : 'hp') : '');
+    const cls = st.key === 'HP' ? (v < 30 ? 'bad' : 'hp') : '';
     html += `<div class="stat" title="${esc(st.hint)}">
       <div class="s-label"><span>${esc(st.name)}</span><b>${Math.round(v)}</b></div>
       <div class="bar"><i class="${cls}" style="width:${pct}%"></i></div></div>`;
@@ -232,13 +251,17 @@ function renderStats() {
   rbox.innerHTML = `
     <div class="res"><span>나이 年龄</span><b>${STATE.age}세 · ${fmtYear(STATE)}년</b></div>
     <div class="res"><span>신분 身份</span><b>${esc(STATE.job || defaultJob(STATE.age))}</b></div>
-    ${STATE.flags.married ? `<div class="res fam"><span>가족 家庭</span><b>${esc(STATE.spouseName || '배우자')} · 자녀 ${STATE.childCount || 0}명${STATE.flags.parents_alive ? '' : ' · 父母离世'}</b></div>` : (STATE.flags.dating ? `<div class="res fam"><span>연애 恋爱</span><b>交往中</b></div>` : '')}
+    ${STATE.flags.married ? `<div class="res fam"><span>가족 家庭</span><b>${esc(STATE.spouseName || '배우자')} · 자녀 ${STATE.childCount || 0}명${STATE.grandCount ? ' · 손주 ' + STATE.grandCount + '명' : ''}${STATE.flags.parents_alive ? '' : ' · 父母离世'}</b></div>` : (STATE.flags.dating ? `<div class="res fam"><span>연애 恋爱</span><b>交往中</b></div>` : '')}
+    ${STATE.pet ? `<div class="res fam"><span>반려동물 宠物</span><b>${esc(STATE.pet.name)}（${STATE.pet.alive ? (STATE.pet.type === 'cat' ? '猫' : '狗') : '已离世'}）</b></div>` : ''}
     <div class="res money"><span>현금 现金</span><b>${fmtMoney(s.MONEY)}</b></div>
     <div class="res net"><span>순자산 净资产</span><b>${fmtMoney(netWorth(STATE))}</b></div>
     ${debtHtml}${propHtml}${stockHtml}
     <div class="res"><span>인맥 人脉</span><b>${Math.round(s.NET)}</b></div>
-    <div class="res"><span>명성 声望</span><b>${Math.round(s.FAME)}</b></div>
     <div class="res"><span>太星好感</span><b>${Math.round(s.LOY)}</b></div>
+    <div class="res"><span>지력 智力</span><b>${Math.round(s.INT)}</b></div>
+    <div class="res"><span>체력 体魄</span><b>${Math.round(s.STR)}</b></div>
+    <div class="res"><span>의지 意志</span><b>${Math.round(s.WILL)}</b></div>
+    <div class="res${s.STRESS > 60 ? ' debt' : ''}"><span>스트레스 压力</span><b>${Math.round(s.STRESS)}</b></div>
     ${STATE.investments.length ? `<div class="res inv"><span>持有投资</span><b>${STATE.investments.map(i => i.name.split('·')[0].trim() + ' ' + fmtMoney(i.amount) + '（剩' + i.yearsLeft + '年）').join('，')}</b></div>` : ''}
   `;
   const tags = [];
@@ -253,6 +276,8 @@ function renderStats() {
   if (STATE.flags.married) tags.push('기혼 已婚');
   if (!STATE.flags.parents_alive) tags.push('상가 丧亲');
   if (STATE.childCount) tags.push('자녀 ' + STATE.childCount + '명');
+  if (STATE.grandCount) tags.push('손주 ' + STATE.grandCount + '명');
+  if (STATE.pet && STATE.pet.alive) tags.push(STATE.pet.type === 'cat' ? '반려묘 宠物猫' : '반려견 宠物狗');
   $('tagList').innerHTML = tags.map(t => `<span class="tag">${esc(t)}</span>`).join('');
   $('heroName').textContent = `${STATE.name} · ${STATE.gender === 'M' ? '남' : '여'} · ${esc(STATE.familyName)}`;
 }
@@ -395,7 +420,7 @@ function renderSaveManager() {
       <div class="slot-t">存档槽 ${i + 1} <span class="sub">空</span></div>
       <div class="slot-b"><button class="btn small" onclick="saveToSlot(${i})">存入当前进度</button></div></div>`;
     return `<div class="slot">
-      <div class="slot-t">存档槽 ${i + 1} <span class="sub">${s.name} · ${START_YEAR + s.age}년 · ${s.age}세 · ${fmtMoney(s.stats.MONEY)}</span></div>
+      <div class="slot-t">存档槽 ${i + 1} <span class="sub">${s.name} · ${(s.startYear || START_YEAR) + s.age}년 · ${s.age}세 · ${fmtMoney(s.stats.MONEY)}</span></div>
       <div class="slot-b">
         <button class="btn small" onclick="loadSlot(${i})">读取</button>
         <button class="btn small" onclick="saveToSlot(${i})">覆盖</button>

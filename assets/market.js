@@ -7,7 +7,8 @@
 const MARKET_META = {
   stockFee: 0.0035,   // 股票交易手续费
   propTax: 0.035,     // 房产/车卖出交易成本
-  minAge: 20          // 进入市场的最低年龄
+  minAge: 20,         // 进入市场的最低年龄
+  growthDamp: 0.75    // 股票年化阻尼（寿命延长后复利年限变多，需下调以维持平衡）
 };
 
 /* ---------- 年代价格指数（1985 = 1.0） ---------- */
@@ -305,7 +306,8 @@ function marketTick(state) {
   STOCKS.forEach(s => {
     m.prev[s.id] = m.prices[s.id];
     let p = m.prices[s.id];
-    let k = s.growth + (shock ? shock.k * (s.sector.indexOf('지수') >= 0 ? 0.6 : 1) : 0) + gauss() * s.vol;
+    // DAMP: 寿命延长到 100+ 后复利年限变多，年化整体下调以维持原有平衡
+    let k = s.growth * MARKET_META.growthDamp + (shock ? shock.k * (s.sector.indexOf('지수') >= 0 ? 0.6 : 1) : 0) + gauss() * s.vol;
     p = Math.round(Math.max(p * 0.22, p * (1 + k)));
     m.prices[s.id] = p;
     const h = m.hist[s.id];
