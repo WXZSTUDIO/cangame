@@ -11,6 +11,53 @@ const GAME_META = {
   endAge: 80
 };
 
+/* ---------------- 随机姓名库 ---------------- */
+const SURNAMES = ['김', '박', '이', '최', '정', '강', '조', '윤', '장', '한'];
+const GIVEN_NAMES = {
+  M: ['민준', '서준', '도윤', '예준', '시우', '하준', '지호', '지훈', '준서', '건우',
+      '시윤', '주원', '현우', '윤서', '동혁', '수호', '예찬', '태양', '은호', '재윤'],
+  F: ['서연', '하은', '지우', '수아', '예은', '민서', '다은', '유나', '채원', '소율',
+      '지민', '하린', '시은', '아윤', '서진', '지아', '수빈', '예린', '나윤', '효진']
+};
+
+/* ---------------- 出生叙事素材（随机人生故事） ---------------- */
+const BIRTH_OPENERS = [
+  '1985년 겨울，首尔的雪盖住了整条巷子。你在江南区一间看不见天空的半地下室里，第一次睁开了眼睛。',
+  '那一年汉江还没那么多桥。母亲说，你哭得很大声，像是不情愿来到这个世界。',
+  '1985년，父亲的工厂还在运转，家里勉强供得起一盏暖黄色的灯。你就在那盏灯下出生。',
+  '庆尚北道的稻花香里，你降生在老家的厢房。接生婆说：这孩子命硬，能走出去。',
+  '首尔大雨的夜里，你提前三周来到人间。护士把你裹进一条旧毛毯，说活着就好。',
+  '教会孤儿院的钟声响起时，你被放在门口的篮子里。没有人知道你的父母是谁。',
+  '教授家的书房比客厅还大。你在满墙的书影里出生，第一眼看到的是父亲的显微镜。',
+  '母亲独自把你生了下来。她说，从那天起，她的命就不是自己的了。'
+];
+const BIRTH_PARENTS = [
+  '父亲在走廊里来回踱步，直到护士把你抱出来。这个一辈子没哭过的男人，第一次红了眼眶。',
+  '母亲抱着你看了整整一夜，在日记里写：无论多难，你要比妈妈走得远。',
+  '祖父母从乡下寄来一袋米和一封信，信上只有四个字：平安长大。',
+  '父亲摸了摸你皱巴巴的脸，对母亲说：咱们这辈子受的苦，到他这里为止。',
+  '母亲把仅有的金戒指当了，换来一罐奶粉。她说：你先活，别的以后再说。',
+  '养母把你搂在怀里，对院长说：这孩子，我带回去。'
+];
+const BIRTH_OMENS = [
+  '助产士低声说：这孩子安静得不像刚出生，像是见过世面似的。',
+  '那夜汉江起了雾，老一辈人说：雾里生的人，要么大起，要么大落。',
+  '一只黑猫蹲在窗台上看了你很久，母亲说那是好运，父亲说那是野猫。',
+  '你出生时，电视里正播着韩国第一条地铁通车的消息——一个新世代的开端。',
+  '算命的远房亲戚看了你的生辰，只说了一句：此子，命里多水。',
+  '没人知道，你在午夜曾睁开眼，盯着虚空看了几秒，又睡了过去。'
+];
+const BIRTH_BY_FAMILY = {
+  banjiha: ['半地下室的墙上长着霉斑。你学会的第一件事，是屏住呼吸——因为地下的空气总是不够。'],
+  factory: ['安山工厂的机器声是你童年的白噪音。父亲的手比同龄人粗糙十倍。'],
+  province: ['大邱文具店的账本永远是母亲在算。你从小就会在心里给每一支笔标价。'],
+  single: ['母亲一个人打三份工。你最早的记忆，是她趴在餐桌上睡着的背影。'],
+  orphan: ['孤儿院的编号比名字来得更早。你学会了不期待，也不失望。'],
+  rentier: ['家里有几间考试院在收租。你第一次知道，有些人的钱，是睡着也会来的。'],
+  prof: ['父亲的书架顶到天花板。他常说：穷点没关系，脑子里的东西谁也拿不走。'],
+  chaebol_edge: ['母亲那边的远房亲戚，据说在太星集团门口当过保安。你从小听着那个名字长大。']
+};
+
 /* ---------------- 数值定义 ---------------- */
 const STATS = [
   { key: 'INT',  name: '지력 智力',  hint: '学习、考试、谋略' },
@@ -865,6 +912,255 @@ const EVENTS_EXTRA = [
     ] }
 ];
 EVENTS.push.apply(EVENTS, EVENTS_EXTRA);
+
+/* =========================================================
+ *  扩展事件库 · 父母 / 亲人 / 妻子 互动线
+ *  童年事件自带三选项（不受年龄限制）；成年事件用 need/ban 控制出现时机
+ * ========================================================= */
+const EVENTS_FAMILY = [
+
+  /* ===== 부모 · 童年与父母 ===== */
+  { id: 'f_c1', age: [4, 10], w: 7, text: '父亲把你扛在肩上去看汝矣岛的烟花。你问：爸爸，我们以后能住进那种大楼吗？',
+    choices: [
+      { text: '说：能，爸爸会努力', eff: { WILL: 2, CHA: 1 }, risk: 1 },
+      { text: '沉默，把脸埋进他的衣领', eff: { WILL: 4, STRESS: 3 }, risk: 2 },
+      { text: '大声说：我以后要买下它', eff: { WILL: 6, FAME: 1, STRESS: 5 }, risk: 3,
+        gamble: { p: 0.5, win: { WILL: 6, CHA: 3 }, lose: { STRESS: 6 } } }
+    ] },
+  { id: 'f_c2', age: [5, 11], w: 7, text: '母亲在灯下给你缝补校服。她说：衣服旧没关系，人要新。',
+    choices: [
+      { text: '乖乖点头', eff: { WILL: 3, INT: 1 }, risk: 1 },
+      { text: '说：妈，我以后给你买新的', eff: { WILL: 5, CHA: 2 }, risk: 2 },
+      { text: '把攒的零钱塞给母亲', eff: { MONEY: -50000, WILL: 6, NET: 2 }, risk: 3,
+        gamble: { p: 0.55, win: { WILL: 4, NET: 3 }, lose: { STRESS: 5 } } }
+    ] },
+  { id: 'f_c3', age: [6, 12], w: 6, text: '你拿了邻居孩子的玩具，被母亲发现。她让你在墙角跪了一晚。',
+    choices: [
+      { text: '认错，再也不拿别人的东西', eff: { WILL: 4, INT: 1 }, risk: 1 },
+      { text: '嘴硬，说别人也有', eff: { CHA: -3, WILL: 2, STRESS: 4 }, risk: 2 },
+      { text: '半夜把玩具还回去并道歉', eff: { WILL: 6, CHA: 2, INT: 2 }, risk: 3,
+        gamble: { p: 0.55, win: { WILL: 4, NET: 3 }, lose: { STRESS: 5 } } }
+    ] },
+  { id: 'f_c4', age: [3, 8], w: 5, text: '爷爷从乡下寄来一箱苹果和一张旧照片。照片背面写着一个你叫不出名字的人。',
+    choices: [
+      { text: '把照片收进抽屉', eff: { INT: 2 }, risk: 1 },
+      { text: '问母亲那是谁', eff: { INT: 4, WILL: 2 }, risk: 2 },
+      { text: '偷偷寄回一封信', eff: { WILL: 3, CHA: 1 }, risk: 3,
+        gamble: { p: 0.5, win: { WILL: 4, NET: 3 }, lose: { STRESS: 4 } } }
+    ] },
+  { id: 'f_c5', age: [7, 12], w: 6, text: '父母为了你的补习费吵架。父亲摔门而出，母亲抱着你哭。',
+    choices: [
+      { text: '发誓努力，不让母亲再哭', eff: { WILL: 6, INT: 2, STRESS: 5 }, risk: 1 },
+      { text: '装睡，什么都不想听', eff: { STRESS: 6, WILL: 2 }, risk: 2 },
+      { text: '站起来对父亲说：别吵了', eff: { WILL: 5, CHA: 2, STRESS: 8 }, risk: 3,
+        gamble: { p: 0.45, win: { WILL: 6, NET: 3 }, lose: { STRESS: 10 } } }
+    ] },
+
+  /* ===== 부모 · 成年后与父母 ===== */
+  { id: 'f_p1', age: [18, 30], w: 6, text: '母亲第一次打电话让你别太累。你说好，然后继续熬夜。',
+    cond: { need: ['parents_alive'] },
+    choices: [
+      { text: '周末回家一趟', eff: { WILL: 4, STRESS: -5, MONEY: -500000 }, risk: 1 },
+      { text: '寄钱回去', eff: { MONEY: -3000000, WILL: 3, NET: 2 }, risk: 2 },
+      { text: '接她来首尔住一阵', eff: { MONEY: -8000000, CHA: 3, WILL: 5 }, risk: 3,
+        gamble: { p: 0.5, win: { WILL: 6, CHA: 4, NET: 4 }, lose: { MONEY: -4000000, STRESS: 6 } } }
+    ] },
+  { id: 'f_p2', age: [22, 35], w: 5, text: '父亲第一次认真问你：你到底想成为什么样的人？',
+    cond: { need: ['parents_alive'] },
+    choices: [
+      { text: '照实说：我想不再穷', eff: { WILL: 5, INT: 2 }, risk: 1 },
+      { text: '说：想让您骄傲', eff: { WILL: 6, CHA: 2, FAME: 1 }, risk: 2 },
+      { text: '闭口不答', eff: { STRESS: 5, WILL: -2 }, risk: 3 }
+    ] },
+  { id: 'f_p3', age: [24, 40], w: 5, text: '父亲退休了。他把手表摘下来给你：这辈子我就这一块，给你吧。',
+    cond: { need: ['parents_alive'] },
+    choices: [
+      { text: '收下，戴在手上', eff: { WILL: 5, CHA: 1, NET: 2, STRESS: -4 }, risk: 1 },
+      { text: '说您留着', eff: { WILL: 3 }, risk: 2 },
+      { text: '把表卖了换启动资金', eff: { MONEY: 15000000, WILL: -3, NET: -2 }, risk: 3,
+        gamble: { p: 0.4, win: { MONEY: 10000000, WILL: -2 }, lose: { WILL: -6, STRESS: 8 } } }
+    ] },
+  { id: 'f_p4', age: [26, 45], w: 5, text: '母亲开始催婚。她说：邻居家孩子都上小学了。',
+    cond: { need: ['parents_alive'], ban: ['married'] },
+    choices: [
+      { text: '说会考虑的', eff: { STRESS: 5 }, risk: 1 },
+      { text: '认真去相亲一次', eff: { NET: 4, CHA: 2, STRESS: 6 }, risk: 2 },
+      { text: '带一个假对象回家', eff: { CHA: 4, STRESS: 10 }, risk: 3,
+        gamble: { p: 0.3, win: { CHA: 6, NET: 5 }, lose: { STRESS: 12, NET: -3 } } }
+    ] },
+  { id: 'f_p6', age: [35, 55], w: 5, text: '你买了大房子，把父母接来住。母亲在阳台上站了很久：这窗户，比我们半地下室大。',
+    cond: { need: ['parents_alive', 'own_house'] },
+    choices: [
+      { text: '说：以后这就是家', eff: { WILL: 6, CHA: 3, FAME: 2, MONEY: -2000000 }, risk: 1 },
+      { text: '默默把另一间收拾好', eff: { WILL: 4, STRESS: -6 }, risk: 2 },
+      { text: '给父母各开一张卡', eff: { MONEY: -30000000, WILL: 6, NET: 4 }, risk: 3,
+        gamble: { p: 0.5, win: { WILL: 8, NET: 6 }, lose: { MONEY: -10000000, STRESS: 6 } } }
+    ] },
+  { id: 'f_p7', age: [40, 62], w: 5, text: '父亲走了。你整理他的遗物，发现一沓没寄出的信——都是写给你却没说出口的话。',
+    cond: { need: ['parents_alive'] },
+    choices: [
+      { text: '在坟前读完它们', eff: { WILL: 5, STRESS: -6 }, risk: 1, killParents: true },
+      { text: '把信烧给他', eff: { WILL: 8, FAME: 2, STRESS: -8 }, risk: 2, killParents: true },
+      { text: '把公司改名，纪念他', eff: { WILL: 6, FAME: 4, STRESS: -4, flags: ['memorial_father'] }, risk: 3, killParents: true }
+    ] },
+  { id: 'f_p8', age: [45, 66], w: 5, text: '母亲也走了。你成了那个再没人叫你回家吃饭的人。',
+    cond: { need: ['parents_alive'] },
+    choices: [
+      { text: '把老家的房子留着，不卖', eff: { WILL: 5, STRESS: -6 }, risk: 1, killParents: true },
+      { text: '每年回去扫墓', eff: { WILL: 4, INT: 2 }, risk: 2, killParents: true },
+      { text: '成立基金，帮助孤寡老人', eff: { MONEY: -50000000, WILL: 8, FAME: 6, flags: ['foundation'] }, risk: 3, killParents: true }
+    ] },
+
+  /* ===== 친척 · 亲人 ===== */
+  { id: 'f_r1', age: [16, 25], w: 6, text: '表哥从美国回来，带你去见了他的几个朋友。你第一次知道世界不止首尔。',
+    choices: [
+      { text: '默默听着', eff: { INT: 3, NET: 2 }, risk: 1 },
+      { text: '主动交换联系方式', eff: { NET: 6, CHA: 2 }, risk: 2 },
+      { text: '当场谈起自己的计划', eff: { NET: 8, FAME: 3, STRESS: 6 }, risk: 3,
+        gamble: { p: 0.5, win: { NET: 12, CHA: 4 }, lose: { STRESS: 8, NET: -3 } } }
+    ] },
+  { id: 'f_r2', age: [20, 32], w: 6, text: '姑姑介绍了一份工作，但要在她朋友的店里当学徒。',
+    choices: [
+      { text: '拒绝，想走自己的路', eff: { WILL: 4, INT: 2 }, risk: 1 },
+      { text: '去试试，权当积累', eff: { NET: 6, MONEY: 10000000, INT: 3 }, risk: 2 },
+      { text: '借机学技术，之后单干', eff: { INT: 6, NET: 4, WILL: 5, STRESS: 8 }, risk: 3,
+        gamble: { p: 0.45, win: { MONEY: 60000000, INT: 5 }, lose: { STRESS: 10, NET: -3 } } }
+    ] },
+  { id: 'f_r3', age: [24, 40], w: 5, text: '弟弟/妹妹要结婚了，家里让你出份子钱。',
+    choices: [
+      { text: '按能力给一点', eff: { MONEY: -5000000, WILL: 3, NET: 2 }, risk: 1 },
+      { text: '多给一些，帮衬家里', eff: { MONEY: -20000000, WILL: 5, NET: 4 }, risk: 2 },
+      { text: '顺便把婚礼包办了', eff: { MONEY: -80000000, WILL: 8, NET: 8, FAME: 3 }, risk: 3,
+        gamble: { p: 0.5, win: { NET: 12, FAME: 5 }, lose: { MONEY: -30000000, NET: -4 } } }
+    ] },
+  { id: 'f_r4', age: [26, 45], w: 5, text: '叔叔在政府部门，他暗示可以帮你的公司「行个方便」。',
+    choices: [
+      { text: '婉拒，路要自己走', eff: { WILL: 5, INT: 2 }, risk: 1 },
+      { text: '接受，记在心里', eff: { NET: 10, LOY: 4, STRESS: 6, flags: ['uncle_help'] }, risk: 2 },
+      { text: '把这件事写成证据留着', eff: { INT: 6, NET: 6, WILL: 4, STRESS: 10, flags: ['uncle_evidence'] }, risk: 3,
+        gamble: { p: 0.45, win: { NET: 14, LOY: 8 }, lose: { NET: -8, STRESS: 12 } } }
+    ] },
+  { id: 'f_r5', age: [30, 50], w: 5, text: '家族聚会，亲戚们轮流问你赚了多少。你突然很想念小时候那箱苹果。',
+    choices: [
+      { text: '含糊带过', eff: { STRESS: 5, WILL: 2 }, risk: 1 },
+      { text: '如实说，不卑不亢', eff: { WILL: 4, CHA: 3 }, risk: 2 },
+      { text: '当场把单买了', eff: { MONEY: -10000000, WILL: 6, NET: 5, CHA: 3 }, risk: 3,
+        gamble: { p: 0.5, win: { NET: 8, CHA: 4 }, lose: { MONEY: -5000000, STRESS: 6 } } }
+    ] },
+  { id: 'f_r6', age: [22, 38], w: 5, text: '堂姐是电视台主持人，她想请你去上一档节目聊聊「逆袭」。',
+    choices: [
+      { text: '拒绝，低调做人', eff: { WILL: 3 }, risk: 1 },
+      { text: '去，讲自己的故事', eff: { FAME: 10, NET: 5, CHA: 3, STRESS: 6 }, risk: 2 },
+      { text: '借机宣传自己的事业', eff: { FAME: 15, NET: 8, MONEY: 50000000, STRESS: 10 }, risk: 3,
+        gamble: { p: 0.5, win: { FAME: 10, NET: 8 }, lose: { STRESS: 12, FAME: -5 } } }
+    ] },
+
+  /* ===== 연인/배우자 · 恋爱与妻子 ===== */
+  { id: 'f_s1', age: [19, 26], w: 8, text: '大学社团里，有个人总在你画图时递来一杯咖啡。你们开始一起走夜路回宿舍。',
+    cond: { ban: ['married'] },
+    choices: [
+      { text: '保持朋友距离', eff: { WILL: 2, INT: 1 }, risk: 1 },
+      { text: '主动约TA周末出去', eff: { CHA: 4, NET: 3, WILL: 3 }, flags: ['dating'], risk: 2 },
+      { text: '直接表白', eff: { CHA: 6, NET: 4, WILL: 5, STRESS: 6 }, flags: ['dating'], risk: 3,
+        gamble: { p: 0.5, win: { CHA: 8, NET: 6, WILL: 6 }, lose: { STRESS: 10, CHA: -2 } } }
+    ] },
+  { id: 'f_s2', age: [21, 28], w: 7, text: '你们交往了一年。TA说：要么更进一步，要么就到这里。',
+    cond: { need: ['dating'], ban: ['married'] },
+    choices: [
+      { text: '说再等等', eff: { STRESS: 6, CHA: -2 }, risk: 1 },
+      { text: '同居，一起打拼', eff: { WILL: 5, CHA: 3, NET: 4 }, flags: ['cohabit'], risk: 2 },
+      { text: '求婚', eff: { WILL: 8, CHA: 5, NET: 5, STRESS: 10 }, flags: ['married'], risk: 3,
+        gamble: { p: 0.5, win: { WILL: 8, NET: 8 }, lose: { STRESS: 14, CHA: -4 } } }
+    ] },
+  { id: 'f_s3', age: [22, 30], w: 6, text: '婚礼很简单，但TA的父母不太满意你「看不见天花板」的出身。',
+    cond: { need: ['married'] },
+    choices: [
+      { text: '用行动证明', eff: { WILL: 6, NET: 3, STRESS: 6 }, risk: 1 },
+      { text: '尽量迎合岳父母', eff: { NET: 5, CHA: 3, STRESS: 8 }, flags: ['in_laws_ok'], risk: 2 },
+      { text: '坚持自己的方式', eff: { WILL: 7, CHA: 2, STRESS: 10 }, flags: ['in_law_conflict'], risk: 3,
+        gamble: { p: 0.45, win: { WILL: 8, NET: 8 }, lose: { STRESS: 12, NET: -5 } } }
+    ] },
+  { id: 'f_s4', age: [24, 35], w: 7, text: '你们的第一个孩子出生了。你抱着那个小东西，忽然懂了父亲当年的肩膀。',
+    cond: { need: ['married'] }, baby: true,
+    choices: [
+      { text: '请陪产假，好好陪', eff: { WILL: 5, HP: 5, STRESS: -8, MONEY: -3000000 }, risk: 1 },
+      { text: '请月嫂，自己继续拼', eff: { MONEY: -8000000, STRESS: 6 }, risk: 2 },
+      { text: '把工作暂停半年，亲自带', eff: { MONEY: -20000000, WILL: 8, HP: 6, STRESS: -12 }, risk: 3,
+        gamble: { p: 0.5, win: { WILL: 10, HP: 8 }, lose: { MONEY: -10000000, STRESS: 8 } } }
+    ] },
+  { id: 'f_s5', age: [26, 40], w: 6, text: '孩子上学了。TA想让上国际学校，你想让上普通小学。',
+    cond: { need: ['married'], min: { MONEY: 50000000 } },
+    choices: [
+      { text: '听TA的，上国际学校', eff: { MONEY: -20000000, NET: 4, CHA: 2 }, risk: 1 },
+      { text: '各退一步，上好的公立', eff: { MONEY: -8000000, WILL: 3 }, risk: 2 },
+      { text: '自己辅导，不花那份钱', eff: { INT: 4, WILL: 4, MONEY: -2000000 }, risk: 3,
+        gamble: { p: 0.5, win: { INT: 6, WILL: 4 }, lose: { STRESS: 6 } } }
+    ] },
+  { id: 'f_s6', age: [28, 45], w: 5, text: 'TA说也想创业/回去工作，不想只做谁的太太/先生。',
+    cond: { need: ['married'] },
+    choices: [
+      { text: '全力支持', eff: { WILL: 4, NET: 4, STRESS: -4 }, risk: 1 },
+      { text: '担心钱，劝再想想', eff: { STRESS: 6, WILL: -2 }, risk: 2 },
+      { text: '给TA一笔启动资金', eff: { MONEY: -30000000, WILL: 6, NET: 6, CHA: 3 }, flags: ['spouse_biz'], risk: 3,
+        gamble: { p: 0.5, win: { MONEY: 150000000, NET: 10 }, lose: { MONEY: -20000000, STRESS: 8 } } }
+    ] },
+  { id: 'f_s7', age: [30, 48], w: 5, text: '一次出差，旧情人加回了你的联系方式。对方说：要是当年选的是我就好了。',
+    cond: { need: ['married'] },
+    choices: [
+      { text: '礼貌拉黑', eff: { WILL: 5, INT: 2 }, risk: 1 },
+      { text: '聊了几句，止于分寸', eff: { STRESS: 8, CHA: 2, NET: 3 }, risk: 2 },
+      { text: '真的见了面', eff: { STRESS: 14, WILL: -4, CHA: -3, flags: ['cheat'] }, risk: 3,
+        gamble: { p: 0.3, win: { NET: 8, CHA: 5 }, lose: { MONEY: -10000000, CHA: -8, FAME: -6, NET: -10 } } }
+    ] },
+  { id: 'f_s8', age: [32, 50], w: 5, text: 'TA生病住院，你第一次在医院陪了整夜。TA说：没想到你也会慌。',
+    cond: { need: ['married'] },
+    choices: [
+      { text: '请假全程陪护', eff: { MONEY: -5000000, HP: 3, WILL: 5, STRESS: -6 }, risk: 1 },
+      { text: '请护工，自己忙事业', eff: { MONEY: -8000000, STRESS: 8, WILL: -2 }, risk: 2 },
+      { text: '把公司交给副手，专心陪TA康复', eff: { MONEY: -30000000, WILL: 8, HP: 5, STRESS: -12, NET: 4 }, risk: 3,
+        gamble: { p: 0.5, win: { WILL: 10, HP: 8 }, lose: { MONEY: -10000000, STRESS: 8 } } }
+    ] },
+  { id: 'f_s9', age: [35, 55], w: 5, text: '你们结婚十周年。TA翻出当年的旧照片，说：那时候我们连婚纱都租不起。',
+    cond: { need: ['married'] },
+    choices: [
+      { text: '补一场婚礼', eff: { MONEY: -15000000, WILL: 5, CHA: 4, STRESS: -8 }, risk: 1 },
+      { text: '安静吃顿饭', eff: { WILL: 3, STRESS: -5 }, risk: 2 },
+      { text: '送TA一座以TA名字命名的楼', eff: { MONEY: -500000000, WILL: 10, CHA: 8, FAME: 8, STRESS: -10, flags: ['named_building'] }, risk: 3,
+        gamble: { p: 0.5, win: { WILL: 12, FAME: 10 }, lose: { MONEY: -200000000, STRESS: 10 } } }
+    ] },
+  { id: 'f_s10', age: [38, 58], w: 5, text: '孩子要出国留学。TA和你在钱和距离上吵了一架。',
+    cond: { need: ['married'], min: { MONEY: 80000000 } },
+    choices: [
+      { text: '尊重孩子的选择', eff: { WILL: 4, STRESS: -4, MONEY: -50000000 }, risk: 1 },
+      { text: '让孩子留在身边', eff: { STRESS: 8, WILL: -2 }, risk: 2 },
+      { text: '卖一套房支持TA追梦', eff: { MONEY: -300000000, WILL: 8, NET: 6, STRESS: -6 }, risk: 3,
+        gamble: { p: 0.5, win: { WILL: 10, NET: 8 }, lose: { MONEY: -100000000, STRESS: 8 } } }
+    ] },
+  { id: 'f_s11', age: [40, 60], w: 5, text: 'TA的父母年纪大了，搬来和你们同住。两代人挤在一个屋檐下。',
+    cond: { need: ['married'] },
+    choices: [
+      { text: '尽量包容', eff: { WILL: 5, STRESS: -4 }, risk: 1 },
+      { text: '把楼下让给他们住', eff: { MONEY: -20000000, WILL: 4, STRESS: -6 }, risk: 2 },
+      { text: '另买一套相邻的公寓', eff: { MONEY: -400000000, WILL: 8, NET: 6, STRESS: -10 }, risk: 3,
+        gamble: { p: 0.5, win: { WILL: 10, NET: 8 }, lose: { MONEY: -150000000, STRESS: 8 } } }
+    ] },
+  { id: 'f_s12', age: [45, 65], w: 5, text: '你们一起回到半地下室旧址。TA笑着说：还好没听我妈的，不然哪有今天。',
+    cond: { need: ['married'] },
+    choices: [
+      { text: '说：是你撑住了我', eff: { WILL: 6, STRESS: -8 }, risk: 1 },
+      { text: '默默握紧TA的手', eff: { WILL: 5, STRESS: -6 }, risk: 2 },
+      { text: '把那片地买下来留念', eff: { MONEY: -200000000, WILL: 8, FAME: 5, STRESS: -8 }, risk: 3,
+        gamble: { p: 0.5, win: { WILL: 10, FAME: 6 }, lose: { MONEY: -80000000, STRESS: 6 } } }
+    ] },
+  { id: 'f_s13', age: [50, 70], w: 5, text: 'TA先你一步走了。你坐在空荡荡的客厅，第一次觉得别墅太大。',
+    cond: { need: ['married'] },
+    choices: [
+      { text: '把TA的遗物好好收着', eff: { WILL: 5, STRESS: -6 }, risk: 1, widow: true },
+      { text: '独自旅行一年', eff: { MONEY: -30000000, WILL: 6, STRESS: -10, HP: 5 }, risk: 2, widow: true },
+      { text: '成立以TA命名的奖学金', eff: { MONEY: -300000000, WILL: 8, FAME: 10, flags: ['foundation'] }, risk: 3, widow: true }
+    ] }
+];
+EVENTS.push.apply(EVENTS, EVENTS_FAMILY);
 
 /* ---------------- 称号（按人生阶段显示身份） ---------------- */
 const TITLES = [

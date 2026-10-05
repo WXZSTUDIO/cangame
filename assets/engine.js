@@ -13,6 +13,35 @@ function randInt(a, b) { return Math.floor(rand(a, b + 1)); }
 function chance(p) { return Math.random() < p; }
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
+/* ---------- 随机姓名 ---------- */
+function randomKoreanName(gender) {
+  const s = SURNAMES[randInt(0, SURNAMES.length - 1)];
+  const pool = (gender === 'F') ? GIVEN_NAMES.F : GIVEN_NAMES.M;
+  return s + pool[randInt(0, pool.length - 1)];
+}
+function randomSpouseName(gender) {
+  const opp = (gender === 'F') ? 'M' : 'F';
+  const pool = GIVEN_NAMES[opp];
+  return SURNAMES[randInt(0, SURNAMES.length - 1)] + pool[randInt(0, pool.length - 1)];
+}
+
+/* ---------- 出生叙事（随机人生故事） ---------- */
+function pushBirthStory(state) {
+  const fam = familyById(state.familyId);
+  const opener = BIRTH_OPENERS[randInt(0, BIRTH_OPENERS.length - 1)];
+  const byfam = (BIRTH_BY_FAMILY[fam.id] || []);
+  const famLine = byfam.length ? byfam[randInt(0, byfam.length - 1)] : '';
+  const parents = BIRTH_PARENTS[randInt(0, BIRTH_PARENTS.length - 1)];
+  const omen = BIRTH_OMENS[randInt(0, BIRTH_OMENS.length - 1)];
+  pushLog(state, opener, 'story');
+  if (famLine) pushLog(state, famLine, 'story');
+  pushLog(state, parents, 'story');
+  pushLog(state, omen, 'story');
+  if (state.flags.past_life) {
+    pushLog(state, '前世的记忆在午夜涌来：冰冷的江水，和一双擦得发亮的皮鞋。你攥紧拳头——这一世，要改写它。', 'story');
+  }
+}
+
 function fmtMoney(v) {
   const s = Math.round(v || 0);
   const sign = s < 0 ? '-' : '';
@@ -88,13 +117,15 @@ function createGame(opt) {
     familyName: family.name,
     talents: opt.talents || [],
     stats: { INT: 5, STR: 5, CHA: 5, WILL: 5, HP: 60, STRESS: 10, MONEY: 0, NET: 0, FAME: 0, LOY: 0 },
-    flags: {},
+    flags: { parents_alive: true },
     job: '婴儿',
     log: [],
     used: [],
     queue: [],
     pending: null,
     investments: [],
+    spouseName: null,
+    childCount: 0,
     alive: true,
     finished: false,
     ending: null,
@@ -113,8 +144,9 @@ function createGame(opt) {
   });
   state.stats.HP = clamp(state.stats.HP, 20, 100);
   state.stats.STRESS = clamp(state.stats.STRESS, 0, 100);
-  pushLog(state, `1985년 겨울 · 你出生在${family.name.split(' ')[1] || family.name}。`, 'system');
+  pushLog(state, `1985년 겨울 · ${state.name} 出生在${family.name.split(' ')[1] || family.name}。`, 'system');
   pushLog(state, family.desc, 'story');
+  pushBirthStory(state);
   return state;
 }
 
@@ -453,6 +485,28 @@ function resolveEvent(state, ev, choiceIndex) {
     pushLog(state, `  【${win ? '성공 赌赢了' : '실패 赌输了'} · ${Math.round(g.p * 100)}%】${rd.join('，') || '什么也没发生'}`,
       win ? 'money' : 'warn');
   }
+
+  // 人生关系联动：结婚 / 生子 / 丧亲
+  if (state.flags.married && !state.spouseName) {
+    state.spouseName = randomSpouseName(state.gender);
+    const sp = state.spouseName;
+    delete state.flags.dating; // 已成家，结束恋爱阶段
+    pushLog(state, `【결혼 结婚】你与 ${sp} 结为连理。从此，人生不再是你一个人的战场。`, 'muted');
+  }
+  if ((ev.baby || (ch && ch.baby)) && state.flags.married) {
+    state.childCount = (state.childCount || 0) + 1;
+    pushLog(state, `【출산 新生命】第 ${state.childCount} 个孩子降生。${state.spouseName || 'TA'} 说：像极了你小时候。`, 'muted');
+  }
+  if (ev.killParents || (ch && ch.killParents)) {
+    if (state.flags.parents_alive) {
+      state.flags.parents_alive = false;
+      pushLog(state, '【상가 丧亲】父母都已离世。你成了真正意义上的一家之主。', 'muted');
+    }
+  }
+  if ((ev.widow || (ch && ch.widow)) && state.flags.married) {
+    pushLog(state, `【이별 永别】${state.spouseName || 'TA'} 先你一步走了。余生，你带着两个人的份活着。`, 'muted');
+  }
+
   checkDeath(state);
 }
 

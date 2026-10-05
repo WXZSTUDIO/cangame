@@ -115,17 +115,15 @@ function startCreate() {
   SELECTED = [];
   CREATE_POINTS = 10;
   const pref = lsGet(LS.pref) || {};
-  $('inputName').value = pref.name || randomName();
+  $('inputName').value = pref.name || randomName(pref.gender || 'M');
   document.querySelectorAll('[name=gender]').forEach(r => r.checked = (r.value === (pref.gender || 'M')));
   renderFamilies();
   renderTalents();
   showScreen('screen-create');
 }
 
-function randomName() {
-  const s = ['김', '박', '이', '최', '정', '강', '조', '윤', '장', '한'];
-  const g = ['민준', '서준', '도윤', '예준', '시우', '하준', '지호', '지훈', '준서', '건우'];
-  return s[randInt(0, s.length - 1)] + g[randInt(0, g.length - 1)];
+function randomName(gender) {
+  return randomKoreanName(gender || (document.querySelector('[name=gender]:checked') || {}).value || 'M');
 }
 
 function renderFamilies() {
@@ -191,6 +189,12 @@ function confirmCreate() {
   enterGame();
 }
 
+function rerollName() {
+  const gender = (document.querySelector('[name=gender]:checked') || {}).value || 'M';
+  $('inputName').value = randomName(gender);
+  toast('已随机一个名字');
+}
+
 /* ---------- 游戏页 ---------- */
 function enterGame() {
   if (STATE) marketMigrate(STATE);
@@ -228,6 +232,7 @@ function renderStats() {
   rbox.innerHTML = `
     <div class="res"><span>나이 年龄</span><b>${STATE.age}세 · ${fmtYear(STATE)}년</b></div>
     <div class="res"><span>신분 身份</span><b>${esc(STATE.job || defaultJob(STATE.age))}</b></div>
+    ${STATE.flags.married ? `<div class="res fam"><span>가족 家庭</span><b>${esc(STATE.spouseName || '배우자')} · 자녀 ${STATE.childCount || 0}명${STATE.flags.parents_alive ? '' : ' · 父母离世'}</b></div>` : (STATE.flags.dating ? `<div class="res fam"><span>연애 恋爱</span><b>交往中</b></div>` : '')}
     <div class="res money"><span>현금 现金</span><b>${fmtMoney(s.MONEY)}</b></div>
     <div class="res net"><span>순자산 净资产</span><b>${fmtMoney(netWorth(STATE))}</b></div>
     ${debtHtml}${propHtml}${stockHtml}
@@ -244,6 +249,10 @@ function renderStats() {
   if (STATE.flags.gangnam_owner) tags.push('江南业主');
   if (STATE.flags.took_over) tags.push('太星之主');
   if (STATE.flags.exposed) tags.push('曝光者');
+  if (STATE.flags.dating) tags.push('연애중');
+  if (STATE.flags.married) tags.push('기혼 已婚');
+  if (!STATE.flags.parents_alive) tags.push('상가 丧亲');
+  if (STATE.childCount) tags.push('자녀 ' + STATE.childCount + '명');
   $('tagList').innerHTML = tags.map(t => `<span class="tag">${esc(t)}</span>`).join('');
   $('heroName').textContent = `${STATE.name} · ${STATE.gender === 'M' ? '남' : '여'} · ${esc(STATE.familyName)}`;
 }
@@ -641,6 +650,7 @@ function init() {
   $('btnHow').onclick = () => { $('howBox').classList.toggle('open'); };
   $('btnBackTitle').onclick = () => { renderTitle(); showScreen('screen-title'); };
   $('btnReroll').onclick = rerollTalents;
+  $('btnRerollName').onclick = rerollName;
   $('btnStart').onclick = confirmCreate;
   $('btnBackFromCreate').onclick = () => { renderTitle(); showScreen('screen-title'); };
   $('btnMarket').onclick = openMarket;
