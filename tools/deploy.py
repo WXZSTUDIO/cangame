@@ -28,6 +28,7 @@ PUBLISH = [
     'README.md',
     'assets/style.css',
     'assets/data.js',
+    'assets/market.js',
     'assets/engine.js',
     'assets/ui.js',
 ]
@@ -43,7 +44,12 @@ SKIP_DIRS = {'.git', '.sync', '__pycache__', '.workbuddy'}
 
 def run(args, cwd=None, check=False, quiet=True):
     env = dict(os.environ)
+    # 关键：禁止一切交互式凭据弹窗，否则 git 会卡在 GCM 授权上直到超时
     env['GIT_TERMINAL_PROMPT'] = '0'
+    env['GCM_INTERACTIVE'] = 'never'
+    env['GIT_CREDENTIAL_MANAGER_INTERACTIVE'] = 'never'
+    env['GIT_ASKPASS'] = 'echo'
+    env['SSH_ASKPASS'] = 'echo'
     p = subprocess.run(args, cwd=cwd, env=env,
                        capture_output=True, text=True, timeout=600)
     if check and p.returncode != 0:
