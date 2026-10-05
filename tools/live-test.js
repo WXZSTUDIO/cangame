@@ -18,7 +18,7 @@ JSDOM.fromURL(URL_, {
   const w = dom.window;
   setTimeout(() => {
     const click = el => el.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
-    const screen = () => ['screen-title', 'screen-create', 'screen-game', 'screen-end']
+    const screen = () => ['screen-title', 'screen-create', 'screen-game', 'screen-market', 'screen-end']
       .find(id => w.document.getElementById(id) && w.document.getElementById(id).classList.contains('active'));
     click(w.document.getElementById('btnNew'));
     const tals = w.document.querySelectorAll('#talentList .talent');
@@ -26,13 +26,32 @@ JSDOM.fromURL(URL_, {
     click(tals[0]); click(tals[1]);
     click(w.document.querySelectorAll('#familyList .fam')[1]);
     click(w.document.getElementById('btnStart'));
-    let n = 0;
+    let n = 0, traded = 0;
     while (screen() === 'screen-game' && n++ < 800) {
+      // 成年后定期进市场做一笔买卖，验证市场页全流程
+      if (n % 6 === 0 && traded < 6) {
+        const mk = w.document.getElementById('btnMarket');
+        if (mk) {
+          click(mk);
+          if (screen() === 'screen-market') {
+            const tabs = ['house', 'car', 'goods', 'stock'];
+            const tab = tabs[traded % tabs.length];
+            const t = w.document.querySelector('.mtab[data-tab="' + tab + '"]');
+            if (t) click(t);
+            const btns = [...w.document.querySelectorAll('#marketBody .mk-item button')].filter(b => !b.disabled);
+            if (btns.length) { click(btns[0]); traded++; }
+            // 卖出一次
+            const sell = [...w.document.querySelectorAll('#marketHold button')].filter(b => !b.disabled);
+            if (sell.length) click(sell[0]);
+            click(w.document.getElementById('btnMarketBack'));
+          }
+        }
+      }
       const btns = [...w.document.querySelectorAll('#actions button')].filter(b => !b.disabled);
       if (!btns.length) break;
       click(btns[Math.floor(Math.random() * btns.length)]);
     }
-    console.log('推进:', n, '| 到达:', screen());
+    console.log('推进:', n, '| 到达:', screen(), '| 市场成交:', traded);
     console.log('结局:', w.document.getElementById('endTitle').textContent || '(未结束)');
     console.log(errors.length ? '❌ ' + errors.slice(0, 5).join('\n') : '✅ 线上页面无运行时错误');
     process.exit(errors.length ? 1 : 0);
