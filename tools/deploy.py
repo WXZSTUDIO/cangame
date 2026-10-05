@@ -45,7 +45,7 @@ def run(args, cwd=None, check=False, quiet=True):
     env = dict(os.environ)
     env['GIT_TERMINAL_PROMPT'] = '0'
     p = subprocess.run(args, cwd=cwd, env=env,
-                       capture_output=True, text=True, timeout=300)
+                       capture_output=True, text=True, timeout=600)
     if check and p.returncode != 0:
         raise SystemExit('命令失败: %s\n%s\n%s' % (' '.join(args), p.stdout, p.stderr))
     if not quiet:
