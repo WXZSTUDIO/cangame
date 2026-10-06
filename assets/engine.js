@@ -31,6 +31,63 @@ function randomPetName(type) {
   return pool[randInt(0, pool.length - 1)];
 }
 
+/* ---------- 朋友圈 ---------- */
+function makeFriends() {
+  const pool = FRIEND_TYPES.slice();
+  const out = [];
+  for (let i = 0; i < 3 && pool.length; i++) {
+    const t = pool.splice(randInt(0, pool.length - 1), 1)[0];
+    out.push({
+      key: t.key,
+      name: randomKoreanName(chance(0.5) ? 'F' : 'M'),
+      affinity: randInt(12, 30),
+      lastTouch: -1
+    });
+  }
+  return out;
+}
+
+/* ---------- 人际互动（人际关系面板） ---------- */
+function socialAct(state, kind, idx) {
+  if (!state || state.finished) return { ok: false };
+  const s = state.stats;
+  const touch = state.socialTouch = state.socialTouch || {};
+  const key = kind + (idx != null ? ':' + idx : '');
+  if (touch[key] === state.age) return { ok: false, msg: '今年已经互动过了' };
+  touch[key] = state.age;
+  if (kind === 'parents') {
+    if (!state.flags.parents_alive) return { ok: false };
+    s.LOVE += 3; s.SEC += 3; s.STRESS -= 4;
+    if (state.age >= 20) s.MONEY -= 500000;
+    pushLog(state, '【가족 团聚】你回家陪父母吃了一顿饭。母亲说：人回来就好，还带什么东西。', 'muted');
+  } else if (kind === 'spouse') {
+    if (state.flags.married) {
+      s.LOVE += 4; s.STRESS -= 4; s.SEC += 2;
+      pushLog(state, `【데이트 约会】你和 ${state.spouseName || '爱人'} 像年轻时那样约会了一次。`, 'muted');
+    } else if (state.flags.dating) {
+      s.LOVE += 3; s.CHA += 1;
+      pushLog(state, '【데이트 约会】你们去看了一场电影。牵手的时候，谁都没有说话。', 'muted');
+    } else { delete touch[key]; return { ok: false }; }
+  } else if (kind === 'child') {
+    if (!state.childCount) { delete touch[key]; return { ok: false }; }
+    s.LOVE += 3; s.GROW += 2; s.STRESS -= 2;
+    pushLog(state, '【육아 陪伴】你推掉了应酬，陪孩子待了一整天。孩子画了一幅画：这是你。', 'muted');
+  } else if (kind === 'pet') {
+    if (!state.pet || !state.pet.alive) { delete touch[key]; return { ok: false }; }
+    s.LOVE += 2; s.HP += 2; s.SEC += 1;
+    pushLog(state, `【산책 遛弯】你带着 ${state.pet.name} 在汉江公园走了一圈。它很开心，你也是。`, 'muted');
+  } else if (kind === 'friend') {
+    const f = state.friends && state.friends[idx];
+    if (!f) { delete touch[key]; return { ok: false }; }
+    f.affinity = clamp(f.affinity + randInt(4, 7), 0, 100);
+    s.NET += 2; s.LOVE += 2; s.STRESS -= 2;
+    const t = FRIEND_TYPES.find(x => x.key === f.key);
+    pushLog(state, `【만남 相聚】你和 ${f.name}（${t ? t.label : '朋友'}）聚了聚。有些关系，不走动就真的远了。`, 'muted');
+  } else { delete touch[key]; return { ok: false }; }
+  applyEffects(state, {}); // 触发数值夹取
+  return { ok: true };
+}
+
 /* ---------- 出生叙事（随机人生故事） ---------- */
 function pushBirthStory(state) {
   const fam = familyById(state.familyId);
@@ -81,10 +138,10 @@ const JOBS = {
   '公务员': { salary: 38000000, cost: 19000000 },
   '个体户': { salary: 55000000, cost: 24000000 },
   '创业者': { salary: 20000000, cost: 22000000 },
-  '太星集团社员': { salary: 52000000, cost: 22000000 },
-  '太星战略室次长': { salary: 95000000, cost: 30000000 },
-  '太星集团副会长': { salary: 320000000, cost: 60000000 },
-  '太星集团会长': { salary: 900000000, cost: 90000000 }
+  '大企业职员': { salary: 52000000, cost: 22000000 },
+  '大集团战略次长': { salary: 95000000, cost: 30000000 },
+  '大集团副会长': { salary: 320000000, cost: 60000000 },
+  '企业会长': { salary: 900000000, cost: 90000000 }
 };
 
 function defaultJob(age) {
@@ -138,6 +195,8 @@ function createGame(opt) {
     childCount: 0,
     grandCount: 0,
     pet: null,
+    friends: makeFriends(),
+    socialTouch: {},
     alive: true,
     finished: false,
     ending: null,
@@ -201,7 +260,7 @@ function describeEffects(eff) {
   const names = {
     INT: '지력', STR: '체력', CHA: '매력', WILL: '의지',
     HP: '건강', STRESS: '스트레스', MONEY: '자산',
-    NET: '인맥', FAME: '명성', LOY: '太星好感',
+    NET: '인맥', FAME: '명성', LOY: '직장 평판',
     CUR: '호기심', LOVE: '애정', SEC: '안전감', AUTO: '자율성', GROW: '성장'
   };
   const parts = [];
@@ -220,6 +279,9 @@ function matchCond(state, ev) {
   if (!c) return true;
   if (c.ageMin !== undefined && state.age < c.ageMin) return false;
   if (c.ageMax !== undefined && state.age > c.ageMax) return false;
+  const year = fmtYear(state);
+  if (c.yearMin !== undefined && year < c.yearMin) return false;
+  if (c.yearMax !== undefined && year > c.yearMax) return false;
   if (c.gender && state.gender !== c.gender) return false;
   if (c.job && c.job.indexOf(state.job) === -1) return false;
   if (c.need && !c.need.every(f => state.flags[f])) return false;
@@ -298,7 +360,14 @@ function pickEvents(state) {
   });
   const count = state.age <= 12 ? 1 : (chance(0.35) ? 2 : 1);
   const picked = [];
-  for (let i = 0; i < count && weighted.length; i++) {
+  // 年代事件：窗口开启的年份必触发一个（每个出生年份都有自己独有的时代切片）
+  const era = weighted.filter(x => x.ev.era);
+  if (era.length) {
+    const e = era[randInt(0, era.length - 1)].ev;
+    picked.push(e);
+    weighted.splice(weighted.findIndex(x => x.ev === e), 1);
+  }
+  for (let i = picked.length; i < count && weighted.length; i++) {
     const total = weighted.reduce((a, b) => a + b.w, 0);
     let r = Math.random() * total;
     let idx = 0;
@@ -419,6 +488,17 @@ function yearBase(state) {
     s.MONEY -= 1500000; // 饲养费
   }
 
+  // 朋友圈被动加成（好感越高，加成越大）
+  if (state.friends) state.friends.forEach(f => {
+    const t = FRIEND_TYPES.find(x => x.key === f.key);
+    if (!t) return;
+    const k = Math.max(0.3, (f.affinity || 0) / 50);
+    for (const stat in t.pass) {
+      if (stat === 'MONEY') s.MONEY += Math.round(t.pass[stat] * k);
+      else s[stat] = (s[stat] || 0) + t.pass[stat] * k;
+    }
+  });
+
   // 压力伤害
   if (s.STRESS > 70) { s.HP -= Math.round((s.STRESS - 70) / 6); }
   s.STRESS = Math.max(0, s.STRESS - 7);
@@ -442,7 +522,7 @@ function yearBase(state) {
     pushLog(state, `【求职】你终于找到了一份工作：${j}。`, 'muted');
   }
   // 退休
-  if (state.age >= 60 && state.job !== '退休' && state.job !== '太星集团会长') {
+  if (state.age >= 60 && state.job !== '退休' && state.job !== '企业会长') {
     state.job = '退休';
     pushLog(state, `【은퇴 退休】你把工牌交了上去。从此，时间第一次真正属于你自己。`, 'muted');
   }
@@ -561,6 +641,9 @@ function resolveEvent(state, ev, choiceIndex) {
     if (win && g.winJob) state.job = g.winJob;
     if (win && g.winFlags) applyFlags(state, g.winFlags);
     if (!win && g.loseFlag) applyFlags(state, [g.loseFlag]);
+    // win/lose 对象内联的 flags / job 也要生效（如收购成功接任会长、赌输丢掉工作）
+    if (res.flags) applyFlags(state, res.flags);
+    if (res.job) state.job = res.job;
     const rd = describeEffects(res);
     pushLog(state, `  【${win ? '성공 赌赢了' : '실패 赌输了'} · ${Math.round(g.p * 100)}%】${rd.join('，') || '什么也没发生'}`,
       win ? 'money' : 'warn');

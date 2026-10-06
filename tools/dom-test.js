@@ -49,15 +49,29 @@ click(w.document.getElementById('btnStart'));
 console.log('进入:', activeScreen());
 
 // 3 → 一路推进到结局（中途进入市场做买卖）
-let steps = 0, traded = 0;
+let steps = 0, traded = 0, viewChecked = false;
 while (activeScreen() === 'screen-game' && steps++ < 800) {
+  // 对局中途检查底部导航视图（人际关系 / 工作）
+  if (steps === 5 && !viewChecked) {
+    viewChecked = true;
+    click(w.document.getElementById('dockRel'));
+    console.log('人际关系视图:', w.document.getElementById('view-rel').style.display !== 'none',
+      '| 卡片数:', w.document.querySelectorAll('#view-rel .rel-card').length);
+    w.document.querySelectorAll('#view-rel .rel-act:not([disabled])').forEach(b => click(b));
+    w.document.querySelector('.rel-tab:nth-child(2)').dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+    console.log('朋友卡片数:', w.document.querySelectorAll('#view-rel .rel-card').length);
+    click(w.document.getElementById('dockJob'));
+    console.log('工作视图:', w.document.getElementById('view-job').style.display !== 'none',
+      '| 工作卡:', w.document.querySelectorAll('#view-job .job-card').length);
+    click(w.document.getElementById('dockNext'));
+    console.log('回主视图:', w.document.getElementById('view-main').style.display !== 'none');
+  }
   // 25 岁后试着进市场买一次房 / 买一次股
   const stNow = w.__getState();
   if (stNow && stNow.age >= 22 && traded < 4 && steps % 7 === 0) {
-    click(w.document.getElementById('btnMarket'));
+    click(w.document.getElementById(traded % 2 === 0 ? 'dockStock' : 'dockShop'));
     if (activeScreen() === 'screen-market') {
       const tab = traded % 2 === 0 ? 'stock' : 'house';
-      w.document.querySelector('.mtab[data-tab="' + tab + '"]').dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
       const items = w.document.querySelectorAll('#marketBody .mk-item .btn');
       if (items.length) {
         click(items[0]);

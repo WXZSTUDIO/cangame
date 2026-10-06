@@ -30,19 +30,16 @@ JSDOM.fromURL(URL_, {
     while (screen() === 'screen-game' && n++ < 800) {
       // 成年后定期进市场做一笔买卖，验证市场页全流程
       if (n % 6 === 0 && traded < 6) {
-        const mk = w.document.getElementById('btnMarket');
+        const mk = w.document.getElementById(traded % 2 === 0 ? 'dockShop' : 'dockStock');
         if (mk) {
           click(mk);
           if (screen() === 'screen-market') {
-            const tabs = ['house', 'car', 'goods', 'stock'];
+            const tabs = ['house', 'car', 'good', 'stock'];
             const tab = tabs[traded % tabs.length];
             const t = w.document.querySelector('.mtab[data-tab="' + tab + '"]');
             if (t) click(t);
             const btns = [...w.document.querySelectorAll('#marketBody .mk-item button')].filter(b => !b.disabled);
             if (btns.length) { click(btns[0]); traded++; }
-            // 卖出一次
-            const sell = [...w.document.querySelectorAll('#marketHold button')].filter(b => !b.disabled);
-            if (sell.length) click(sell[0]);
             click(w.document.getElementById('btnMarketBack'));
           }
         }

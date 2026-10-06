@@ -92,6 +92,7 @@ function showScreen(id) {
   ['screen-title', 'screen-create', 'screen-game', 'screen-market', 'screen-end'].forEach(s => {
     $(s).classList.toggle('active', s === id);
   });
+  document.body.dataset.screen = id;
   window.scrollTo(0, 0);
 }
 function openModal() { $('modal').classList.add('open'); renderSaveManager(); }
@@ -216,11 +217,14 @@ function rerollName() {
 }
 
 /* ---------- 游戏页 ---------- */
+let GAME_VIEW = 'main';   // main | job | rel
+let REL_TAB = 'family';   // family | friends
+
 function enterGame() {
   if (STATE) marketMigrate(STATE);
   showScreen('screen-game');
   if (STATE.finished && STATE.ending) { renderEnd(); return; }
-  if (!STATE.log.length) { /* noop */ }
+  showGameView('main');
   renderStats();
   renderStream();
   // 恢复当前待展示内容
@@ -228,50 +232,42 @@ function enterGame() {
   else renderIdle();
 }
 
+function ageAvatar(age, gender) {
+  if (age <= 6) return '👶';
+  if (age <= 12) return gender === 'F' ? '👧' : '👦';
+  if (age <= 18) return gender === 'F' ? '👩' : '🧑';
+  if (age <= 59) return gender === 'F' ? '👩‍💼' : '👨‍💼';
+  return gender === 'F' ? '👵' : '👴';
+}
+
 function renderStats() {
   const s = STATE.stats;
-  const box = $('statList');
-  let html = '';
-  LIFE_METRICS.forEach(st => {
-    const v = s[st.key];
-    const max = st.key === 'HP' ? 120 : (st.key === 'FAME' ? 200 : 100);
-    const pct = clamp(v / max * 100, 0, 100);
-    const cls = st.key === 'HP' ? (v < 30 ? 'bad' : 'hp') : '';
-    html += `<div class="stat" title="${esc(st.hint)}">
-      <div class="s-label"><span>${esc(st.name)}</span><b>${Math.round(v)}</b></div>
-      <div class="bar"><i class="${cls}" style="width:${pct}%"></i></div></div>`;
-  });
-  box.innerHTML = html;
+  $('hudAvatar').textContent = ageAvatar(STATE.age, STATE.gender);
+  $('hudName').textContent = `${STATE.name} · ${STATE.gender === 'M' ? '남' : '여'} · ${STATE.familyName.split(' ')[0]}`;
+  $('hudAge').textContent = `나이 ${STATE.age} / ${END_AGE}세 · ${fmtYear(STATE)}년 · ${STATE.job || defaultJob(STATE.age)}`;
+  $('hudCash').textContent = fmtMoney(s.MONEY);
+  $('hudWorth').textContent = fmtMoney(netWorth(STATE));
 
-  const rbox = $('resList');
-  const m = marketMigrate(STATE);
-  const debtHtml = m.debt > 0 ? `<div class="res debt"><span>대출 贷款</span><b>-${fmtMoney(m.debt)}</b></div>` : '';
-  const propHtml = m.props.length ? `<div class="res"><span>보유자산 持有资产</span><b>${m.props.length} 项 · ${fmtMoney(propValue(STATE))}</b></div>` : '';
-  const stockHtml = m.stocks.length ? `<div class="res"><span>주식 持股</span><b>${fmtMoney(stockValue(STATE))}</b></div>` : '';
-  rbox.innerHTML = `
-    <div class="res"><span>나이 年龄</span><b>${STATE.age}세 · ${fmtYear(STATE)}년</b></div>
-    <div class="res"><span>신분 身份</span><b>${esc(STATE.job || defaultJob(STATE.age))}</b></div>
-    ${STATE.flags.married ? `<div class="res fam"><span>가족 家庭</span><b>${esc(STATE.spouseName || '배우자')} · 자녀 ${STATE.childCount || 0}명${STATE.grandCount ? ' · 손주 ' + STATE.grandCount + '명' : ''}${STATE.flags.parents_alive ? '' : ' · 父母离世'}</b></div>` : (STATE.flags.dating ? `<div class="res fam"><span>연애 恋爱</span><b>交往中</b></div>` : '')}
-    ${STATE.pet ? `<div class="res fam"><span>반려동물 宠物</span><b>${esc(STATE.pet.name)}（${STATE.pet.alive ? (STATE.pet.type === 'cat' ? '猫' : '狗') : '已离世'}）</b></div>` : ''}
-    <div class="res money"><span>현금 现金</span><b>${fmtMoney(s.MONEY)}</b></div>
-    <div class="res net"><span>순자산 净资产</span><b>${fmtMoney(netWorth(STATE))}</b></div>
-    ${debtHtml}${propHtml}${stockHtml}
-    <div class="res"><span>인맥 人脉</span><b>${Math.round(s.NET)}</b></div>
-    <div class="res"><span>太星好感</span><b>${Math.round(s.LOY)}</b></div>
-    <div class="res"><span>지력 智力</span><b>${Math.round(s.INT)}</b></div>
-    <div class="res"><span>체력 体魄</span><b>${Math.round(s.STR)}</b></div>
-    <div class="res"><span>의지 意志</span><b>${Math.round(s.WILL)}</b></div>
-    <div class="res${s.STRESS > 60 ? ' debt' : ''}"><span>스트레스 压力</span><b>${Math.round(s.STRESS)}</b></div>
-    ${STATE.investments.length ? `<div class="res inv"><span>持有投资</span><b>${STATE.investments.map(i => i.name.split('·')[0].trim() + ' ' + fmtMoney(i.amount) + '（剩' + i.yearsLeft + '年）').join('，')}</b></div>` : ''}
-  `;
+  // 底部指标条：8 项人生指标 + 压力
+  const strip = [
+    ['HP', '健康'], ['CUR', '好奇'], ['LOVE', '关爱'], ['SEC', '安全'],
+    ['FAME', '声望'], ['AUTO', '自主'], ['NET', '人际'], ['GROW', '成长'], ['STRESS', '压力']
+  ];
+  $('metricStrip').innerHTML = strip.map(([k, label]) => {
+    const v = Math.round(s[k] || 0);
+    const low = (k === 'STRESS') ? v > 60 : (k === 'HP' ? v < 30 : false);
+    const high = (k === 'STRESS') ? false : v >= 70;
+    return `<span class="m"><i>${label}</i><b class="${low ? 'low' : (high ? 'high' : '')}">${v}</b></span>`;
+  }).join('');
+
   const tags = [];
   if (STATE.flags.past_life) tags.push('전생의 기억');
-  if (STATE.flags.revenge) tags.push('복수심');
-  if (STATE.flags.taeseong_staff) tags.push('太星社员');
-  if (STATE.flags.taeseong_inner) tags.push('财阀核心');
+  if (STATE.flags.ambition) tags.push('불타는 야망');
+  if (STATE.flags.bigco_staff) tags.push('大企業 职员');
+  if (STATE.flags.bigco_inner) tags.push('기업 핵심');
   if (STATE.flags.gangnam_owner) tags.push('江南业主');
-  if (STATE.flags.took_over) tags.push('太星之主');
-  if (STATE.flags.exposed) tags.push('曝光者');
+  if (STATE.flags.took_over) tags.push('기업의 주인');
+  if (STATE.flags.exposed) tags.push('날카로운 칼날');
   if (STATE.flags.dating) tags.push('연애중');
   if (STATE.flags.married) tags.push('기혼 已婚');
   if (!STATE.flags.parents_alive) tags.push('상가 丧亲');
@@ -279,9 +275,123 @@ function renderStats() {
   if (STATE.grandCount) tags.push('손주 ' + STATE.grandCount + '명');
   if (STATE.pet && STATE.pet.alive) tags.push(STATE.pet.type === 'cat' ? '반려묘 宠物猫' : '반려견 宠物狗');
   $('tagList').innerHTML = tags.map(t => `<span class="tag">${esc(t)}</span>`).join('');
-  $('heroName').textContent = `${STATE.name} · ${STATE.gender === 'M' ? '남' : '여'} · ${esc(STATE.familyName)}`;
 }
 
+/* ---------- 视图切换 ---------- */
+function showGameView(v) {
+  GAME_VIEW = v;
+  $('view-main').style.display = v === 'main' ? '' : 'none';
+  $('view-job').style.display = v === 'job' ? '' : 'none';
+  $('view-rel').style.display = v === 'rel' ? '' : 'none';
+  document.querySelectorAll('.dock-btn').forEach(b => b.classList.remove('active'));
+  if (v === 'job') { $('dockJob').classList.add('active'); renderJobView(); }
+  if (v === 'rel') { $('dockRel').classList.add('active'); renderRelView(); }
+}
+
+/* ---------- 工作视图 ---------- */
+function renderJobView() {
+  const s = STATE.stats;
+  const j = JOBS[STATE.job] || { salary: 0, cost: 12000000 };
+  const isRetired = STATE.job === '退休';
+  const income = isRetired ? j.salary
+    : Math.round(j.salary * (1 + Math.max(0, STATE.age - 23) * 0.06) * (1 + s.INT / 400) * (1 + s.NET / 800));
+  let cost = j.cost;
+  if (STATE.flags.gangnam_owner) cost += 15000000;
+  if (STATE.flags.married) cost += 12000000;
+  const m = marketMigrate(STATE);
+  const invHtml = STATE.investments.length
+    ? STATE.investments.map(i => `<div class="job-cell"><i>持有投资（剩 ${i.yearsLeft} 年）</i><b>${esc(i.name.split('·')[0].trim())} ${fmtMoney(i.amount)}</b></div>`).join('')
+    : '';
+  const talHtml = (STATE.talents || []).map(id => {
+    const t = talentById(id);
+    return t ? `<span class="tag">${esc(t.name)}</span>` : '';
+  }).join('');
+  $('view-job').innerHTML = `
+    <div class="job-card">
+      <div class="job-title">💼 ${esc(STATE.job || defaultJob(STATE.age))}</div>
+      <div class="job-sub">${fmtYear(STATE)}년 · ${STATE.age}세 · 预计年收入 ${fmtMoney(income)}，年支出 ${fmtMoney(cost)}，结余 ${fmtMoney(income - cost)}${isRetired ? '（年金）' : ''}</div>
+      <div class="job-grid">
+        <div class="job-cell"><i>현금 现金</i><b>${fmtMoney(s.MONEY)}</b></div>
+        <div class="job-cell"><i>순자산 净资产</i><b>${fmtMoney(netWorth(STATE))}</b></div>
+        <div class="job-cell"><i>지력/철력/의지</i><b>${Math.round(s.INT)} / ${Math.round(s.STR)} / ${Math.round(s.WILL)}</b></div>
+        <div class="job-cell"><i>职场口碑/人脉/声望</i><b>${Math.round(s.LOY)} / ${Math.round(s.NET)} / ${Math.round(s.FAME)}</b></div>
+        ${m.debt > 0 ? `<div class="job-cell"><i>대출 贷款（年息 ${(rateAt(fmtYear(STATE)) * 100).toFixed(1)}%）</i><b style="color:var(--red)">-${fmtMoney(m.debt)}</b></div>` : ''}
+        ${invHtml}
+      </div>
+      ${talHtml ? `<div class="job-sec">보유 특성 持有天赋</div><div class="job-talents">${talHtml}</div>` : ''}
+      <div class="job-sub" style="margin-top:14px">想置业或炒股？点底部的「股票」或「花钱」。</div>
+    </div>`;
+}
+
+/* ---------- 人际关系视图 ---------- */
+function renderRelView() {
+  const touch = STATE.socialTouch || {};
+  const canTouch = (key) => touch[key] !== STATE.age;
+  const cards = [];
+
+  if (REL_TAB === 'family') {
+    if (STATE.flags.parents_alive) {
+      cards.push({ ava: '👴', cls: '', name: '父母', sub: '他们还在，家就还在。每年多回去看看。', key: 'parents' });
+    } else {
+      cards.push({ ava: '🕯', cls: 'amber', name: '父母', sub: '已离世。想他们的时候，就翻翻老照片。', dead: true });
+    }
+    if (STATE.flags.married) {
+      cards.push({ ava: STATE.gender === 'M' ? '💑' : '💏', cls: 'green', name: STATE.spouseName || '配偶', sub: '携手走过半生的人。', key: 'spouse' });
+    } else if (STATE.flags.dating) {
+      cards.push({ ava: '💘', cls: 'green', name: '恋人', sub: '交往中。关系是要经营的。', key: 'spouse' });
+    }
+    if (STATE.childCount) {
+      cards.push({ ava: '👶', cls: '', name: `孩子 × ${STATE.childCount}`, sub: STATE.grandCount ? `他们很棒——你已经是 ${STATE.grandCount} 个孙辈的祖辈了。` : '正在长大。陪伴错过了就回不来了。', key: 'child' });
+    }
+    if (STATE.pet) {
+      cards.push(STATE.pet.alive
+        ? { ava: STATE.pet.type === 'cat' ? '🐱' : '🐶', cls: 'amber', name: `${STATE.pet.name}（${STATE.pet.type === 'cat' ? '猫' : '狗'}）`, sub: '已经陪伴你很多年。', key: 'pet' }
+        : { ava: '🌈', cls: 'amber', name: `${STATE.pet.name}`, sub: '去了彩虹桥。谢谢你陪过它。', dead: true });
+    }
+  } else {
+    (STATE.friends || []).forEach((f, i) => {
+      const t = FRIEND_TYPES.find(x => x.key === f.key);
+      cards.push({
+        ava: t ? t.avatar : '🧑', cls: '',
+        name: `${f.name} · ${t ? t.label : '朋友'}`,
+        sub: `好感度 ${Math.round(f.affinity)}% · ${t ? t.line : ''}`,
+        key: 'friend:' + i
+      });
+    });
+  }
+
+  $('view-rel').innerHTML = `
+    <div class="rel-head">
+      <button class="rel-tab ${REL_TAB === 'family' ? 'active' : ''}" onclick="setRelTab('family')">👪 家庭</button>
+      <button class="rel-tab ${REL_TAB === 'friends' ? 'active' : ''}" onclick="setRelTab('friends')">🧑‍🤝‍🧑 朋友</button>
+    </div>
+    <div class="rel-list">
+      ${cards.length ? cards.map(c => `
+        <div class="rel-card">
+          <span class="rel-ava ${c.cls}">${c.ava}</span>
+          <div class="rel-info">
+            <div class="rel-name">${esc(c.name)}</div>
+            <div class="rel-sub">${esc(c.sub)}</div>
+          </div>
+          ${c.dead ? '' : `<button class="rel-act" ${canTouch(c.key) ? '' : 'disabled'} onclick="uiSocial('${c.key}')">${canTouch(c.key) ? '互动' : '今年已互动'}</button>`}
+        </div>`).join('')
+      : '<div class="rel-empty">这一世还很孤独。去生活里遇见一些人吧。</div>'}
+    </div>`;
+}
+
+function setRelTab(t) { REL_TAB = t; renderRelView(); }
+
+function uiSocial(key) {
+  const parts = key.split(':');
+  const r = socialAct(STATE, parts[0], parts.length > 1 ? Number(parts[1]) : undefined);
+  if (!r.ok) { toast(r.msg || '现在不行'); return; }
+  toast('互动成功');
+  renderStats();
+  renderStream();
+  if (GAME_VIEW === 'rel') renderRelView();
+  if (GAME_VIEW === 'job') renderJobView();
+  autosave();
+}
 function renderStream() {
   const box = $('stream');
   box.innerHTML = STATE.log.map(l => {
@@ -444,8 +554,14 @@ function openMarket() {
 
 function backToGame() {
   showScreen('screen-game');
+  showGameView('main');
   renderStats();
   if (STATE.pending) renderItem(STATE.pending); else renderIdle();
+}
+
+function openMarketTab(tab) {
+  MARKET_TAB = tab;
+  openMarket();
 }
 
 function renderMarket() {
@@ -672,13 +788,13 @@ function init() {
     enterGame();
   };
   $('btnSaves').onclick = openModal;
+  $('btnSavesTop').onclick = openModal;
   $('btnHow').onclick = () => { $('howBox').classList.toggle('open'); };
   $('btnBackTitle').onclick = () => { renderTitle(); showScreen('screen-title'); };
   $('btnReroll').onclick = rerollTalents;
   $('btnRerollName').onclick = rerollName;
   $('btnStart').onclick = confirmCreate;
   $('btnBackFromCreate').onclick = () => { renderTitle(); showScreen('screen-title'); };
-  $('btnMarket').onclick = openMarket;
   $('btnMarketBack').onclick = backToGame;
   document.querySelectorAll('.mtab').forEach(b => {
     b.onclick = () => { MARKET_TAB = b.dataset.tab; renderMarket(); };
@@ -687,6 +803,19 @@ function init() {
   $('btnSaves2').onclick = openModal;
   $('btnRestart').onclick = () => {
     if (confirm('放弃当前人生，重新开始？')) { localStorage.removeItem(LS.auto); STATE = null; renderTitle(); showScreen('screen-title'); }
+  };
+  // HUD 资产胶囊 → 市场持有页
+  $('pillCash').onclick = () => openMarketTab('hold');
+  $('pillWorth').onclick = () => openMarketTab('hold');
+  // 底部导航
+  $('dockJob').onclick = () => { if (STATE && !STATE.finished) showGameView(GAME_VIEW === 'job' ? 'main' : 'job'); };
+  $('dockRel').onclick = () => { if (STATE && !STATE.finished) showGameView(GAME_VIEW === 'rel' ? 'main' : 'rel'); };
+  $('dockStock').onclick = () => openMarketTab('stock');
+  $('dockShop').onclick = () => openMarketTab('house');
+  $('dockNext').onclick = () => {
+    if (!STATE || STATE.finished) return;
+    showGameView('main');
+    advance();
   };
   $('modalClose').onclick = closeModal;
   $('btnExport').onclick = exportSave;
@@ -700,7 +829,7 @@ function init() {
     if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
     if (e.code === 'Space' || e.code === 'Enter') {
       const btns = $('actions').querySelectorAll('button:not([disabled])');
-      if (btns.length === 1) { e.preventDefault(); btns[0].click(); }
+      if (GAME_VIEW === 'main' && btns.length === 1) { e.preventDefault(); btns[0].click(); }
     }
   });
 }

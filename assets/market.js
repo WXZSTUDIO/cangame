@@ -162,9 +162,9 @@ const GOODS = [
 
 /* ---------- 股票（base = 1985 基准股价） ---------- */
 const STOCKS = [
-  { id: 's_taeseong', name: '태성전자 太星电子', code: '005930', sector: '반도체 半导体',
+  { id: 's_hansung', name: '한성전자 韩星电子', code: '005930', sector: '반도체 半导体',
     base: 3200, growth: 0.102, vol: 0.30, div: 0.012, minYear: 1985,
-    desc: '那个你前世替它撑伞的集团。它的股价，写着你复仇的进度条。' },
+    desc: '韩国的国民股。它的K线，就是这个国家四十年的经济史。' },
   { id: 's_hangang', name: '한강중공업 汉江重工', code: '010620', sector: '조선 造船',
     base: 5400, growth: 0.062, vol: 0.34, div: 0.018, minYear: 1985,
     desc: '造船与基建。周期来了翻倍，周期走了腰斩。' },

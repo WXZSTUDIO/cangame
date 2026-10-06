@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>江南逆袭 · 강남 역습 | 韩国财阀人生模拟</title>
-<meta name="description" content="文字版韩国人生模拟游戏：从江南半地下室到财阀之巅，事件、投资、存档一条龙。">
+<title>江南逆袭 · 강남 역습 | 韩国人生模拟</title>
+<meta name="description" content="文字版韩国人生模拟游戏：随机投胎、年代事件、投资市场、人际关系，从0岁活到100岁以上。">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -17,11 +17,7 @@
     <span class="cn">江南逆袭</span>
   </div>
   <div class="top-actions">
-    <button id="btnMarket" class="btn tiny primary">시장 市场</button>
-    <button id="btnSaveGame" class="btn tiny">缓存</button>
-    <button id="btnSaves2" class="btn tiny">存档</button>
-    <button id="btnRestart" class="btn tiny">重开</button>
-    <button id="btnBackTitle" class="btn tiny">标题</button>
+    <button id="btnSavesTop" class="btn tiny">存档</button>
   </div>
 </header>
 
@@ -29,10 +25,11 @@
 <section id="screen-title" class="screen active">
   <div class="title-wrap">
     <h1 class="big-title">江南逆袭</h1>
-    <p class="big-sub">강남 역습 · 从半地下室到财阀之巅</p>
-    <p class="lead">每一次「出生」，你都会被随机投胎到某个韩国家庭，带着随机的天赋与属性。<br>
-      从 0 岁长到 100 岁以上，童年、青年、中年、老年一一走过。<br>
-      每一步都要做选择——选歪了走岔路，选对了顺。这一局投胎差了？点一下，下一世重新来过。</p>
+    <p class="big-sub">강남 역습 · 从半地下室到汉江之巅</p>
+    <p class="lead">每一次「出生」，你都会被随机投胎到某个韩国家庭、某个年代——<br>
+      1956년 生在废墟与新村运动里，1998년 生在智能手机与韩流里。<br>
+      从 0 岁长到 100 岁以上，恋爱、事业、买房、炒股、养一只狗。<br>
+      每一步都要做选择——这一局投胎差了？点一下，下一世重新来过。</p>
     <div class="title-btns">
       <button id="btnNew" class="btn primary big">开始新的人生</button>
       <button id="btnContinue" class="btn big" style="display:none"></button>
@@ -41,20 +38,19 @@
     </div>
     <div id="howBox" class="how">
       <ul>
-        <li><b>随机投胎</b>：出生年份、家庭背景、天赋与姓名每局都随机。你带着 8 项人生指标降生——健康 / 好奇心 / 关爱 / 安全感 / 声望 / 自主性 / 人际关系 / 成长，它们会随着你的选择起伏。</li>
+        <li><b>随机投胎</b>：出生年份（1955–2005）、家庭、天赋、姓名每局都随机。年份决定你这一世会亲身经历哪些年代大事——战后的废墟、88 奥运、97 IMF、08 危机、20 疫情，各是各的人生。</li>
         <li><b>推进</b>：点「下一年」，每年触发 1–2 个事件，从童年走到 100 岁以上的老年。健康归零、过劳或自然老死都会走向结局。</li>
         <li><b>三选一</b>：成年后的每个事件都有 3 个选项——<b>慎重（低风险）</b> / <b>照常（中）</b> / <b>豁出去（高风险，带概率赌注）</b>。收益和风险同时放大。</li>
         <li><b>擅长领域</b>：开局可押注一个方向（事业 / 关系 / 平衡 / 成功），这一世的成长会向你选的方向倾斜。</li>
-        <li><b>家庭与宠物</b>：恋爱、结婚、生子、当上祖父母；还能领养一只狗或猫，陪你走过几十年。</li>
+        <li><b>人际关系</b>：底部的「人际」里，有父母、恋人/配偶、孩子、宠物和三位朋友。每年都可以互动一次——关系是要经营的。</li>
         <li><b>市场</b>：20 岁后随时进入「시장 市场」。买房（可贷款）、买车、买金条土地商铺比特币，还能炒股——12 只股票随年代涨跌，遇 IMF / 互联网泡沫 / 金融危机 / 疫情会剧烈波动。</li>
-        <li><b>持有成本</b>：房产要交维护费和贷款利息，车会折旧；商铺和高尔夫会员券能带来租金与人脉。净资产才是你真正的身家。</li>
         <li><b>天赋</b>：开局抽 10 张天赋，用 10 点天赋点自由搭配。负面天赋会返还点数。</li>
         <li><b>前世记忆</b>：带此天赋时，投资机会会显示「未来的提示」——IMF、江南房价、比特币。</li>
         <li><b>存档</b>：每步自动缓存到本机（localStorage），另有 3 个手动存档槽，并可导出/导入存档码跨设备继续。</li>
-        <li><b>结局</b>：活到 105 岁、健康归零、自然老死或完成财阀线都会走向结局，共 16 种以上。</li>
+        <li><b>结局</b>：没有唯一的「终点」——富翁、房东、股神、温暖的店、家族绵延、平凡的会社员……16 种以上结局，看你这一世怎么过。</li>
       </ul>
     </div>
-    <p class="foot">本作人物、集团、事件均为虚构。 · v3.0.0 · 인생 지표 · 8가지 삶의 지표</p>
+    <p class="foot">本作人物、公司、事件均为虚构。 · v4.0.0 · 시대의 사건 · 인간관계</p>
   </div>
 </section>
 
@@ -91,17 +87,47 @@
 <!-- ===== 游戏页 ===== -->
 <section id="screen-game" class="screen">
   <div class="game-wrap">
-    <aside class="panel">
-      <div id="heroName" class="hero"></div>
-      <div id="statList" class="stats"></div>
-      <div id="resList" class="resources"></div>
-      <div id="tagList" class="tags"></div>
-    </aside>
-    <main class="main">
-      <div id="stream" class="stream"></div>
-      <div id="card" class="card"></div>
-      <div id="actions" class="actions"></div>
+
+    <header class="hud">
+      <div class="hud-id">
+        <span class="hud-avatar" id="hudAvatar">👶</span>
+        <div class="hud-id-txt">
+          <div class="hud-name" id="hudName">—</div>
+          <div class="hud-age" id="hudAge">—</div>
+        </div>
+      </div>
+      <div class="hud-money">
+        <button class="pill cash" id="pillCash" title="打开市场·持有">💵 현금 <b id="hudCash">0</b></button>
+        <button class="pill worth" id="pillWorth" title="打开市场·持有">🏦 총자산 <b id="hudWorth">0</b></button>
+      </div>
+      <div class="hud-btns">
+        <button id="btnSaveGame" class="icon-btn" title="缓存">💾</button>
+        <button id="btnSaves2" class="icon-btn" title="存档">🗂</button>
+        <button id="btnRestart" class="icon-btn" title="重开">🔁</button>
+        <button id="btnBackTitle" class="icon-btn" title="标题">🏠</button>
+      </div>
+    </header>
+
+    <div class="tags" id="tagList"></div>
+
+    <main class="stage">
+      <div id="view-main" class="view">
+        <div id="stream" class="stream"></div>
+        <div id="card" class="card"></div>
+        <div id="actions" class="actions"></div>
+      </div>
+      <div id="view-job" class="view" style="display:none"></div>
+      <div id="view-rel" class="view" style="display:none"></div>
     </main>
+
+    <nav class="dock">
+      <button class="dock-btn" id="dockJob">💼<span>工作</span></button>
+      <button class="dock-btn" id="dockStock">📈<span>股票</span></button>
+      <button class="dock-btn go" id="dockNext">▶<span>下一年</span></button>
+      <button class="dock-btn" id="dockShop">🛍<span>花钱</span></button>
+      <button class="dock-btn" id="dockRel">👥<span>人际</span></button>
+    </nav>
+    <footer class="metric-strip" id="metricStrip"></footer>
   </div>
 </section>
 
