@@ -145,6 +145,27 @@ const FAMILIES = [
     eff: { MONEY: 2500000, CHA: 3, NET: 8 }, flags: ['oversea_tie'] }
 ];
 
+/* ---------------- 家庭财务（出生时父母的资产 / 负债，1985년 基准，按年代缩放） ----------------
+ * 未成年期间由家庭承担生活与教育费：家庭资产不够，就转成家庭负债。
+ * 父母离世时可「단순승인 全额继承 / 한정승인 限定继承 / 상속포기 放弃继承」。
+ */
+const FAMILY_FIN = {
+  banjiha:       { assets: 30000000,  debt: 45000000 },
+  factory:       { assets: 25000000,  debt: 30000000 },
+  province:      { assets: 60000000,  debt: 25000000 },
+  single:        { assets: 15000000,  debt: 38000000 },
+  orphan:        { assets: 5000000,   debt: 0 },
+  rentier:       { assets: 350000000, debt: 120000000 },
+  prof:          { assets: 180000000, debt: 60000000 },
+  chaebol_edge:  { assets: 150000000, debt: 40000000 }
+};
+
+/* 年代金额缩放：1955년 的 1 块钱比 2005년 值钱得多 */
+const FIN_SCALE = [
+  [1955, 0.10], [1965, 0.18], [1975, 0.42], [1985, 1.00],
+  [1995, 1.85], [2005, 2.70], [2015, 3.40], [2025, 4.20], [2060, 5.00]
+];
+
 /* ---------------- 事件库 ----------------
  * cond: {ageMin,ageMax,gender:'M'/'F',need:[flags],ban:[flags],min:{stat},max:{stat},job:[...]}
  * eff : {STAT:delta, flags:[...], job:'...', edu:'...'}

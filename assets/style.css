@@ -292,6 +292,15 @@ body[data-screen="screen-game"] .topbar{display:none}
 }
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+/* 崩溃横幅：出错时必须看得见，而不是「点了没反应」 */
+.crash{
+  display:none;position:fixed;left:12px;right:12px;bottom:12px;z-index:200;
+  background:var(--red-l);border:2px solid var(--red);color:#8c3232;
+  padding:12px 14px;border-radius:12px;font-size:12.5px;line-height:1.65;font-weight:700;
+  box-shadow:var(--shadow);
+}
+.crash.show{display:block}
+
 /* 市场页 */
 .market-wrap{max-width:680px;margin:0 auto}
 .market-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--card);border:2px solid var(--line);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow)}

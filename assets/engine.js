@@ -167,8 +167,22 @@ function rollTalents(n) {
 function talentById(id) { return TALENTS.find(t => t.id === id); }
 function familyById(id) { return FAMILIES.find(f => f.id === id); }
 
+/* ---------- 家庭财务 ---------- */
+/* 出生时父母的家底：资产 / 负债，按出生年代缩放（早年 nominal 金额小得多） */
+function initFamilyFin(familyId, startYear) {
+  const base = FAMILY_FIN[familyId] || { assets: 30000000, debt: 30000000 };
+  const k = (typeof tableAt === 'function') ? tableAt(FIN_SCALE, startYear || 1985) : 1;
+  return {
+    assets: Math.round(base.assets * k),
+    debt: Math.round(base.debt * k),
+    startAssets: Math.round(base.assets * k),
+    startDebt: Math.round(base.debt * k)
+  };
+}
+
 function createGame(opt) {
   const family = familyById(opt.familyId) || FAMILIES[0];
+  const startYear = opt.startYear || randInt(1955, 2005);
   const state = {
     v: SAVE_VERSION,
     seed: Date.now(),
@@ -176,7 +190,7 @@ function createGame(opt) {
     updatedAt: Date.now(),
     name: opt.name || '김민준',
     gender: opt.gender || 'M',
-    startYear: opt.startYear || randInt(1955, 2005),
+    startYear: startYear,
     priority: opt.priority || 'balance',
     age: 0,
     familyId: family.id,
@@ -195,6 +209,7 @@ function createGame(opt) {
     childCount: 0,
     grandCount: 0,
     pet: null,
+    family: initFamilyFin(family.id, startYear),
     friends: makeFriends(),
     socialTouch: {},
     alive: true,
@@ -206,6 +221,8 @@ function createGame(opt) {
   // 出身
   applyEffects(state, family.eff, true);
   if (family.flags) family.flags.forEach(f => state.flags[f] = true);
+  // 孤儿院出身：户口本上没有父母
+  if (state.flags.orphan) state.flags.parents_alive = false;
   // 天赋
   (opt.talents || []).forEach(id => {
     const t = talentById(id);
@@ -217,6 +234,9 @@ function createGame(opt) {
   state.stats.STRESS = clamp(state.stats.STRESS, 0, 100);
   pushLog(state, `${state.startYear}년 · ${state.name} 出生在${family.name.split(' ')[1] || family.name}。`, 'system');
   pushLog(state, family.desc, 'story');
+  if (!state.flags.orphan) {
+    pushLog(state, `【가계 家底】家里的账簿：资产 ${fmtMoney(state.family.assets)}，负债 ${fmtMoney(state.family.debt)}。未成年之前，这些都不用你来操心。`, 'muted');
+  }
   pushBirthStory(state);
   return state;
 }
@@ -527,21 +547,31 @@ function yearBase(state) {
     pushLog(state, `【은퇴 退休】你把工牌交了上去。从此，时间第一次真正属于你自己。`, 'muted');
   }
 
-  // 收支
-  const j = JOBS[state.job] || { salary: 0, cost: 12000000 };
-  let income;
-  if (state.job === '退休') {
-    income = j.salary; // 固定年金，不随工龄膨胀
+  // 收支（未成年：生活与教育费由父母承担，本人不背债、不愁钱）
+  if (state.age < 18) {
+    const jm = JOBS[state.job] || JOBS[defaultJob(state.age)] || { cost: 1500000 };
+    const upkeep = jm.cost || 0;
+    const fin = state.family || (state.family = initFamilyFin(state.familyId, state.startYear));
+    fin.assets -= upkeep;
+    if (fin.assets < 0) { fin.debt += -fin.assets; fin.assets = 0; }
+    fin.assets = Math.round(fin.assets * 1.035);   // 家庭资产随年代增值
+    if (state.age === 17) {
+      pushLog(state, `【성년 成年】从明年起，你自己的账要自己背了。家里的账簿：资产 ${fmtMoney(fin.assets)}，负债 ${fmtMoney(fin.debt)}。`, 'muted');
+    }
   } else {
-    income = j.salary * (1 + Math.max(0, state.age - 23) * 0.06);
-    income = Math.round(income * (1 + s.INT / 400) * (1 + s.NET / 800));
-  }
-  let cost = j.cost;
-  if (state.flags.gangnam_owner) cost += 15000000;
-  if (state.flags.married) cost += 12000000;
-  const net = income - cost;
-  s.MONEY += net;
-  if (state.age >= 23) {
+    const j = JOBS[state.job] || { salary: 0, cost: 12000000 };
+    let income;
+    if (state.job === '退休') {
+      income = j.salary; // 固定年金，不随工龄膨胀
+    } else {
+      income = j.salary * (1 + Math.max(0, state.age - 23) * 0.06);
+      income = Math.round(income * (1 + s.INT / 400) * (1 + s.NET / 800));
+    }
+    let cost = j.cost;
+    if (state.flags.gangnam_owner) cost += 15000000;
+    if (state.flags.married) cost += 12000000;
+    const net = income - cost;
+    s.MONEY += net;
     pushLog(state, `【${fmtYear(state)}년】${state.job} · 收入 ${fmtMoney(income)}，支出 ${fmtMoney(cost)}，结余 ${net >= 0 ? '+' : ''}${fmtMoney(net)}`, 'money');
   }
   // 声望自然衰减
@@ -591,6 +621,36 @@ function step(state) {
   state.queue = items;
   if (!state.queue.length) return { type: 'year', age: state.age, year: fmtYear(state) };
   return state.queue.shift();
+}
+
+/* ---------- 遗产继承 ---------- */
+/* 父母离世时生成：단순승인 全额继承 / 한정승인 限定继承 / 상속포기 放弃继承 */
+function makeInheritanceEvent(state) {
+  const fin = state.family || { assets: 0, debt: 0 };
+  const assets = Math.round(fin.assets || 0);
+  const debt = Math.round(fin.debt || 0);
+  const full = assets - debt;                                   // 遗产与债务一并接下
+  const limited = Math.max(0, assets - Math.min(debt, assets));  // 只在遗产范围内还债
+  return {
+    id: 'inherit_at_' + state.age,
+    age: [19, 200],
+    w: 0,
+    text: `【상속 继承】父母留下的账簿摊在桌上——遗产 ${fmtMoney(assets)}，债务 ${fmtMoney(debt)}。법은 세 가지 길을 준다：全部接下、只还遗产范围内的、或者什么都不要。`,
+    choices: [
+      {
+        text: `단순승인 · 全额继承：遗产与债务一并接下（净 ${fmtMoney(full)}）`,
+        risk: 3, eff: { MONEY: full, WILL: 6, STRESS: 12, SEC: -5 }, flags: ['inherit_full']
+      },
+      {
+        text: `한정승인 · 限定继承：只还遗产范围内的债（净 ${fmtMoney(limited)}）`,
+        risk: 2, eff: { MONEY: limited, WILL: 3, STRESS: 6, FAME: -3 }, flags: ['inherit_limited']
+      },
+      {
+        text: '상속포기 · 放弃继承：什么都不要，也什么都不欠',
+        risk: 1, eff: { WILL: -4, LOVE: -6, STRESS: -6, SEC: 4 }, flags: ['inherit_none']
+      }
+    ]
+  };
 }
 
 function resolveEvent(state, ev, choiceIndex) {
@@ -672,7 +732,21 @@ function resolveEvent(state, ev, choiceIndex) {
       state.flags.parents_alive = false;
       applyEffects(state, { SEC: -12 });
       pushLog(state, '【상가 丧亲】父母都已离世。你成了真正意义上的一家之主。', 'muted');
+      // 遗产继承：成年则给出三选一，未成年由亲戚处理后事（债务勾销）
+      const fin = state.family || (state.family = initFamilyFin(state.familyId, state.startYear));
+      if (state.age >= 19) {
+        state.queue = state.queue || [];
+        state.queue.unshift({ type: 'event', ev: makeInheritanceEvent(state) });
+      } else {
+        fin.debt = 0;
+        pushLog(state, '【상속 继承】你还没成年。亲戚们替你办了后事，债务一笔勾销，遗产由监护人代管。', 'muted');
+      }
     }
+  }
+  // 继承选择落定：家庭账簿结清（钱已进个人口袋，或已放弃）
+  if (ev.id && String(ev.id).indexOf('inherit_at_') === 0 && state.family) {
+    state.family.debt = 0;
+    state.family.assets = 0;
   }
   if ((ev.widow || (ch && ch.widow)) && state.flags.married) {
     applyEffects(state, { LOVE: -10, SEC: -6 });

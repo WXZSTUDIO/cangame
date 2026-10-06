@@ -78,8 +78,24 @@ function importSave() {
   } catch (e) { toast('存档码无效'); }
 }
 
+/* ---------- 崩溃兜底：任何脚本错误都要看得见，不能「点了没反应」 ---------- */
+function showCrash(msg) {
+  const el = document.getElementById('crash');
+  const text = '⚠️ 脚本出错了：' + msg + '　请刷新页面；若反复出现，请清空浏览器缓存后再试。';
+  if (el) { el.textContent = text; el.classList.add('show'); }
+  try { console.error('[cangame] ' + msg); } catch (e) { }
+}
+window.addEventListener('error', e => showCrash(e.message || 'unknown error'));
+window.addEventListener('unhandledrejection', e => showCrash(String(e.reason)));
+
 /* ---------- 通用 UI ---------- */
 function $(id) { return document.getElementById(id); }
+/* 容错绑定：单个元素缺失不再导致后续所有按钮失效 */
+function bind(id, fn) {
+  const el = $(id);
+  if (!el) { try { console.warn('[cangame] 缺少元素 #' + id); } catch (e) { } return; }
+  try { el.onclick = fn; } catch (e) { showCrash(e.message); }
+}
 function esc(s) { return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
 function toast(msg) {
   const t = $('toast');
@@ -273,6 +289,8 @@ function renderStats() {
   if (!STATE.flags.parents_alive) tags.push('상가 丧亲');
   if (STATE.childCount) tags.push('자녀 ' + STATE.childCount + '명');
   if (STATE.grandCount) tags.push('손주 ' + STATE.grandCount + '명');
+  if (STATE.age < 18) tags.push('미성년 未成年（家庭负担）');
+  if (!STATE.flags.orphan && (STATE.family && STATE.family.debt > 0)) tags.push('가계부채 家庭负债');
   if (STATE.pet && STATE.pet.alive) tags.push(STATE.pet.type === 'cat' ? '반려묘 宠物猫' : '반려견 宠物狗');
   $('tagList').innerHTML = tags.map(t => `<span class="tag">${esc(t)}</span>`).join('');
 }
@@ -306,6 +324,18 @@ function renderJobView() {
     const t = talentById(id);
     return t ? `<span class="tag">${esc(t.name)}</span>` : '';
   }).join('');
+  const fin = STATE.family || { assets: 0, debt: 0 };
+  const famDebt = Math.round(fin.debt || 0);
+  const famHtml = STATE.flags.orphan
+    ? `<div class="job-sec">가계 家庭账簿</div><div class="job-sub">你在教会孤儿院长大，没有一本属于父母的账簿。</div>`
+    : `<div class="job-sec">가계 家庭账簿</div>
+       <div class="job-grid">
+         <div class="job-cell"><i>가족 자산 家庭资产</i><b>${fmtMoney(fin.assets || 0)}</b></div>
+         <div class="job-cell"><i>가계부채 家庭负债</i><b style="color:${famDebt > 0 ? 'var(--red)' : 'inherit'}">${famDebt > 0 ? '-' + fmtMoney(famDebt) : '—'}</b></div>
+         <div class="job-cell"><i>부모 父母</i><b>${STATE.flags.parents_alive ? '健在' : '已离世'}</b></div>
+         <div class="job-cell"><i>상속 继承状态</i><b>${STATE.flags.inherit_full ? '全额继承' : (STATE.flags.inherit_limited ? '限定继承' : (STATE.flags.inherit_none ? '已放弃继承' : '未发生'))}</b></div>
+       </div>
+       ${STATE.age < 18 ? `<div class="job-sub" style="margin-top:8px">未成年：生活与教育费由父母承担，你不用操心钱，也不用背债。成年后（18세）才开始自己记账。</div>` : ''}`;
   $('view-job').innerHTML = `
     <div class="job-card">
       <div class="job-title">💼 ${esc(STATE.job || defaultJob(STATE.age))}</div>
@@ -319,6 +349,7 @@ function renderJobView() {
         ${invHtml}
       </div>
       ${talHtml ? `<div class="job-sec">보유 특성 持有天赋</div><div class="job-talents">${talHtml}</div>` : ''}
+      ${famHtml}
       <div class="job-sub" style="margin-top:14px">想置业或炒股？点底部的「股票」或「花钱」。</div>
     </div>`;
 }
@@ -330,10 +361,25 @@ function renderRelView() {
   const cards = [];
 
   if (REL_TAB === 'family') {
-    if (STATE.flags.parents_alive) {
-      cards.push({ ava: '👴', cls: '', name: '父母', sub: '他们还在，家就还在。每年多回去看看。', key: 'parents' });
+    const famDebt = Math.round((STATE.family && STATE.family.debt) || 0);
+    const famAsset = Math.round((STATE.family && STATE.family.assets) || 0);
+    if (STATE.flags.orphan) {
+      cards.push({ ava: '⛪', cls: 'amber', name: '教会孤儿院', sub: '你在这里长大。没有父母的账簿，只有一排编号。', dead: true });
+    } else if (STATE.flags.parents_alive) {
+      cards.push({
+        ava: '👴', cls: '', name: '父母',
+        sub: `他们还在，家就还在。家里的账簿：资产 ${fmtMoney(famAsset)}，负债 ${famDebt > 0 ? fmtMoney(famDebt) : '无'}。每年多回去看看。`,
+        key: 'parents'
+      });
     } else {
-      cards.push({ ava: '🕯', cls: 'amber', name: '父母', sub: '已离世。想他们的时候，就翻翻老照片。', dead: true });
+      cards.push({
+        ava: '🕯', cls: 'amber', name: '父母',
+        sub: STATE.flags.inherit_none ? '已离世。你放弃了继承——什么都不要，也什么都不欠。'
+          : (STATE.flags.inherit_full ? '已离世。你全额继承了他们的一切，包括债。'
+            : (STATE.flags.inherit_limited ? '已离世。你做了限定继承，只在遗产范围内还了债。'
+              : '已离世。想他们的时候，就翻翻老照片。')),
+        dead: true
+      });
     }
     if (STATE.flags.married) {
       cards.push({ ava: STATE.gender === 'M' ? '💑' : '💏', cls: 'green', name: STATE.spouseName || '配偶', sub: '携手走过半生的人。', key: 'spouse' });
@@ -781,47 +827,47 @@ function uiSellStock(id, r) {
 function init() {
   renderTitle();
   showScreen('screen-title');
-  $('btnNew').onclick = startCreate;
-  $('btnContinue').onclick = () => {
+  bind('btnNew', startCreate);
+  bind('btnContinue', () => {
     STATE = loadAuto();
     if (!STATE) { toast('没有可继续的存档'); return; }
     enterGame();
-  };
-  $('btnSaves').onclick = openModal;
-  $('btnSavesTop').onclick = openModal;
-  $('btnHow').onclick = () => { $('howBox').classList.toggle('open'); };
-  $('btnBackTitle').onclick = () => { renderTitle(); showScreen('screen-title'); };
-  $('btnReroll').onclick = rerollTalents;
-  $('btnRerollName').onclick = rerollName;
-  $('btnStart').onclick = confirmCreate;
-  $('btnBackFromCreate').onclick = () => { renderTitle(); showScreen('screen-title'); };
-  $('btnMarketBack').onclick = backToGame;
+  });
+  bind('btnSaves', openModal);
+  bind('btnSavesTop', openModal);
+  bind('btnHow', () => { $('howBox').classList.toggle('open'); });
+  bind('btnBackTitle', () => { renderTitle(); showScreen('screen-title'); });
+  bind('btnReroll', rerollTalents);
+  bind('btnRerollName', rerollName);
+  bind('btnStart', confirmCreate);
+  bind('btnBackFromCreate', () => { renderTitle(); showScreen('screen-title'); });
+  bind('btnMarketBack', backToGame);
   document.querySelectorAll('.mtab').forEach(b => {
     b.onclick = () => { MARKET_TAB = b.dataset.tab; renderMarket(); };
   });
-  $('btnSaveGame').onclick = () => { autosave(); toast('已自动保存到本机缓存'); };
-  $('btnSaves2').onclick = openModal;
-  $('btnRestart').onclick = () => {
+  bind('btnSaveGame', () => { autosave(); toast('已自动保存到本机缓存'); });
+  bind('btnSaves2', openModal);
+  bind('btnRestart', () => {
     if (confirm('放弃当前人生，重新开始？')) { localStorage.removeItem(LS.auto); STATE = null; renderTitle(); showScreen('screen-title'); }
-  };
+  });
   // HUD 资产胶囊 → 市场持有页
-  $('pillCash').onclick = () => openMarketTab('hold');
-  $('pillWorth').onclick = () => openMarketTab('hold');
+  bind('pillCash', () => openMarketTab('hold'));
+  bind('pillWorth', () => openMarketTab('hold'));
   // 底部导航
-  $('dockJob').onclick = () => { if (STATE && !STATE.finished) showGameView(GAME_VIEW === 'job' ? 'main' : 'job'); };
-  $('dockRel').onclick = () => { if (STATE && !STATE.finished) showGameView(GAME_VIEW === 'rel' ? 'main' : 'rel'); };
-  $('dockStock').onclick = () => openMarketTab('stock');
-  $('dockShop').onclick = () => openMarketTab('house');
-  $('dockNext').onclick = () => {
+  bind('dockJob', () => { if (STATE && !STATE.finished) showGameView(GAME_VIEW === 'job' ? 'main' : 'job'); });
+  bind('dockRel', () => { if (STATE && !STATE.finished) showGameView(GAME_VIEW === 'rel' ? 'main' : 'rel'); });
+  bind('dockStock', () => openMarketTab('stock'));
+  bind('dockShop', () => openMarketTab('house'));
+  bind('dockNext', () => {
     if (!STATE || STATE.finished) return;
     showGameView('main');
     advance();
-  };
-  $('modalClose').onclick = closeModal;
-  $('btnExport').onclick = exportSave;
-  $('btnImport').onclick = importSave;
-  $('btnAgain').onclick = () => { startCreate(); };
-  $('btnEndTitle').onclick = () => { renderTitle(); showScreen('screen-title'); };
+  });
+  bind('modalClose', closeModal);
+  bind('btnExport', exportSave);
+  bind('btnImport', importSave);
+  bind('btnAgain', () => { startCreate(); });
+  bind('btnEndTitle', () => { renderTitle(); showScreen('screen-title'); });
   document.querySelectorAll('[name=gender]').forEach(r => r.onchange = () => { });
   // 键盘：空格/回车推进
   document.addEventListener('keydown', e => {
