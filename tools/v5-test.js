@@ -12,7 +12,7 @@ vm.createContext(ctx);
 });
 
 const A = vm.runInContext(`({
-  createGame, step, resolveEvent, resolveExam, finish, scoreOf, eventChoices, fmtMoney,
+  createGame, step, resolveEvent, resolveExam, answerExamQ, finish, scoreOf, eventChoices, fmtMoney,
   FAMILIES, TALENTS, EVENTS, netWorth, EDU_LEVELS, UNIVERSITIES, HIGH_SCHOOLS, CAREERS,
   jobOffers, applyJob, careerTick, careerIncome, loveInit, meetByMatchmaker, loveAct,
   loveIntimate, propose, marry, tryBaby, borrow, loanTick, loanTotal, repayLoan,
@@ -37,6 +37,9 @@ function play(i) {
     if (!item || item.type === 'end') break;
     if (item.type === 'exam') {
       st.pending = item;
+      while (item.exam.quiz && !item.exam.quiz.done) {
+        A.answerExamQ(st, Math.floor(Math.random() * 4));
+      }
       A.resolveExam(st, Math.floor(Math.random() * item.exam.options.length));
     } else if (item.type === 'event') {
       const list = A.eventChoices(st, item.ev);
@@ -47,7 +50,11 @@ function play(i) {
     }
     while (st.queue && st.queue.length && !st.finished) {
       const q = st.queue.shift();
-      if (q.type === 'exam') { st.pending = q; A.resolveExam(st, 0); }
+      if (q.type === 'exam') {
+        st.pending = q;
+        while (q.exam.quiz && !q.exam.quiz.done) A.answerExamQ(st, Math.floor(Math.random() * 4));
+        A.resolveExam(st, 0);
+      }
       else if (q.type === 'event') {
         const list = A.eventChoices(st, q.ev);
         A.resolveEvent(st, q.ev, list && list.length ? Math.floor(Math.random() * list.length) : -1);
@@ -154,7 +161,7 @@ console.log('\n平均职级（在职者）' + avg('careerLevel').toFixed(2));
 const s2 = A.createGame({ name: '单元', gender: 'M', familyId: 'jiaoshi', talents: [] });
 const okJobs = A.jobOffers(s2).filter(o => o.okEdu && o.okStat && o.okFlag).length;
 console.log('\n[单元] 16 岁无学历可应聘岗位数：' + okJobs);
-s2.age = 22; s2.edu.eduLevel = 5; s2.flags.uni_985 = true; s2.stats.INT = 70; s2.stats.CHA = 50;
+s2.age = 22; s2.edu.eduLevel = 5; s2.flags.uni_985 = true; s2.stats.INT = 70; s2.stats.CHA = 50; s2.stats.MONEY = 50000000;
 const r = A.applyJob(s2, 'programmer');
 console.log('[单元] 985 应聘程序员：' + JSON.stringify(r) + ' → ' + s2.job);
 for (let i = 0; i < 8; i++) A.careerTick(s2);

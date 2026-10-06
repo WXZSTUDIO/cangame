@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>江南逆袭 | 人生模拟 · 从城中村到江景房</title>
 <meta name="description" content="文字版人生模拟游戏：随机投胎、中考高考、职业晋升、恋爱婚姻、贷款与投资，从 0 岁活到 100 岁以上。">
-<link rel="stylesheet" href="assets/style.css?v=5.0.0">
+<link rel="stylesheet" href="assets/style.css?v=5.1.0">
 </head>
 <body>
 
@@ -40,7 +40,8 @@
     <div id="howBox" class="how">
       <ul>
         <li><b>随机投胎</b>：出生年份（1955–2005）、家庭、天赋、姓名每局都随机。出身从城中村、县城双职工、农村、拆迁户、教师家庭、体制内到福利院孤儿，共 10 种。年份决定你这一世会亲身经历哪些年代大事——物价闯关、下岗潮、入世、股改、6124 点、股灾、疫情。</li>
-        <li><b>升学</b>：15 岁<b>中考</b>分档进市重点 / 普通高中 / 职高中专 / 辍学；18 岁<b>高考</b>分档上 985 / 211 / 一本 / 二本 / 专科，或者落榜直接进社会。分数由智力、意志、<b>学习投入</b>、家里能不能供补习共同决定——初中高中期间可以「熬夜刷题」，也可以早恋（会扣分）。</li>
+        <li><b>升学</b>：15 岁<b>中考</b>（满分 400）、18 岁<b>高考</b>（满分 700）——先考 5 道常识题，再和平时分一起放榜，分档进高中 / 大学。分数由智力、意志、<b>学习投入</b>、常识发挥共同决定——可以「熬夜刷题」，也可以早恋（会扣分）。</li>
+        <li><b>大学与专业</b>：录取后要<b>填志愿选专业</b>，不同大学专业不同；专业决定你能进哪一行——学医才能穿白大褂，学计算机才能写代码。毕业时要选：<b>直接找工作 / 考研 / 休整一年</b>。考研有成功率，可能落榜。</li>
         <li><b>职业与晋升</b>：毕业后在「工作」页找活干。24 种职业（程序员、产品经理、idol、主播、外卖骑手、群演、公务员、医生、律师、黑客、创业者……），每种都有 4–6 级职级阶梯。学历越高起步职级越高，绩效好会升职，混日子会降职甚至被裁。</li>
         <li><b>恋爱与婚姻</b>：同学里可以早恋，成年后能偶遇，也可以花钱托人相亲。聊天 / 约会 / 送礼涨好感，好够 80 且年满 22 岁可以求婚——对方家境越好，对你的存款要求越高。<b>未婚怀孕</b>会重挫道德与声望，你要在「生下来 / 奉子成婚 / 打掉」之间做选择。</li>
         <li><b>同学与校园</b>：初中、高中、大学各有自己的一班同学，可以逐个互动，也能「一键和全班互动」。大学期间每年还能选一项校园活动：泡图书馆、聚餐喝酒、社团、实习、兼职、通宵打游戏、考研、校园创业、谈恋爱、健身。</li>
@@ -56,7 +57,7 @@
         <li><b>结局</b>：没有唯一的终点——亿万富豪、收租的房东、股神、家族绵延、平凡的程序员……16 种以上结局，看你这一世怎么过。</li>
       </ul>
     </div>
-    <p class="foot">本作人物、公司、事件均为虚构。 · v5.0.0 · 中考高考 · 职业晋升 · 恋爱婚姻 · 贷款与寿命</p>
+    <p class="foot">本作人物、公司、事件均为虚构。 · v5.1.0 · 常识统考 · 专业与考研 · 一键互动</p>
   </div>
 </section>
 
@@ -115,6 +116,7 @@
     </header>
 
     <div class="tags" id="tagList"></div>
+    <footer class="metric-strip" id="metricStrip"></footer>
 
     <main class="stage">
       <div id="view-main" class="view">
@@ -127,13 +129,12 @@
     </main>
 
     <nav class="dock">
-      <button class="dock-btn" id="dockJob">💼<span>工作</span></button>
-      <button class="dock-btn" id="dockStock">📈<span>股票</span></button>
-      <button class="dock-btn go" id="dockNext">▶<span>下一年</span></button>
-      <button class="dock-btn" id="dockShop">🛍<span>花钱</span></button>
-      <button class="dock-btn" id="dockRel">👥<span>人际</span></button>
+      <button class="dock-btn" id="dockJob"><span class="d-ic">💼</span><span>工作</span></button>
+      <button class="dock-btn" id="dockStock"><span class="d-ic">📈</span><span>股票</span></button>
+      <button class="dock-btn go" id="dockNext"><span class="d-ic">▶</span><span>下一年</span></button>
+      <button class="dock-btn" id="dockShop"><span class="d-ic">🛍</span><span>花钱</span></button>
+      <button class="dock-btn" id="dockRel"><span class="d-ic">👥</span><span>人际</span></button>
     </nav>
-    <footer class="metric-strip" id="metricStrip"></footer>
   </div>
 </section>
 
@@ -197,13 +198,13 @@
   </div>
 </div>
 
-<script src="assets/data.js?v=5.0.0"></script>
-<script src="assets/market.js?v=5.0.0"></script>
-<script src="assets/engine.js?v=5.0.0"></script>
-<script src="assets/school.js?v=5.0.0"></script>
-<script src="assets/career.js?v=5.0.0"></script>
-<script src="assets/love.js?v=5.0.0"></script>
-<script src="assets/loan.js?v=5.0.0"></script>
-<script src="assets/ui.js?v=5.0.0"></script>
+<script src="assets/data.js?v=5.1.0"></script>
+<script src="assets/market.js?v=5.1.0"></script>
+<script src="assets/engine.js?v=5.1.0"></script>
+<script src="assets/school.js?v=5.1.0"></script>
+<script src="assets/career.js?v=5.1.0"></script>
+<script src="assets/love.js?v=5.1.0"></script>
+<script src="assets/loan.js?v=5.1.0"></script>
+<script src="assets/ui.js?v=5.1.0"></script>
 </body>
 </html>

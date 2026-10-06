@@ -217,25 +217,44 @@ function recommendUni(state) {
   return UNIVERSITIES[5];
 }
 
-/* ---------------- 生成考试事件 ---------------- */
+/* ---------------- 生成考试事件（先答 5 道常识题，再放榜） ---------------- */
+/* 满分：中考 400 / 高考 700。平时分（学术）占 85%，常识题 5 道占 15%——
+   权重配平过：真实玩家答对 4 题左右时，录取分布与旧制基本一致。 */
+function quizPick() {
+  const pool = EXAM_QUIZ.slice();
+  const out = [];
+  for (let i = 0; i < 5 && pool.length; i++) {
+    out.push(pool.splice(randInt(0, pool.length - 1), 1)[0]);
+  }
+  return out;
+}
+
+function examParts(kind) {
+  const full = kind === 'mid' ? 400 : 700;
+  const academicPart = Math.round(full * 0.85);   // 340 / 595
+  const perQ = Math.round((full - academicPart) / 5); // 12 / 21
+  return { full, academicPart, perQ };
+}
+
 function makeExamEvent(state, kind) {
   const e = state.edu;
   const year = fmtYear(state);
+  const P = examParts(kind);
   if (kind === 'mid') {
     const score = midExamScore(state);
-    e.mid = score;
-    const list = HIGH_SCHOOLS.filter(h => score >= h.minScore);
     return {
       type: 'exam',
       exam: {
         kind: 'mid',
-        title: '中考放榜',
-        score: score,
-        full: 100,
-        text: `${year}夏天，中考成绩出来了。校门口的红纸上写满了名字，你在榜上找到了自己：${score} 分。\n` +
-          `智力 ${Math.round(state.stats.INT)} · 意志 ${Math.round(state.stats.WILL)} · 这三年你投入的学习 ${Math.round(e.study || 0)}。\n` +
-          `接下来三年，你想去哪儿？`,
-        options: list
+        title: '中考 · 常识统考',
+        score: null,
+        full: P.full,
+        base: Math.round(score / 100 * P.academicPart),
+        perQ: P.perQ,
+        text: `${year} 夏天，中考来了。第一场是常识统考——五道题，每道 ${P.perQ} 分。\n` +
+          `智力 ${Math.round(state.stats.INT)} · 意志 ${Math.round(state.stats.WILL)} · 学习投入 ${Math.round(e.study || 0)}。认真作答。`,
+        options: null,
+        quiz: { qs: quizPick(), i: 0, correct: 0, done: false }
       }
     };
   }
@@ -254,22 +273,49 @@ function makeExamEvent(state, kind) {
     };
   }
   const score = gaoExamScore(state);
-  e.gao = score;
-  const list = UNIVERSITIES.filter(u => score >= u.minScore);
   const hs = HIGH_SCHOOLS.find(h => h.id === e.hs);
   return {
     type: 'exam',
     exam: {
       kind: 'gao',
-      title: '高考放榜',
-      score: score,
-      full: 110,
-      text: `${year}六月。查分系统卡了三个小时，你刷新了二十七次。\n` +
-        `${score} 分。${hs ? hs.name : '高中'} 出身，智力 ${Math.round(state.stats.INT)}，这三年你投入的学习 ${Math.round(e.study || 0)}。\n` +
-        `分数就摆在这里。你想报哪里？`,
-      options: list
+      title: '高考 · 常识统考',
+      score: null,
+      full: P.full,
+      base: Math.round(score / 100 * P.academicPart),
+      perQ: P.perQ,
+      text: `${year} 六月，高考。${hs ? hs.name : '高中'} 出身，智力 ${Math.round(state.stats.INT)}，学习投入 ${Math.round(e.study || 0)}。\n` +
+        `五道常识题，每道 ${P.perQ} 分——每一道都可能改写去向。`,
+      options: null,
+      quiz: { qs: quizPick(), i: 0, correct: 0, done: false }
     }
   };
+}
+
+/* 答题：每答一题记一次分，答完 5 题自动放榜 */
+function answerExamQ(state, optIdx) {
+  const item = state.pending;
+  if (!item || item.type !== 'exam' || !item.exam || !item.exam.quiz || item.exam.quiz.done) return { ok: false };
+  const ex = item.exam;
+  const qz = ex.quiz;
+  const q = qz.qs[qz.i];
+  if (!q) return { ok: false };
+  const correct = optIdx === q.a;
+  if (correct) qz.correct += 1;
+  pushLog(state, `【${ex.kind === 'mid' ? '中考' : '高考'}】第 ${qz.i + 1} 题「${q.q}」你的答案：${q.opts[optIdx]} — ${correct ? '答对了' : '答错了，正确答案是 ' + q.opts[q.a]}`, correct ? 'stat' : 'muted');
+  qz.i += 1;
+  if (qz.i >= qz.qs.length) {
+    // 放榜
+    const total = clamp(ex.base + qz.correct * ex.perQ, 0, ex.full);
+    ex.score = total;
+    qz.done = true;
+    if (ex.kind === 'mid') state.edu.mid = total; else state.edu.gao = total;
+    const pool = ex.kind === 'mid' ? HIGH_SCHOOLS : UNIVERSITIES;
+    ex.options = pool.filter(u => total >= Math.round(u.minScore / 100 * ex.full));
+    ex.text = `放榜了。常识题答对 ${qz.correct} / 5 道，加上平时分，总分 ${total} / ${ex.full}。\n` +
+      (ex.options.length > 1 ? `分数就摆在这里。你想去哪儿？` : `路只有一条。`);
+    pushLog(state, `【放榜】${ex.kind === 'mid' ? '中考' : '高考'} ${total} 分（满分 ${ex.full}）。`, 'money');
+  }
+  return { ok: true, correct: correct, done: qz.done };
 }
 
 /* ---------------- 录取落定 ---------------- */
@@ -282,7 +328,7 @@ function applySchool(state, id) {
     e.uni = u.id;
     e.eduLevel = u.edu;
     e.gradAge = state.age + u.years;
-    e.major = u.major.length ? u.major[randInt(0, u.major.length - 1)] : null;
+    e.major = null; // 专业由录取后的填志愿事件决定
     e.salaryK = u.salaryK;
     applyEffects(state, u.eff || {});
     (u.flags || []).forEach(f => state.flags[f] = true);
@@ -291,7 +337,12 @@ function applySchool(state, id) {
       pushLog(state, `【落榜】${u.name}。你把课本装进纸箱，第二天去了劳务市场。`, 'warn');
     } else {
       state.job = '大学生';
-      pushLog(state, `【录取】${u.name}${e.major ? ' · ' + e.major + ' 专业' : ''}。${u.desc}`, 'money');
+      pushLog(state, `【录取】${u.name}。${u.desc}`, 'money');
+      // 填志愿：从该校专业里三选一
+      if (u.major && u.major.length) {
+        state.queue = state.queue || [];
+        state.queue.unshift({ type: 'event', ev: makeMajorEvent(state, u) });
+      }
     }
     return;
   }

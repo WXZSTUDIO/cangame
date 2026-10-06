@@ -457,6 +457,9 @@ function renderRelView() {
   let extra = '';
 
   if (REL_TAB === 'family') {
+    extra = `<div class="of-btns" style="padding:0 4px 10px">
+      <button class="btn small" onclick="uiSocialAll('family')">🔁 一键陪家里人各一次</button>
+    </div>`;
     const famDebt = Math.round((STATE.family && STATE.family.debt) || 0);
     const famAsset = Math.round((STATE.family && STATE.family.assets) || 0);
     const ps = STATE.parents;
@@ -534,12 +537,17 @@ function renderRelView() {
     });
   } else if (REL_TAB === 'love') {
     const lv = loveInit(STATE);
+    if (lv.candidates.length) {
+      extra = `<div class="of-btns" style="padding:0 4px 10px">
+        <button class="btn small" onclick="uiSocialAll('lover')">🔁 一键问候所有在意的人</button>
+      </div>`;
+    }
     if (STATE.flags.married && STATE.spouse) {
       const sp = STATE.spouse;
       cards.push(sp.alive
         ? { ava: '💑', cls: 'green', name: sp.name, sub: `感情 ${Math.round(sp.affinity || 60)}% · ${sp.age}岁`, key: 'spouse' }
         : { ava: '🕯', cls: 'amber', name: sp.name, sub: '已经不在了。', dead: true });
-      extra = `<div class="of-btns" style="padding:0 4px 10px">
+      extra += `<div class="of-btns" style="padding:0 4px 10px">
         <button class="btn small" onclick="uiBaby()">🍼 要一个孩子</button>
       </div>`;
     }
@@ -751,12 +759,30 @@ function renderItem(item) {
     $('actions').innerHTML = btns || `<button class="btn primary" onclick="choose(-1)">继续 ▸</button>`;
   } else if (item.type === 'exam') {
     const ex = item.exam;
+    if (ex.quiz && !ex.quiz.done) {
+      // 常识统考：一道一道答（A/B/C/D 答题卡）
+      const qz = ex.quiz;
+      const q = qz.qs[qz.i];
+      const LETTERS = ['A', 'B', 'C', 'D'];
+      const OPT_COLORS = ['', 'o-gold', 'o-blue', 'o-teal', 'o-pink'];
+      html = `<div class="card-inner exam">
+        <div class="card-year">${fmtYear(STATE)} 年 · ${STATE.age}岁 · ${esc(ex.title)} · 第 ${qz.i + 1}/${qz.qs.length} 题 · 答对 ${qz.correct}</div>
+        <p class="quiz-q">${esc(q.q)}</p>
+        <div class="quiz-progress"><i style="width:${Math.round(qz.i / qz.qs.length * 100)}%"></i></div>
+      </div>`;
+      $('actions').innerHTML = q.opts.map((o, k) =>
+        `<button class="btn choice quiz-opt" onclick="answerExam(${k})"><span class="quiz-letter ${OPT_COLORS[k + 1]}">${LETTERS[k]}</span>${esc(o)}</button>`
+      ).join('');
+      $('card').innerHTML = html;
+      renderStats(); renderStream(); autosave();
+      return;
+    }
     html = `<div class="card-inner exam">
       <div class="card-year">${fmtYear(STATE)} 年 · ${STATE.age}岁 · ${esc(ex.title)}</div>
       ${ex.score != null ? `<div class="exam-score">${ex.score}<small> / ${ex.full}</small></div>` : ''}
       <p class="card-text">${esc(ex.text).replace(/\n/g, '<br>')}</p></div>`;
-    $('actions').innerHTML = ex.options.map((o, i) => {
-      const meta = o.minScore != null ? `录取线 ${o.minScore}` : '';
+    $('actions').innerHTML = (ex.options || []).map((o, i) => {
+      const meta = o.minScore != null ? `录取线 ${Math.round(o.minScore / 100 * (ex.full || 100))}` : '';
       return `<button class="btn choice" onclick="chooseExam(${i})">${esc(o.name)}
         <span class="gamble">${esc(o.desc)}</span>
         ${meta ? `<span class="risk r2">${meta}</span>` : ''}</button>`;
@@ -790,9 +816,19 @@ function advance() {
   renderItem(item);
 }
 
+function answerExam(k) {
+  const item = STATE.pending;
+  if (!item || item.type !== 'exam') return;
+  const r = answerExamQ(STATE, k);
+  if (!r.ok) { toast('现在不能作答'); return; }
+  renderItem(item); // 下一题或放榜，都在同一个卡片里
+}
+
 function chooseExam(i) {
   const item = STATE.pending;
   if (!item || item.type !== 'exam') return;
+  // 还在答题阶段时，把点击当答案处理
+  if (item.exam.quiz && !item.exam.quiz.done) { answerExam(i); return; }
   resolveExam(STATE, i);
   renderStats();
   renderStream();

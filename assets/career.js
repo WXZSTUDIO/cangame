@@ -7,7 +7,7 @@
 const CAREER_META = {
   minWorkAge: 16,
   retireAge: 60,
-  promoMinYears: 2
+  promoMinYears: 3
 };
 
 /* cat: 行业；edu: 最低学历等级；need: 属性门槛；risk: 职业风险（0-3） */
@@ -175,7 +175,7 @@ const CAREERS = [
     tick: { LOY: 1, NET: 1, STRESS: 1 }
   },
   {
-    id: 'accountant', name: '会计', cat: '财务', edu: 2, risk: 1, need: { INT: 30 },
+    id: 'accountant', name: '会计', cat: '财务', edu: 2, risk: 1, need: { INT: 30 }, major: ['金融'],
     desc: '凭证、报表、汇算清缴。账面干净，睡觉才踏实。',
     ladder: [
       { title: '出纳 / 会计助理', sal: 24000000, cost: 10000000 },
@@ -186,7 +186,7 @@ const CAREERS = [
     tick: { INT: 1, LOY: 2, STRESS: 2 }
   },
   {
-    id: 'nurse', name: '护士', cat: '医疗', edu: 2, risk: 1, need: {},
+    id: 'nurse', name: '护士', cat: '医疗', edu: 2, risk: 1, need: {}, major: ['医学'],
     desc: '夜班、扎针、被家属骂。你见过太多生离死别。',
     ladder: [
       { title: '实习护士', sal: 18000000, cost: 9000000 },
@@ -197,7 +197,7 @@ const CAREERS = [
     tick: { HP: -1, LOVE: 1, WILL: 1, STRESS: 2 }
   },
   {
-    id: 'ecom', name: '电商运营', cat: '互联网', edu: 2, risk: 2, need: { INT: 28 },
+    id: 'ecom', name: '电商运营', cat: '互联网', edu: 2, risk: 2, need: { INT: 28 }, major: ['金融', '理工'],
     desc: '详情页、投流、大促。GMV 就是你这一年的墓志铭。',
     ladder: [
       { title: '运营助理', sal: 22000000, cost: 10000000 },
@@ -210,7 +210,7 @@ const CAREERS = [
 
   /* ===== 本科 ===== */
   {
-    id: 'programmer', name: '程序员', cat: '互联网', edu: 3, risk: 1, need: { INT: 40 },
+    id: 'programmer', name: '程序员', cat: '互联网', edu: 3, risk: 1, need: { INT: 40 }, major: ['理工'],
     desc: '需求、排期、线上事故。三十五岁是哪道坎，你早晚会知道。',
     ladder: [
       { title: '实习程序员', sal: 30000000, cost: 11000000 },
@@ -235,7 +235,7 @@ const CAREERS = [
     tick: { INT: 1, CHA: 1, NET: 2, STRESS: 3 }
   },
   {
-    id: 'designer', name: 'UI / 视觉设计师', cat: '互联网', edu: 3, risk: 1, need: { INT: 30 },
+    id: 'designer', name: 'UI / 视觉设计师', cat: '互联网', edu: 3, risk: 1, need: { INT: 30 }, major: ['艺术'],
     desc: '改稿第十七版。甲方说，还是第一版好。',
     ladder: [
       { title: '设计助理', sal: 24000000, cost: 10000000 },
@@ -246,7 +246,7 @@ const CAREERS = [
     tick: { INT: 1, CHA: 1, HP: -1, STRESS: 2 }
   },
   {
-    id: 'hacker', name: '黑客 / 安全研究员', cat: '灰色', edu: 3, risk: 3, need: { INT: 55 },
+    id: 'hacker', name: '黑客 / 安全研究员', cat: '灰色', edu: 3, risk: 3, need: { INT: 55 }, major: ['理工'],
     desc: '灰色地带的技术活。一念是白帽子，一念是铁窗。',
     ladder: [
       { title: '脚本小子', sal: 36000000, cost: 12000000 },
@@ -257,7 +257,7 @@ const CAREERS = [
     tick: { INT: 2, ETH: -2, STRESS: 3, SEC: -2, WILL: 1 }
   },
   {
-    id: 'teacher', name: '中小学教师', cat: '教育', edu: 3, risk: 0, need: { INT: 40 },
+    id: 'teacher', name: '中小学教师', cat: '教育', edu: 3, risk: 0, need: { INT: 40 }, major: ['师范'],
     desc: '编制、寒暑假、一群永远记不住你生日的孩子。',
     ladder: [
       { title: '代课老师', sal: 22000000, cost: 9000000 },
@@ -269,7 +269,7 @@ const CAREERS = [
     tick: { INT: 1, LOVE: 1, SEC: 2, STRESS: 2 }
   },
   {
-    id: 'lawyer', name: '律师', cat: '法律', edu: 3, risk: 2, need: { INT: 50 },
+    id: 'lawyer', name: '律师', cat: '法律', edu: 3, risk: 2, need: { INT: 50 }, major: ['法律'],
     desc: '法考、实习、案源。前三年穷，后面看命。',
     ladder: [
       { title: '实习律师', sal: 18000000, cost: 10000000 },
@@ -296,7 +296,7 @@ const CAREERS = [
 
   /* ===== 名校 ===== */
   {
-    id: 'doctor', name: '医生', cat: '医疗', edu: 4, risk: 1, need: { INT: 55 },
+    id: 'doctor', name: '医生', cat: '医疗', edu: 4, risk: 1, need: { INT: 55 }, major: ['医学'],
     desc: '五年本科、三年规培、无数个夜班。白大褂穿上是责任。',
     ladder: [
       { title: '规培医生', sal: 22000000, cost: 11000000 },
@@ -308,7 +308,7 @@ const CAREERS = [
     tick: { INT: 1, FAME: 1, HP: -2, STRESS: 3, ETH: 1 }
   },
   {
-    id: 'finance', name: '投行 / 券商', cat: '金融', edu: 4, risk: 2, need: { INT: 55, CHA: 35 },
+    id: 'finance', name: '投行 / 券商', cat: '金融', edu: 4, risk: 2, need: { INT: 55, CHA: 35 }, major: ['金融'],
     desc: '路演、尽调、凌晨三点的 Excel。钱在这里流动得比任何地方都快。',
     ladder: [
       { title: '分析师', sal: 50000000, cost: 18000000 },
@@ -320,7 +320,7 @@ const CAREERS = [
     tick: { INT: 2, NET: 3, FAME: 1, HP: -2, STRESS: 4 }
   },
   {
-    id: 'ai', name: 'AI 算法工程师', cat: '互联网', edu: 5, risk: 2, need: { INT: 65 },
+    id: 'ai', name: 'AI 算法工程师', cat: '互联网', edu: 5, risk: 2, need: { INT: 65 }, major: ['理工'],
     desc: '算力、模型、论文。这个时代最贵的一批大脑，就坐在这些工位上。',
     ladder: [
       { title: '算法工程师', sal: 70000000, cost: 20000000 },
@@ -364,6 +364,7 @@ function careerOfJob(jobName) {
 /* ---------- 可应聘列表：学历与属性门槛 ---------- */
 function jobOffers(state) {
   const lv = (state.edu && state.edu.eduLevel) || 0;
+  const myMajor = majorCatOf(state);
   return CAREERS.map(c => {
     const okEdu = lv >= c.edu;
     let okStat = true, miss = '';
@@ -375,8 +376,14 @@ function jobOffers(state) {
     }
     let okFlag = true;
     if (c.needFlag && !c.needFlag.some(f => state.flags[f])) okFlag = false;
+    // 专业对口：只约束本科及以上的对口职业（没上过大学的人不受限）
+    let majorOk = true;
+    if (c.major && lv >= 3 && myMajor && c.major.indexOf(myMajor) === -1) {
+      majorOk = false;
+      okFlag = false;
+    }
     const entry = entryLevelFor(state, c);
-    return { career: c, okEdu, okStat, okFlag, miss, entry, title: c.ladder[entry].title };
+    return { career: c, okEdu, okStat, okFlag, majorOk, miss, entry, title: c.ladder[entry].title };
   });
 }
 
@@ -400,7 +407,7 @@ function applyJob(state, careerId) {
   if (!offer) return { ok: false, msg: '没有这个岗位' };
   if (!offer.okEdu) return { ok: false, msg: `学历不够（需 ${EDU_LEVELS[c.edu]}）` };
   if (!offer.okStat) return { ok: false, msg: `能力不够：${offer.miss}` };
-  if (!offer.okFlag) return { ok: false, msg: '你缺少进入这行的机缘' };
+  if (!offer.okFlag) return { ok: false, msg: offer.majorOk ? '你缺少进入这行的机缘' : '专业不对口（HR 筛简历就刷掉了）' };
   if (state.age < CAREER_META.minWorkAge) return { ok: false, msg: `${CAREER_META.minWorkAge}岁才能正式工作` };
   const lv = offer.entry;
   state.career = { id: c.id, level: lv, years: 0, joinedAge: state.age };
@@ -431,13 +438,13 @@ function careerTick(state) {
     - s.STRESS * 0.18
     - (state.stats.ETH < 35 ? 6 : 0)
     - (c.risk * 2);
-  const need = 46 + lv * 15;
+  const need = 50 + lv * 16;
 
   let result = null;
   if (score >= need && lv < c.ladder.length - 1 && state.career.years >= CAREER_META.promoMinYears) {
     state.career.level += 1;
     state.job = c.ladder[state.career.level].title;
-    applyEffects(state, { LOY: 6, MONEY: Math.round(c.ladder[state.career.level].sal * 0.12), NET: 3, STRESS: 4 });
+    applyEffects(state, { LOY: 6, MONEY: Math.round(c.ladder[state.career.level].sal * 0.08), NET: 3, STRESS: 4 });
     pushLog(state, `【晋升】${c.name} → ${state.job}。这一年你没有白熬。`, 'money');
     result = 'promote';
   } else if (score < need * 0.42 && lv > 0 && state.age < CAREER_META.retireAge) {
@@ -464,7 +471,8 @@ function careerIncome(state) {
   const j = JOBS[state.job] || { salary: 0, cost: 12000000 };
   const s = state.stats;
   const salaryK = (state.edu && state.edu.salaryK) || 1;
-  let income = j.salary * (1 + Math.max(0, state.age - 22) * 0.05) * salaryK;
-  income = Math.round(income * (1 + s.INT / 420) * (1 + s.NET / 850) * (1 + s.LOY / 900));
+  // 工龄与属性的放大倍数收窄：赚钱应该是一辈子慢慢变快，而不是指数起飞
+  let income = j.salary * (1 + Math.max(0, state.age - 22) * 0.028) * salaryK;
+  income = Math.round(income * (1 + s.INT / 520) * (1 + s.NET / 1000) * (1 + s.LOY / 1100));
   return Math.max(0, Math.round(income));
 }

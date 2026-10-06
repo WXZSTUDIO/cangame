@@ -14,7 +14,7 @@ vm.createContext(ctx);
 const api = vm.runInContext(
   '({createGame, step, resolveEvent, resolveInvest, finish, scoreOf, eventChoices, fmtMoney,' +
   ' FAMILIES, TALENTS, ENDINGS, EVENTS, INVESTMENTS, netWorth, HOUSES, CARS, GOODS, STOCKS, marketTick,' +
-  ' resolveExam, EDU_LEVELS, UNIVERSITIES, HIGH_SCHOOLS, CAREERS, loanTotal})',
+  ' resolveExam, answerExamQ, EDU_LEVELS, UNIVERSITIES, HIGH_SCHOOLS, CAREERS, loanTotal})',
   ctx
 );
 const {
@@ -65,6 +65,10 @@ function handleItem(st, item, style) {
   if (item.type === 'year') return true;
   if (item.type === 'exam') {
     st.pending = item;
+    // v5.1：先答 5 道常识题才会放榜
+    while (item.exam.quiz && !item.exam.quiz.done) {
+      ctx.answerExamQ(st, Math.floor(Math.random() * 4));
+    }
     const n = item.exam.options.length;
     // 保守派选中间，激进派冲最高的
     const idx = style === 'aggressive' ? 0 : (style === 'safe' ? n - 1 : Math.floor(Math.random() * n));

@@ -40,19 +40,40 @@ function randomPetName(type) {
 }
 
 /* ---------- 朋友圈 ---------- */
-function makeFriends() {
-  const pool = FRIEND_TYPES.slice();
-  const out = [];
-  for (let i = 0; i < 3 && pool.length; i++) {
-    const t = pool.splice(randInt(0, pool.length - 1), 1)[0];
-    out.push({
-      key: t.key,
-      name: randomKoreanName(chance(0.5) ? 'F' : 'M'),
-      affinity: randInt(12, 30),
-      lastTouch: -1
-    });
-  }
-  return out;
+/* 出生时一个朋友都没有——朋友是活出来的，不是生下来就配好的 */
+function makeFriends() { return []; }
+
+/* 每年按人生阶段认识新朋友：类型必须匹配年龄与身份 */
+function friendGrowth(state) {
+  if (!state.friends) state.friends = [];
+  const alive = state.friends.filter(f => f.alive !== false);
+  if (alive.length >= 5) return;
+  const has = (k) => state.friends.some(f => f.key === k && f.alive !== false);
+  const stage = schoolStageOf(state);
+  const candidates = [];
+  FRIEND_TYPES.forEach(t => {
+    if (state.age < (t.from || 0)) return;
+    if (t.to && state.age > t.to) return;
+    if (t.needCareer && !state.career) return;
+    if (t.key === 'teacher' && !stage) return;      // 恩师只在读书阶段出现
+    if (t.key === 'childhood' && state.age > 14) return; // 发小要趁小
+    if (has(t.key)) return;
+    candidates.push(t);
+  });
+  if (!candidates.length) return;
+  // 朋友不是每年都交得到的
+  if (!chance(state.age <= 6 ? 0.25 : 0.35)) return;
+  const t = candidates[randInt(0, candidates.length - 1)];
+  const f = {
+    key: t.key,
+    name: randomKoreanName(chance(0.5) ? 'F' : 'M'),
+    affinity: randInt(12, 30),
+    lastTouch: -1,
+    age: state.age + randInt(-1, 2),
+    since: state.age
+  };
+  state.friends.push(f);
+  pushLog(state, `【新朋友】你认识了 ${f.name}（${t.label}）。${t.line.replace('每年', '以后')}。`, 'muted');
 }
 
 /* ---------- 人际互动（人际关系面板） ---------- */
@@ -112,7 +133,7 @@ function socialAct(state, kind, idx) {
   return { ok: true };
 }
 
-/* 一键互动：把今年还没互动过的朋友 / 同学一次性走完 */
+/* 一键互动：把今年还没互动过的目标一次性走完（家人/同学/朋友/恋人全覆盖） */
 function socialActAll(state, kind) {
   if (!state || state.finished) return { ok: false, n: 0 };
   if (kind === 'friend') {
@@ -132,6 +153,23 @@ function socialActAll(state, kind) {
       if (classmateAct(state, i).ok) n++;
     });
     if (n) pushLog(state, `【课间】你和班上的同学都聊了一遍（${n} 位）。`, 'muted');
+    return { ok: n > 0, n };
+  }
+  if (kind === 'family') {
+    let n = 0;
+    ['father', 'mother', 'spouse', 'child', 'pet'].forEach(k => {
+      if (socialAct(state, k).ok) n++;
+    });
+    if (n) pushLog(state, `【团圆】这一年你把家里人挨个陪了一遍（${n} 位）。`, 'muted');
+    return { ok: n > 0, n };
+  }
+  if (kind === 'lover') {
+    let n = 0;
+    (loveInit(state).candidates || []).forEach((l, i) => {
+      if (l.lastTouch === state.age || !l.alive) return;
+      if (loveAct(state, i, 'chat').ok) n++;
+    });
+    if (n) pushLog(state, `【问候】这一年你把在意的人都问候了一遍（${n} 位）。`, 'muted');
     return { ok: n > 0, n };
   }
   return { ok: false, n: 0 };
@@ -681,9 +719,10 @@ function parentTick(state) {
 
 /* ---------- 朋友也会老、也会走 ---------- */
 function friendTick(state) {
+  friendGrowth(state); // 按人生阶段认识新朋友
   (state.friends || []).forEach(f => {
     if (f.alive === false) return;
-    f.age = (f.age || 20) + 1;
+    f.age = (f.age || state.age) + 1;
     if (state.age >= 55 && chance(0.004 + Math.max(0, state.age - 60) * 0.0016)) {
       f.alive = false;
       const t = FRIEND_TYPES.find(x => x.key === f.key);
@@ -778,7 +817,7 @@ function yearBase(state) {
     pushLog(state, `【住院】你在医院躺了两周，花了 ${fmtMoney(fee)}。医生说：再晚一个月就晚了。`, 'warn');
   }
 
-  // 大学毕业
+  // 大学毕业：先别急着散伙，先决定去哪条路（考研 / 找工作 / 休整）
   if (state.edu && state.edu.gradAge && state.age >= state.edu.gradAge && state.job === '大学生') {
     const u = UNIVERSITIES.find(x => x.id === state.edu.uni);
     state.job = '待业';
@@ -786,6 +825,9 @@ function yearBase(state) {
     state.classStage = null;
     pushLog(state, `【毕业】${u ? u.name : '大学'} · ${state.edu.major || ''} 专业。你搬出了宿舍，把学士服叠进了箱底。`, 'money');
     if (state.edu.eduLevel < 5) state.edu.eduLevel = Math.max(state.edu.eduLevel, u ? u.edu : 3);
+    // 毕业去哪条路：考研不是稳的，找工作也不是只有一个选项
+    state.extraQueue = state.extraQueue || [];
+    state.extraQueue.push({ type: 'event', ev: makeGradEvent(state) });
   }
 
   // 待业：按学历自动找一份能干的工作（避免长期无业陷入负债螺旋）
@@ -876,7 +918,7 @@ function step(state) {
   marketTick(state);
   settleInvestments(state);
 
-  const items = [];
+  let items = [];
   items.push({ type: 'year', age: state.age, year: fmtYear(state) });
 
   // 升学：15岁中考 / 18岁高考
@@ -893,6 +935,11 @@ function step(state) {
   offerInvestments(state).forEach(o => items.push(o));
   pickEvents(state).forEach(ev => items.push({ type: 'event', ev }));
 
+  // 毕业季等年度结算里产生的选择，要排在最前面
+  if (state.extraQueue && state.extraQueue.length) {
+    items = state.extraQueue.concat(items);
+    state.extraQueue = [];
+  }
   state.queue = items;
   parentTick(state); // 父母离世与继承要插到最前面
   if (!state.queue || !state.queue.length) {
@@ -939,6 +986,65 @@ function makeInheritanceEvent(state) {
       }
     ]
   };
+}
+
+/* ---------- 毕业季：考研还是找工作 ---------- */
+function makeGradEvent(state) {
+  const p = clamp(0.3 + state.stats.INT * 0.004 + (state.edu.study || 0) * 0.003 + (state.flags.uni_985 ? 0.08 : 0), 0.15, 0.85);
+  return {
+    id: 'grad_at_' + state.age,
+    age: [18, 200], w: 0,
+    kaoyanP: p,
+    text: `【毕业季】辅导员把三方协议放在你面前。同宿舍的人有人签了字，有人租了考研自习室的座位。\n` +
+      `考研成功率约 ${Math.round(p * 100)}%（智力 ${Math.round(state.stats.INT)} · 学习投入 ${Math.round(state.edu.study || 0)}）。你怎么选？`,
+    choices: [
+      {
+        text: '直接找工作：先在社会里站住脚',
+        risk: 1, flags: ['job_now'], eff: { NET: 3, WILL: 2, STRESS: 3 }
+      },
+      {
+        text: `考研：给自己再搏一次学历（成功率 ${Math.round(p * 100)}%）`,
+        risk: 3, flags: ['kaoyan_try'], eff: { STRESS: 6 }
+      },
+      {
+        text: '休整一年：先去看看这个世界再说话',
+        risk: 2, flags: ['gap_year'], eff: { MOOD: 8, MONEY: -3000000, STRESS: -8, CUR: 3 }
+      }
+    ]
+  };
+}
+
+/* ---------- 录取后选专业 ---------- */
+function makeMajorEvent(state, u) {
+  const majors = (u.major || []).slice(0, 3);
+  return {
+    id: 'major_at_' + state.age,
+    age: [15, 200], w: 0,
+    uniId: u.id,
+    text: `【填志愿】${u.name} 的录取系统亮了。招生简章摊在桌上——这几个专业你都能报，命运的分岔口就在这一栏。`,
+    choices: majors.map((m, i) => ({
+      text: `${m}（${MAJOR_LABEL[m] || '通用'}方向）`,
+      major: m,
+      risk: i === 0 ? 2 : (i === 1 ? 2 : 1),
+      eff: i === 0 ? { INT: 2 } : (i === 1 ? { CHA: 2 } : { WILL: 2 })
+    }))
+  };
+}
+
+/* 专业方向归类：决定哪些职业对口 */
+const MAJOR_LABEL = {
+  '计算机': '理工', '电子信息': '理工', '软件工程': '理工', '机械': '理工',
+  '土木工程': '理工', '机电': '理工', '环境工程': '理工',
+  '金融': '金融', '会计': '金融', '工商管理': '金融', '市场营销': '金融',
+  '电子商务': '金融', '物流管理': '金融',
+  '临床医学': '医学', '护理': '医学',
+  '法学': '法律',
+  '师范': '师范', '新闻传播': '师范', '英语': '师范', '汉语言': '师范', '学前教育': '师范',
+  '设计': '艺术', '动画': '艺术', '广告设计': '艺术'
+};
+function majorCatOf(state) {
+  const m = state.edu && state.edu.major;
+  return m ? (MAJOR_LABEL[m] || null) : null;
 }
 
 function resolveEvent(state, ev, choiceIndex) {
@@ -1051,8 +1157,7 @@ function resolveEvent(state, ev, choiceIndex) {
   }
 
   // 未婚怀孕的三种结局
-  if (ev.id && String(ev.id).indexOf('pregnant_at_') === 0) {
-    const lv = loveInit(state);
+  if (ev.id && String(ev.id).indexOf('pregnant_at_') === 0) {    const lv = loveInit(state);
     const l = lv.candidates.find(x => x.name === ev.loverName) || lv.partner;
     if (ch && ch.flags && ch.flags.indexOf('pregnant_keep') >= 0) {
       state.childCount = (state.childCount || 0) + 1;
@@ -1070,6 +1175,39 @@ function resolveEvent(state, ev, choiceIndex) {
     } else if (ch && ch.flags && ch.flags.indexOf('pregnant_drop') >= 0) {
       if (l) { l.pregnant = false; l.affinity = clamp(l.affinity - 15, 0, 100); }
       pushLog(state, `【手术】从医院出来的时候，天已经黑了。你们一路都没有说话。`, 'warn');
+    }
+  }
+
+  // 专业选择落定
+  if (ev.id && String(ev.id).indexOf('major_at_') === 0) {
+    if (ch && ch.major) {
+      state.edu.major = ch.major;
+      pushLog(state, `【专业】你的专业定了：${ch.major}。以后简历上那一行，就是它了。`, 'money');
+    }
+  }
+  // 毕业选择落定：考研可能落榜，落榜就进社会
+  if (ev.id && String(ev.id).indexOf('grad_at_') === 0) {
+    const e = state.edu;
+    if (ch && ch.flags && ch.flags.indexOf('kaoyan_try') >= 0) {
+      if (chance(ev.kaoyanP || 0.4)) {
+        e.eduLevel = 5;
+        e.salaryK = Math.max(e.salaryK || 1, 1.45);
+        e.gradAge = state.age + 3;
+        state.job = '大学生';
+        state.flags.kaoyan_ok = true;
+        applyEffects(state, { INT: 3, FAME: 4, WILL: 3 });
+        pushLog(state, '【上岸】考研成绩出来了，你考上了。接下来三年，又是自习室的灯。', 'money');
+      } else {
+        state.flags.kaoyan_fail = true;
+        applyEffects(state, { STRESS: 10, WILL: 3, MOOD: -6 });
+        pushLog(state, '【落榜】考研分数出来了，差了几分。二战的钱和勇气都没攒够，先把工作找起来吧。', 'warn');
+        autoEmploy(state);
+      }
+    } else if (ch && ch.flags && ch.flags.indexOf('job_now') >= 0) {
+      autoEmploy(state);
+      pushLog(state, '【求职】你更新了简历开始投递。等通知的日子里，你把这座城市又走了一遍。', 'muted');
+    } else if (ch && ch.flags && ch.flags.indexOf('gap_year') >= 0) {
+      pushLog(state, '【间隔年】你背着包走了很远。有些答案不在自习室里。', 'muted');
     }
   }
 
