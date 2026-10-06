@@ -313,7 +313,137 @@ function initFamilyFin(familyId, startYear) {
     assets: Math.round(base.assets * k),
     debt: Math.round(base.debt * k),
     startAssets: Math.round(base.assets * k),
-    startDebt: Math.round(base.debt * k)
+    startDebt: Math.round(base.debt * k),
+    income: 0, spend: 0, delta: 0, repaid: 0, interest: 0, act: null, actYear: -1
+  };
+}
+
+/* 父母的职业：按出身给一个说得通的行当 */
+function parentJob(gender, family) {
+  const table = (gender === 'F') ? (PARENT_JOBS.F || {}) : (PARENT_JOBS.M || {});
+  const fl = (family && family.flags) || [];
+  const order = ['prof', 'business', 'stable', 'shop', 'rural', 'town', 'poor', 'city'];
+  for (let i = 0; i < order.length; i++) {
+    if (fl.indexOf(order[i]) >= 0 && table[order[i]]) return table[order[i]];
+  }
+  return table.default || '工人';
+}
+
+/* 家庭年收入：与出身、家底、父母是否还在上班 / 是否退休挂钩 */
+function familyIncome(state) {
+  const fin = state.family || { assets: 0 };
+  const scale = (typeof tableAt === 'function') ? tableAt(FIN_SCALE, fmtYear(state)) : 1;
+  const fam = familyById(state.familyId) || { flags: [] };
+  let k = clamp(0.55 + Math.sqrt(Math.max(0, fin.assets || 0) / 220000000) * 0.85, 0.55, 2.4);
+  const fl = fam.flags || [];
+  if (fl.indexOf('poor') >= 0) k *= 0.72;
+  if (fl.indexOf('prof') >= 0) k *= 1.15;
+  if (fl.indexOf('business') >= 0) k *= 1.35;
+  if (fl.indexOf('stable') >= 0) k *= 1.08;
+  if (state.flags.parents_jobless) k *= 0.4;
+  const ps = state.parents;
+  if (ps) {
+    const fOld = !ps.father || !ps.father.alive || ps.father.age >= 60;
+    const mOld = !ps.mother || !ps.mother.alive || ps.mother.age >= 55;
+    if (fOld && mOld) k *= 0.55;
+  }
+  return Math.round(12000000 * scale * k);
+}
+
+function pickFamilyAct(state) {
+  const ps = state.parents || {};
+  const hasF = !!(ps.father && ps.father.alive);
+  const hasM = !!(ps.mother && ps.mother.alive);
+  const pool = FAMILY_ACTS.filter(a => {
+    const t = a.text || '';
+    if (t.indexOf('父亲') >= 0 && !hasF) return false;
+    if (t.indexOf('母亲') >= 0 && !hasM) return false;
+    return true;
+  });
+  const use = pool.length ? pool : FAMILY_ACTS;
+  const total = use.reduce((a, b) => a + (b.w || 1), 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < use.length; i++) { r -= (use[i].w || 1); if (r <= 0) return use[i]; }
+  return use[use.length - 1];
+}
+
+/* 家庭年度结算：父母也在挣钱、花钱、还债、出事（账簿每年都在动） */
+function familyTick(state) {
+  const fin = state.family || (state.family = initFamilyFin(state.familyId, state.startYear));
+  const ps = state.parents;
+  const aliveN = ps ? ['father', 'mother'].filter(k => ps[k] && ps[k].alive).length : 0;
+  if (!aliveN) { fin.income = 0; fin.spend = 0; fin.delta = 0; fin.act = null; return null; }
+  const scale = (typeof tableAt === 'function') ? tableAt(FIN_SCALE, fmtYear(state)) : 1;
+  const aliveK = 0.6 + aliveN * 0.2;
+  const income = Math.round(familyIncome(state) * aliveK);
+  // 父母的日常开销（未成年时的学费由 yearBase 走家庭账簿，这里不重复计）
+  let spend = Math.round(6000000 * scale * aliveK);
+  const interest = Math.round((fin.debt || 0) * 0.07);
+  let delta = income - spend - interest;
+  let repaid = 0;
+  if (fin.debt > 0 && delta > 0) {
+    repaid = Math.min(fin.debt, Math.round(delta * 0.5));
+    fin.debt -= repaid;
+    delta -= repaid;
+  }
+  fin.assets = Math.round((fin.assets || 0) + delta);
+  if (fin.assets < 0) { fin.debt = Math.round((fin.debt || 0) - fin.assets); fin.assets = 0; }
+  fin.assets = Math.round(fin.assets * 1.03);   // 资产随年代增值
+  fin.income = income; fin.spend = spend + interest + repaid;
+  fin.delta = delta; fin.repaid = repaid; fin.interest = interest;
+
+  // 这一年家里发生了什么（父母是活的，会做事）
+  let act = null;
+  if (state.age >= 1 && chance(0.62)) {
+    act = pickFamilyAct(state);
+    const dA = Math.round((act.fin.assets || 0) * scale);
+    const dD = Math.round((act.fin.debt || 0) * scale);
+    fin.assets += dA;
+    if (fin.assets < 0) { fin.debt = Math.round((fin.debt || 0) - fin.assets); fin.assets = 0; }
+    fin.debt = Math.max(0, Math.round((fin.debt || 0) + dD));
+    if (act.flag) state.flags[act.flag] = true;
+    const eff = {};
+    for (const kk in (act.stat || {})) {
+      let v = act.stat[kk];
+      if (kk === 'MONEY') v = Math.round(v * scale);
+      eff[kk] = v;
+    }
+    applyEffects(state, eff);
+    pushLog(state, `【家里】${act.text}`, 'fam');
+    fin.act = { id: act.id, text: act.text };
+    fin.actYear = state.age;
+  }
+  if (state.age % 5 === 0 || fin.delta < -15000000) {
+    pushLog(state, `【家里的账】${fmtYear(state)} 年：收入 ${fmtMoney(income)}，支出 ${fmtMoney(spend)}` +
+      `${interest ? `，利息 ${fmtMoney(interest)}` : ''}${repaid ? `，还债 ${fmtMoney(repaid)}` : ''}` +
+      ` → 资产 ${fmtMoney(fin.assets)}，负债 ${fmtMoney(fin.debt)}。`, 'fam');
+  }
+  // 家里撑不住了：会开口找你要钱（成年后，且不会年年要）
+  if (state.age >= 18 && (fin.debt || 0) > 40000000 && (fin.debt || 0) > (fin.assets || 0) * 1.5
+      && state.stats.MONEY > 8000000 && (state.famAskYear || 0) + 4 <= state.age && chance(0.4)) {
+    state.famAskYear = state.age;
+    state.extraQueue = state.extraQueue || [];
+    state.extraQueue.push({ type: 'event', ev: makeFamilyAskEvent(state) });
+  }
+  return { income, spend, delta, act };
+}
+
+function makeFamilyAskEvent(state) {
+  const fin = state.family || { debt: 0, assets: 0 };
+  const need = Math.max(3000000, Math.round((fin.debt || 0) * 0.25));
+  const scale = (typeof tableAt === 'function') ? tableAt(FIN_SCALE, fmtYear(state)) : 1;
+  const amt = Math.round(need * scale * 0.2);
+  return {
+    id: 'famask_at_' + state.age,
+    age: [18, 200], w: 0,
+    askAmt: amt,
+    text: `【家里开口】母亲在电话里绕了很久，最后才说出来：家里还欠着 ${fmtMoney(fin.debt)}，这个月过不去了。\n` +
+      `你握着手机，想起很多年前她往你包里塞钱的那个下午。`,
+    choices: [
+      { text: `把 ${fmtMoney(amt * 3)} 打回去`, risk: 2, eff: { MONEY: -amt * 3, LOVE: 8, SEC: 4, STRESS: -3, ETH: 2 }, flags: ['helped_family'] },
+      { text: `先寄 ${fmtMoney(amt)}，剩下的再说`, risk: 2, eff: { MONEY: -amt, LOVE: 3, SEC: 1, STRESS: 2 } },
+      { text: '说自己也不容易，挂了电话', risk: 3, eff: { LOVE: -10, SEC: -5, STRESS: 8, ETH: -6, MOOD: -6 } }
+    ]
   };
 }
 
@@ -325,11 +455,11 @@ function createGame(opt) {
   const parents = isOrphan ? null : {
     father: isSingle ? null : {
       name: randomParentName('M'), alive: true, affinity: randInt(42, 68),
-      age: randInt(25, 38), bond: '父'
+      age: randInt(25, 38), bond: '父', job: parentJob('M', family), hp: randInt(72, 96)
     },
     mother: {
       name: randomParentName('F'), alive: true, affinity: randInt(52, 76),
-      age: randInt(23, 36), bond: '母'
+      age: randInt(23, 36), bond: '母', job: parentJob('F', family), hp: randInt(72, 96)
     }
   };
   const state = {
@@ -370,6 +500,10 @@ function createGame(opt) {
     loans: [],
     credit: 100,
     grief: null,
+    ill: null,
+    achievements: [],
+    famAskYear: 0,
+    lotteryYear: -1,
     socialTouch: {},
     uniTouch: {},
     alive: true,
@@ -427,7 +561,209 @@ function migrateState(state) {
   if (!state.spouse && state.spouseName) {
     state.spouse = { name: state.spouseName, age: clamp(state.age + randInt(-3, 3), 20, 70), affinity: 65, alive: true, since: state.age };
   }
+  if (state.ill === undefined) state.ill = null;
+  if (!state.achievements) state.achievements = [];
+  if (state.famAskYear == null) state.famAskYear = 0;
+  if (state.lotteryYear == null) state.lotteryYear = -1;
+  if (state.family) {
+    const f = state.family;
+    if (f.income == null) f.income = 0;
+    if (f.spend == null) f.spend = 0;
+    if (f.delta == null) f.delta = 0;
+    if (f.repaid == null) f.repaid = 0;
+    if (f.interest == null) f.interest = 0;
+    if (f.act === undefined) f.act = null;
+    if (f.actYear == null) f.actYear = -1;
+  }
+  // 父母补上职业与健康（老存档没有这两个字段）
+  if (state.parents) {
+    const fam = familyById(state.familyId) || { flags: [] };
+    ['father', 'mother'].forEach(k => {
+      const p = state.parents[k];
+      if (!p) return;
+      if (!p.job) p.job = parentJob(k === 'father' ? 'M' : 'F', fam);
+      if (p.hp == null) p.hp = clamp(90 - Math.max(0, (p.age || 40) - 35), 25, 100);
+    });
+  }
   return state;
+}
+
+/* ---------- 疾病：健康过低会强制生病，不治会一路恶化到死亡 ---------- */
+function illStageCn(n) {
+  return ['', '初期', '中期', '重度', '危重'][clamp(n, 0, 4)] || '初期';
+}
+
+function illnessRisk(state) {
+  const s = state.stats;
+  let p;
+  if (s.HP < 25) p = 0.28;
+  else if (s.HP < 40) p = 0.15;
+  else if (s.HP < 55) p = 0.055;
+  else if (s.HP < 70) p = 0.018;
+  else p = 0.007;
+  p *= 1 + Math.max(0, s.STRESS - 50) / 90;
+  p *= 1 + Math.max(0, state.age - 55) / 90;
+  if (state.flags.smoke || state.flags.drink) p *= 1.15;
+  return clamp(p, 0.005, 0.6);
+}
+
+function illTreatCost(state, ref, stage, level) {
+  const scale = (typeof tableAt === 'function') ? tableAt(FIN_SCALE, fmtYear(state)) : 1;
+  const base = (ref.sev || 1) * 6000000 * scale;
+  return Math.round(base * (1 + (stage - 1) * 0.55) * (level === 'hospital' ? 2.6 : 1));
+}
+
+function makeIllnessEvent(state, ref) {
+  if (!ref) ref = (typeof ILLNESS !== 'undefined' && ILLNESS.length) ? ILLNESS[0] : { id: 'cold', name: '感冒', sev: 1, desc: '发热、咳嗽。', chronic: false };
+  const ill = state.ill || { stage: 1 };
+  const c1 = illTreatCost(state, ref, ill.stage, 'clinic');
+  const c2 = illTreatCost(state, ref, ill.stage, 'hospital');
+  return {
+    id: 'ill_at_' + state.age + '_' + ref.id,
+    age: [1, 200], w: 0,
+    illId: ref.id,
+    text: `【生病 · ${ref.name}】${ref.desc}\n医生的话很平静：现在是${illStageCn(ill.stage)}，` +
+      `治要花钱，扛会拖。拖到最重的时候，钱也不一定买得回来。`,
+    choices: [
+      {
+        text: '硬扛：不去医院，过阵子就好了',
+        risk: 3, eff: { HP: -(3 + (ref.sev || 1) * 2), STRESS: 6, WILL: 2 },
+        flags: ['ill_ignore'], illAct: 'ignore'
+      },
+      {
+        text: `去诊所拿药 · ${fmtMoney(c1)}`,
+        risk: 2, eff: { MONEY: -c1, STRESS: -2 }, illAct: 'clinic', illCost: c1
+      },
+      {
+        text: `住院治疗 · ${fmtMoney(c2)}`,
+        risk: 1, eff: { MONEY: -c2, STRESS: -6, HP: 4 }, illAct: 'hospital', illCost: c2
+      }
+    ]
+  };
+}
+
+/* 主动就医（工作页 / 人际页的按钮也走这里） */
+function treatIllness(state, level) {
+  if (!state.ill) return { ok: false, msg: '你没病' };
+  const ref = ILLNESS.find(x => x.id === state.ill.id) || ILLNESS[0];
+  const cost = illTreatCost(state, ref, state.ill.stage, level);
+  if (state.stats.MONEY < cost) return { ok: false, msg: `钱不够（需要 ${fmtMoney(cost)}）` };
+  state.stats.MONEY -= cost;
+  const p = cureChance(state.ill.stage, ref, level);
+  if (chance(p)) {
+    const st = state.ill.stage;
+    state.ill = null;
+    if (st >= 3) state.flags.ill_survived = true;
+    applyEffects(state, { HP: 10 + (level === 'hospital' ? 8 : 0), STRESS: -5, MOOD: 3 });
+    pushLog(state, `【就医】${ref.name} 治好了，花了 ${fmtMoney(cost)}。走出医院时你觉得阳光有点刺眼。`, 'money');
+    return { ok: true, cured: true, cost };
+  }
+  state.ill.stage = clamp(state.ill.stage, 1, 4);
+  applyEffects(state, { HP: 4, STRESS: -2 });
+  pushLog(state, `【就医】${ref.name} 还没好透，花了 ${fmtMoney(cost)}。医生说：再来一个疗程。`, 'warn');
+  return { ok: true, cured: false, cost };
+}
+
+function cureChance(stage, ref, level) {
+  const sev = (ref && ref.sev) || 1;
+  const chronic = ref && ref.chronic;
+  let p = (level === 'hospital')
+    ? 0.97 - (stage - 1) * 0.08 - (sev - 1) * 0.05
+    : 0.92 - (stage - 1) * 0.14 - (sev - 1) * 0.08;
+  if (chronic) p -= 0.12;
+  return clamp(p, 0.12, 0.97);
+}
+
+function illnessTick(state) {
+  if (state.finished || !state.alive) return null;
+  const s = state.stats;
+  if (state.ill) {
+    const ill = state.ill;
+    const ref = ILLNESS.find(x => x.id === ill.id) || ILLNESS[0];
+    ill.years = (ill.years || 0) + 1;
+    // 身体底子还行、又不是慢性病时，也有可能自己好转
+    if (!ill.chronic && ill.stage <= 2 && s.HP >= 52 && chance(0.3)) {
+      ill.stage -= 1;
+      if (ill.stage <= 0) {
+        state.ill = null;
+        applyEffects(state, { HP: 5, MOOD: 2 });
+        pushLog(state, `【好转】${ref.name} 慢慢好了。你这才想起来，自己已经很久没病过了。`, 'money');
+        return null;
+      }
+    } else if (ill.stage < 4 && (ill.chronic || chance(0.42))) {
+      ill.stage += 1;
+    }
+    const drain = Math.round(((ref.hp || 5) + ill.stage * 2) * 0.6);
+    s.HP -= drain;
+    applyEffects(state, {});
+    pushLog(state, `【病】${ref.name} · 第 ${ill.years} 年 · ${illStageCn(ill.stage)}。健康 -${drain}。` +
+      (ill.stage >= 3 ? '再这么拖下去，就真的来不及了。' : ''), 'warn');
+    // 只有拖到危重、身体又真的撑不住时才会要命
+    if (ill.stage >= 4 && s.HP < 45) {
+      const p = clamp(0.15 + Math.max(0, 40 - s.HP) / 60, 0.12, 0.6);
+      if (chance(p)) {
+        forceEnd(state, {
+          id: 'end_ill', rank: 'D', title: '病逝',
+          text: `${fmtYear(state)} 年，${state.age}岁，你没能撑过去。${ref.name}拖了 ${ill.years} 年——你总说「等忙完这一阵就去」。`
+        });
+        return ill;
+      }
+    }
+    if (s.HP <= 0) checkDeath(state);
+    return ill;
+  }
+  if (chance(illnessRisk(state))) {
+    const pool = ILLNESS.filter(x => state.age >= x.minAge);
+    const ref = pool[randInt(0, pool.length - 1)] || ILLNESS[0];
+    state.ill = { id: ref.id, name: ref.name, stage: 1, since: state.age, years: 0, chronic: !!ref.chronic };
+    state.extraQueue = state.extraQueue || [];
+    state.extraQueue.push({ type: 'event', ev: makeIllnessEvent(state, ref) });
+    return state.ill;
+  }
+  return null;
+}
+
+/* ---------- 成就：达成即时弹徽章 ---------- */
+function checkAchievements(state) {
+  if (!state.achievements) state.achievements = [];
+  let got = null;
+  (typeof ACHIEVEMENTS !== 'undefined' ? ACHIEVEMENTS : []).forEach(a => {
+    if (state.achievements.indexOf(a.id) >= 0) return;
+    let hit = false;
+    try { hit = !!(a.cond && a.cond(state)); } catch (e) { hit = false; }
+    if (hit) {
+      state.achievements.push(a.id);
+      pushLog(state, `【成就】${a.icon} ${a.name} — ${a.desc}`, 'money');
+      if (!got) got = a;
+    }
+  });
+  return got;
+}
+
+/* ---------- 彩票：一年一张，纯运气 ---------- */
+function buyLottery(state) {
+  const scale = (typeof tableAt === 'function') ? tableAt(FIN_SCALE, fmtYear(state)) : 1;
+  const cost = Math.round(LOTTERY.cost * scale);
+  if (state.lotteryYear === state.age) return { ok: false, msg: '今年已经买过了' };
+  if (state.stats.MONEY < cost) return { ok: false, msg: '连张彩票都买不起' };
+  state.stats.MONEY -= cost;
+  state.lotteryYear = state.age;
+  let r = Math.random(), prize = LOTTERY.prizes[LOTTERY.prizes.length - 1];
+  for (let i = 0; i < LOTTERY.prizes.length; i++) {
+    r -= LOTTERY.prizes[i].p;
+    if (r <= 0) { prize = LOTTERY.prizes[i]; break; }
+  }
+  const win = Math.round(cost * prize.k);
+  if (win > 0) {
+    state.stats.MONEY += win;
+    if (prize.jackpot) state.flags.lottery_jackpot = true;
+    pushLog(state, `【彩票】${prize.name}！花了 ${fmtMoney(cost)}，到手 ${fmtMoney(win)}。` +
+      (prize.jackpot ? '彩票站的老板盯着你看了一整分钟。' : ''), 'money');
+  } else {
+    pushLog(state, `【彩票】谢谢参与。${fmtMoney(cost)} 换了一张废纸。`, 'muted');
+  }
+  applyEffects(state, {});
+  return { ok: true, win: win, name: prize.name };
 }
 
 function pushLog(state, text, type) {
@@ -766,6 +1102,8 @@ function parentTick(state) {
 /* ---------- 朋友也会老、也会走 ---------- */
 function friendTick(state) {
   friendGrowth(state); // 按人生阶段认识新朋友
+  // 同学也在长大：十年后再见，他们也不再是教室里的那张脸
+  (state.classmates || []).forEach(c => { c.age = (c.age || state.age) + 1; });
   (state.friends || []).forEach(f => {
     if (f.alive === false) return;
     f.age = (f.age || state.age) + 1;
@@ -793,6 +1131,17 @@ function autoEmploy(state) {
 }
 
 /* ---------- 年度基础结算 ---------- */
+/* 年支出（工作页与结算共用同一套口径，避免两处不一致） */
+function livingCost(state) {
+  const j = JOBS[state.job] || { cost: 12000000 };
+  let cost = j.cost || 0;
+  if (state.flags.gangnam_owner) cost += 15000000;
+  if (state.flags.married) cost += 12000000;
+  if (state.childCount) cost += state.childCount * 6000000;
+  if (state.flags.divorced && state.childCount) cost += state.childCount * 3000000; // 抚养费
+  return cost;
+}
+
 function yearBase(state) {
   const s = state.stats;
   // 自然成长 + 人生指标自然培养
@@ -855,12 +1204,12 @@ function yearBase(state) {
   if (s.STRESS > 70) { s.HP -= Math.round((s.STRESS - 70) / 6); }
   s.STRESS = Math.max(0, s.STRESS - 7);
 
-  // 病重时自动就医（有钱才能买回时间）
-  if (s.HP < 35 && s.MONEY >= 20000000 && state.age >= 20) {
-    const fee = Math.min(Math.max(20000000, Math.round(s.MONEY * 0.1)), 500000000);
+  // 病重时的自动就医只是一个兜底：真得了病要走疾病事件（不治会一路恶化）
+  if (!state.ill && s.HP < 28 && s.MONEY >= 60000000 && state.age >= 20) {
+    const fee = Math.min(Math.max(30000000, Math.round(s.MONEY * 0.12)), 500000000);
     s.MONEY -= fee;
-    s.HP += 20; s.STRESS -= 10;
-    pushLog(state, `【住院】你在医院躺了两周，花了 ${fmtMoney(fee)}。医生说：再晚一个月就晚了。`, 'warn');
+    s.HP += 14; s.STRESS -= 8;
+    pushLog(state, `【体检住院】你在医院躺了两周，花了 ${fmtMoney(fee)}。医生说：再晚一个月就晚了。`, 'warn');
   }
 
   // 大学毕业：先别急着散伙，先决定去哪条路（考研 / 找工作 / 休整）
@@ -909,11 +1258,7 @@ function yearBase(state) {
     } else {
       income = Math.round(j.salary * (1 + s.INT / 400) * (1 + s.NET / 800));
     }
-    let cost = j.cost;
-    if (state.flags.gangnam_owner) cost += 15000000;
-    if (state.flags.married) cost += 12000000;
-    if (state.childCount) cost += state.childCount * 6000000;
-    if (state.job === '大学生') income += 0;
+    const cost = livingCost(state);
     const net = income - cost;
     s.MONEY += net;
     pushLog(state, `【${fmtYear(state)} 年】${state.job} · 收入 ${fmtMoney(income)}，支出 ${fmtMoney(cost)}，结余 ${net >= 0 ? '+' : ''}${fmtMoney(net)}`, 'money');
@@ -978,7 +1323,11 @@ function step(state) {
   careerTick(state);
   loveTick(state);
   friendTick(state);
+  familyTick(state);
+  illnessTick(state);
+  if (state.finished) return { type: 'end' };
   loanTick(state);
+  checkAchievements(state);
 
   offerInvestments(state).forEach(o => items.push(o));
   pickEvents(state).forEach(ev => items.push({ type: 'event', ev }));
@@ -1226,6 +1575,83 @@ function resolveEvent(state, ev, choiceIndex) {
     }
   }
 
+  // 生病：治不治，决定这条命还能不能留住
+  if (ev.id && String(ev.id).indexOf('ill_at_') === 0) {
+    const ref = ILLNESS.find(x => x.id === ev.illId) || ILLNESS[0];
+    let act = ch && ch.illAct;
+    if (act && ch.illCost && state.stats.MONEY < ch.illCost) {
+      state.stats.MONEY += ch.illCost;   // 钱已经扣过了，掏不出来就退回去
+      pushLog(state, `【没钱】${fmtMoney(ch.illCost)} 的医药费你掏不出来。你只能回家躺着，喝热水。`, 'warn');
+      act = 'ignore';
+    }
+    if (state.ill) {
+      if (act === 'ignore') {
+        if (!ref.chronic && state.ill.stage <= 1 && chance(0.45)) {
+          const nm = ref.name;
+          state.ill = null;
+          applyEffects(state, { HP: 6, WILL: 2 });
+          pushLog(state, `【硬扛】${nm}居然自己好了。你烧了三天，然后活了过来。`, 'money');
+        } else {
+          state.ill.stage = clamp(state.ill.stage + 1, 1, 4);
+          pushLog(state, `【硬扛】没扛过去。${ref.name} 更重了：${illStageCn(state.ill.stage)}。`, 'warn');
+        }
+      } else if (act === 'clinic' || act === 'hospital') {
+        const p = cureChance(state.ill.stage, ref, act);
+        if (chance(p)) {
+          const st = state.ill.stage;
+          state.ill = null;
+          if (st >= 3) state.flags.ill_survived = true;
+          applyEffects(state, { HP: 10 + (act === 'hospital' ? 8 : 0), STRESS: -4, MOOD: 3 });
+          pushLog(state, `【治疗】${ref.name} 治好了。走出医院时你觉得阳光有点刺眼。`, 'money');
+        } else {
+          if (ref.chronic && chance(0.4)) state.ill.stage = clamp(state.ill.stage + 1, 1, 4);
+          applyEffects(state, { HP: 4, STRESS: -2 });
+          pushLog(state, `【治疗】${ref.name} 还没断根，${illStageCn(state.ill.stage)}。医生说：再来一个疗程。`, 'warn');
+        }
+      }
+    }
+  }
+
+  // 婚外情东窗事发
+  if (ev.id && String(ev.id).indexOf('affair_at_') === 0) {
+    const lv = loveInit(state);
+    const l = lv.candidates.find(x => x.name === ev.loverName);
+    const fl = (ch && ch.flags) || [];
+    const drop = () => { if (l) lv.candidates = lv.candidates.filter(x => x !== l); };
+    if (fl.indexOf('affair_cut') >= 0) {
+      drop();
+      if (state.spouse) state.spouse.affinity = clamp((state.spouse.affinity || 60) - 8, 0, 100);
+      pushLog(state, `【断了】你把 ${l ? l.name : 'TA'} 的所有联系方式删了。回家路上买了菜，装作什么都没发生。`, 'muted');
+    } else if (fl.indexOf('affair_confess') >= 0) {
+      drop();
+      if (state.spouse) state.spouse.affinity = clamp((state.spouse.affinity || 60) - 24, 0, 100);
+      pushLog(state, `【坦白】你说了。${state.spouse ? state.spouse.name : 'TA'} 坐在沙发上，很久没有说话。`, 'warn');
+      if (chance(0.38)) divorce(state, '出轨被撞破');
+    } else if (fl.indexOf('affair_divorce') >= 0) {
+      divorce(state, '为了另一个人');
+      drop();
+      if (l) {
+        lv.candidates.push(l);
+        if (state.age >= LOVE_META.marryAge && l.affinity >= LOVE_META.marryAffinity) marry(state, l);
+        else { lv.partner = l; state.flags.dating = true; }
+      }
+    }
+  }
+
+  // 婚姻危机
+  if (ev.id && String(ev.id).indexOf('marry_at_') === 0) {
+    const fl = (ch && ch.flags) || [];
+    if (fl.indexOf('m_fix') >= 0) {
+      if (state.spouse) state.spouse.affinity = clamp((state.spouse.affinity || 60) + 20, 0, 100);
+      pushLog(state, `【补救】你们请了一次假，去了年轻时常去的那条街。有些话终于说出口了。`, 'money');
+    } else if (fl.indexOf('m_talk') >= 0) {
+      if (state.spouse) state.spouse.affinity = clamp((state.spouse.affinity || 60) + 8, 0, 100);
+      pushLog(state, `【摊牌】吵了一整夜，最后两个人都累了。日子还得过。`, 'warn');
+    } else if (fl.indexOf('m_split') >= 0) {
+      divorce(state, '过不下去了');
+    }
+  }
+
   // 专业选择落定
   if (ev.id && String(ev.id).indexOf('major_at_') === 0) {
     if (ch && ch.major) {
@@ -1259,7 +1685,17 @@ function resolveEvent(state, ev, choiceIndex) {
     }
   }
 
+  // 家里开口要钱：替家里还掉一部分债
+  if (ev.id && String(ev.id).indexOf('famask_at_') === 0 && state.family) {
+    const pay = (ch && ch.eff && ch.eff.MONEY < 0) ? -ch.eff.MONEY : 0;
+    if (pay > 0) {
+      state.family.debt = Math.max(0, Math.round(state.family.debt - pay * 0.6));
+      pushLog(state, '【家里】钱打过去了，家里那本账上少了一块石头。', 'money');
+    }
+  }
+
   checkDeath(state);
+  checkAchievements(state);
 }
 
 function resolveInvest(state, choice) {
@@ -1315,6 +1751,7 @@ function scoreOf(state) {
   score += state.flags.own_house ? 3 : 0;
   score += state.flags.own_car ? 1 : 0;
   score += state.flags.foundation ? 6 : 0;
+  score += Math.min(8, (state.achievements || []).length * 0.5); // 成就也是人生的一部分
   score -= state.stats.STRESS > 60 ? 5 : 0;
   if (state.market && state.market.debt > worth * 2 && worth > 0) score -= 6;
   return Math.round(clamp(score, 0, 100));

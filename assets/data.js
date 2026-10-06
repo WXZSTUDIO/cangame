@@ -354,6 +354,137 @@ const FIN_SCALE = [
   [1995, 1.85], [2005, 2.70], [2015, 3.40], [2025, 4.20], [2060, 5.00]
 ];
 
+/* ---------------- 核心属性（面板只露这 6 项，其余折叠进「更多」） ---------------- */
+const CORE_STATS = [
+  { key: 'HP', name: '健康', hint: '归零即人生结束', warn: v => v < 30 },
+  { key: 'MOOD', name: '心情', hint: '长期低落会拖垮身体', warn: v => v < 35 },
+  { key: 'INT', name: '智力', hint: '考试、谋略、学习速度' },
+  { key: 'CHA', name: '魅力', hint: '人脉、恋爱、影响力' },
+  { key: 'WILL', name: '意志', hint: '抗压与低谷反弹' },
+  { key: 'ETH', name: '道德', hint: '你的底线，也是别人看你的眼神', warn: v => v < 30 }
+];
+
+/* 次要属性：默认折叠，点「＋更多」展开 */
+const MORE_STATS = [
+  { key: 'STRESS', name: '压力', hint: '过高会持续损伤健康', warn: v => v > 60 },
+  { key: 'STR', name: '体魄' }, { key: 'NET', name: '人脉' },
+  { key: 'FAME', name: '声望' }, { key: 'LOY', name: '口碑' },
+  { key: 'LOVE', name: '关爱' }, { key: 'SEC', name: '安全' },
+  { key: 'CUR', name: '好奇' }, { key: 'AUTO', name: '自主' },
+  { key: 'GROW', name: '成长' }
+];
+
+/* ---------------- 疾病系统 ----------------
+ * 健康过低会强制触发；不治疗会逐年恶化（1 轻 → 4 危），到危重时可能直接带走这一生。
+ * sev 决定基础伤害与治疗难度；chronic 慢性病不会自己好。
+ */
+const ILLNESS = [
+  { id: 'cold', name: '重感冒转肺炎', minAge: 1, sev: 1, hp: 6, chronic: false,
+    desc: '发烧到三十九度，嗓子像吞了碎玻璃。你以为扛两天就过去了。' },
+  { id: 'gastritis', name: '胃溃疡', minAge: 16, sev: 1, hp: 5, chronic: true,
+    desc: '空腹、加班、白酒。胃开始用疼的方式提醒你。' },
+  { id: 'fracture', name: '骨折', minAge: 6, sev: 2, hp: 8, chronic: false,
+    desc: '一声脆响之后你躺在地上，先是没感觉，然后全来了。' },
+  { id: 'hepatitis', name: '肝炎', minAge: 12, sev: 2, hp: 9, chronic: true,
+    desc: '脸色发黄，浑身没劲。医生说：这个病，最怕拖。' },
+  { id: 'depress', name: '抑郁症', minAge: 14, sev: 2, hp: 7, chronic: true,
+    desc: '你还是每天起床、出门、笑。只是没有任何一件事能让心里亮一下。' },
+  { id: 'hbp', name: '高血压 · 糖尿病', minAge: 38, sev: 2, hp: 7, chronic: true,
+    desc: '体检报告上多了几个向下的箭头。医生说：这个药要吃一辈子。' },
+  { id: 'heart', name: '心脏病', minAge: 45, sev: 3, hp: 12, chronic: true,
+    desc: '胸口像被人攥住。你扶着墙站了很久，才敢呼吸。' },
+  { id: 'stroke', name: '中风', minAge: 55, sev: 3, hp: 14, chronic: true,
+    desc: '半边身子突然不听使唤，杯子在手里碎了。' },
+  { id: 'cancer', name: '肿瘤', minAge: 40, sev: 3, hp: 16, chronic: true,
+    desc: '报告单上那个字，你看了三遍才认出来。' }
+];
+
+/* ---------------- 父母的年度行为：家里也在过日子 ----------------
+ * fin: 对家庭账簿的增减（还会再乘年代缩放）  stat: 对主角的影响
+ */
+const FAMILY_ACTS = [
+  { id: 'f_ot', w: 12, text: '父亲这个月加了二十七天班，工资条上多了一笔加班费。', fin: { assets: 4000000 }, stat: { SEC: 1 } },
+  { id: 'f_side', w: 10, text: '母亲接了份零活，晚上在灯下缝到很晚。', fin: { assets: 2800000 }, stat: { LOVE: 1, MOOD: -1 } },
+  { id: 'f_bonus', w: 8, text: '父亲单位发了奖金，家里那个月吃了三次肉。', fin: { assets: 6000000 }, stat: { MOOD: 2 } },
+  { id: 'f_tv', w: 7, text: '家里添了一台彩电，整条胡同的小孩都挤进来看。', fin: { assets: -3000000 }, stat: { MOOD: 3, CHA: 1 } },
+  { id: 'f_borrow', w: 8, text: '亲戚上门借钱，母亲把柜子里的存折翻了出来。', fin: { debt: 5000000 }, stat: { STRESS: 3 } },
+  { id: 'f_sick', w: 8, text: '母亲住院了。她躺在病床上还在问你吃了没有。', fin: { assets: -7000000 }, stat: { MOOD: -3, STRESS: 4, LOVE: 1 } },
+  { id: 'f_layoff', w: 5, text: '厂门口贴了名单，父亲的名字在上面。那天家里很安静。', fin: { debt: 9000000 }, stat: { SEC: -3, WILL: 2, MOOD: -3 }, flag: 'parents_jobless' },
+  { id: 'f_stock', w: 5, text: '父亲跟着同事炒股，赔进去半年工资。', fin: { assets: -9000000 }, stat: { MOOD: -2 } },
+  { id: 'f_repay', w: 9, text: '家里咬牙还掉了一笔债。母亲说：总算少块石头。', fin: { debt: -6000000 }, stat: { SEC: 2 } },
+  { id: 'f_harvest', w: 7, text: '这一年收成／生意不错，家里第一次有余钱。', fin: { assets: 8000000 }, stat: { MOOD: 2 } },
+  { id: 'f_quarrel', w: 8, text: '半夜父母的争吵声穿过薄墙。你假装睡着了。', fin: {}, stat: { MOOD: -4, STRESS: 4, SEC: -3 } },
+  { id: 'f_scam', w: 4, text: '家里被人骗去一笔钱。父亲坐在门口抽了一整包烟。', fin: { assets: -12000000 }, stat: { MOOD: -3, SEC: -3 } },
+  { id: 'f_demolish', w: 2, text: '老房子要拆迁了。家里人第一次在饭桌上谈论「几百万」。', fin: { assets: 60000000, debt: -10000000 }, stat: { MOOD: 5, SEC: 5 } },
+  { id: 'f_pocket', w: 9, text: '母亲往你包里塞了钱，用塑料袋包了三层。', fin: { assets: -2500000 }, stat: { MONEY: 2500000, LOVE: 3 } },
+  { id: 'f_wedding', w: 6, text: '家里亲戚结婚，随礼随掉半个月工资。', fin: { assets: -3500000 }, stat: { NET: 1 } },
+  { id: 'f_move', w: 5, text: '家里搬了一次。新家离学校更远，但窗户朝南。', fin: { assets: -5000000 }, stat: { MOOD: 1, CUR: 2 } },
+  { id: 'f_pride', w: 7, text: '父亲在单位受了气，回家一句话没说，只是多喝了两杯。', fin: {}, stat: { MOOD: -2, STRESS: 2 } },
+  { id: 'f_grand', w: 6, text: '老家的老人病了，家里开始往老家寄钱。', fin: { assets: -6000000 }, stat: { LOVE: 1, STRESS: 2 } }
+];
+
+/* 父母职业（按出身给一个说得通的行当） */
+const PARENT_JOBS = {
+  F: { poor: '打零工', rural: '务农', town: '工厂工人', city: '临时工', prof: '中学老师',
+       business: '跑生意', stable: '单位职工', shop: '看店', default: '工人' },
+  M: { poor: '帮工', rural: '务农', town: '食堂帮工', city: '保洁', prof: '医生',
+       business: '管账', stable: '单位职工', shop: '看店', default: '工人' }
+};
+
+/* ---------------- 成就：达成即弹徽章，结局页汇总 ---------------- */
+const ACHIEVEMENTS = [
+  { id: 'a_full', icon: '💯', name: '满分', desc: '中考或高考拿到真正的满分',
+    cond: s => s.edu && (s.edu.mid === 400 || s.edu.gao === 700) },
+  { id: 'a_985', icon: '🎓', name: '金榜题名', desc: '考上 985 重点大学',
+    cond: s => !!(s.flags && s.flags.uni_985) },
+  { id: 'a_job', icon: '💼', name: '第一份工', desc: '拿到了人生第一份正式工作',
+    cond: s => !!s.career },
+  { id: 'a_boss', icon: '👔', name: '爬到顶', desc: '在同一条职业阶梯上做到最高职级',
+    cond: s => !!s.career && (typeof careerById === 'function') &&
+      !!careerById(s.career.id) && s.career.level >= careerById(s.career.id).ladder.length - 1 },
+  { id: 'a_house', icon: '🏠', name: '有瓦遮头', desc: '名下有了第一套房',
+    cond: s => !!(s.flags && s.flags.own_house) },
+  { id: 'a_car', icon: '🚗', name: '四个轮子', desc: '买了第一辆车',
+    cond: s => !!(s.flags && s.flags.own_car) },
+  { id: 'a_marry', icon: '💍', name: '成家', desc: '和一个人领了证',
+    cond: s => !!(s.flags && s.flags.married) },
+  { id: 'a_divorce', icon: '💔', name: '一别两宽', desc: '离了一次婚',
+    cond: s => !!(s.flags && s.flags.divorced) },
+  { id: 'a_child', icon: '👶', name: '为人父母', desc: '有了第一个孩子',
+    cond: s => (s.childCount || 0) >= 1 },
+  { id: 'a_grand', icon: '👴', name: '抱上孙辈', desc: '家里添了第三代',
+    cond: s => (s.grandCount || 0) >= 1 },
+  { id: 'a_million', icon: '💰', name: '第一个一百万', desc: '净资产突破 100 万',
+    cond: s => (typeof netWorth === 'function' ? netWorth(s) : (s.stats ? s.stats.MONEY : 0)) >= 180000000 },
+  { id: 'a_rich', icon: '🏦', name: '财务自由', desc: '净资产突破 1 亿',
+    cond: s => (typeof netWorth === 'function' ? netWorth(s) : (s.stats ? s.stats.MONEY : 0)) >= 18000000000 },
+  { id: 'a_stock', icon: '📈', name: '老股民', desc: '在股市里赚到过一倍以上',
+    cond: s => !!(s.flags && s.flags.stock_win) },
+  { id: 'a_pet', icon: '🐶', name: '铲屎官', desc: '养过一只猫或狗',
+    cond: s => !!s.pet },
+  { id: 'a_travel', icon: '🧳', name: '出过远门', desc: '有过一次间隔年或长期远行',
+    cond: s => !!(s.flags && s.flags.gap_year) },
+  { id: 'a_survive', icon: '🩺', name: '从鬼门关回来', desc: '熬过了一场重病',
+    cond: s => !!(s.flags && s.flags.ill_survived) },
+  { id: 'a_century', icon: '🎂', name: '长命百岁', desc: '活到了 100 岁',
+    cond: s => s.age >= 100 },
+  { id: 'a_lucky', icon: '🎟', name: '天选之子', desc: '中过一次彩票头奖',
+    cond: s => !!(s.flags && s.flags.lottery_jackpot) }
+];
+
+/* ---------------- 彩票：一年一张，纯运气 ---------------- */
+const LOTTERY = {
+  cost: 400000,
+  prizes: [
+    { p: 0.600, k: 0, name: '谢谢参与' },
+    { p: 0.240, k: 0.5, name: '五元小奖' },
+    { p: 0.110, k: 2, name: '二十元' },
+    { p: 0.040, k: 10, name: '两百元' },
+    { p: 0.008, k: 200, name: '二等奖' },
+    { p: 0.001, k: 6000, name: '头奖', jackpot: true }
+  ]
+};
+
 /* ---------------- 事件库 ----------------
  * cond: {ageMin,ageMax,gender:'M'/'F',need:[flags],ban:[flags],min:{stat},max:{stat},job:[...]}
  * eff : {STAT:delta, flags:[...], job:'...', edu:'...'}

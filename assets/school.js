@@ -135,6 +135,7 @@ function makeClassmates(state, stage) {
       key: t.key,
       name: randomPersonName(state.gender === 'M' ? 'F' : 'M'),
       gender: state.gender === 'M' ? 'F' : 'M',
+      age: clamp(state.age + randInt(-1, 1), 5, 30),
       affinity: randInt(8, 26),
       charm: clamp(Math.round(rand(20, 70) + (t.key === 'rich' ? 15 : 0)), 5, 100),
       stage: stage,
@@ -148,7 +149,7 @@ function makeClassmates(state, stage) {
 }
 
 /* 同学阶段名 */
-const STAGE_CN = { mid: '初中', high: '高中', uni: '大学' };
+const STAGE_CN = { pri: '小学', mid: '初中', high: '高中', uni: '大学' };
 const CLASSMATE_CAP = 14;
 
 function stageCn(s) { return STAGE_CN[s] || '老同学'; }
@@ -172,9 +173,10 @@ function refreshClassmates(state) {
     state.classmates = state.classmates.filter(c => c !== cand);
     over--;
   }
-  pushLog(state, st === 'mid' ? '【开学】初中。新的教室，新的同学，新的排名。'
-    : st === 'high' ? '【开学】高中。分班榜前挤满了家长，你在名单上找到了自己。'
-      : '【开学】大学报到。宿舍四人间，上铺的同学来自一个你没听过的城市。', 'muted');
+  pushLog(state, st === 'pri' ? '【开学】小学。你背着新书包走进教室，一群同样紧张的小孩互相打量。'
+    : st === 'mid' ? '【开学】初中。新的教室，新的同学，新的排名。'
+      : st === 'high' ? '【开学】高中。分班榜前挤满了家长，你在名单上找到了自己。'
+        : '【开学】大学报到。宿舍四人间，上铺的同学来自一个你没听过的城市。', 'muted');
 }
 
 /* 当前在校阶段（用于 UI 区分在校 / 校友） */
@@ -184,6 +186,7 @@ function schoolStageOf(state) {
   if (!state.edu || state.edu.stopped) return null;
   const e = state.edu;
   if (e.uni && e.uni !== 'u_fail' && state.age >= EXAM_META.gaoAge && state.age <= (e.gradAge || 22)) return 'uni';
+  if (state.age >= 7 && state.age < 13) return 'pri';
   if (state.age >= 13 && state.age < EXAM_META.midAge) return 'mid';
   if (state.age >= EXAM_META.midAge && state.age < EXAM_META.gaoAge) return 'high';
   return null;

@@ -9,6 +9,10 @@ const LOVE_META = {
   touchAffinity: 58,   // 到此才可能发生亲密关系
   touchesPerYear: 3,   // 同一个人一年最多见 3 次（原来一年只有一次，关系根本推不动）
   pregnantBase: 0.16,
+  safePregnant: 0.008, // 做好措施后的怀孕概率（几乎为零，但不是绝对）
+  safeCost: 500000,    // 措施的成本
+  affairRisk: 0.34,    // 婚内越界被撞破的概率
+  divorceMinYears: 1,  // 结婚满一年才能离
   dateCost: 600000,
   giftCost: 1800000,
   matchCost: 4000000
@@ -64,20 +68,22 @@ function loverLabel(l) {
 
 /* ---------- 三条来源 ---------- */
 function meetByChance(state) {
-  if (state.age < 16 || state.flags.married) return null;
+  if (state.age < 16) return null;
   const lv = loveInit(state);
   if (lv.candidates.length >= 5) return null;
-  if (!chance(0.5)) return null;
+  // 已婚也能遇上别人——只是那不叫恋爱，叫出轨
+  if (!chance(state.flags.married ? 0.18 : 0.5)) return null;
   const l = makeLover(state, '偶遇');
+  l.outside = !!state.flags.married;
   lv.candidates.push(l);
-  pushLog(state, `【偶遇】${l.srcText || ''}你遇见了 ${l.name}。${l.age}，${(TEMPERAMENTS.find(t => t.key === l.tp) || {}).label}。这世界很大，但有些人只擦肩一次。`, 'story');
+  pushLog(state, `【偶遇】${l.srcText || ''}你遇见了 ${l.name}。${l.age}岁，${(TEMPERAMENTS.find(t => t.key === l.tp) || {}).label}。` +
+    (state.flags.married ? `你低头看了一眼手上的戒指。` : '这世界很大，但有些人只擦肩一次。'), 'story');
   return l;
 }
 
 function meetFromClassmate(state, idx) {
   const c = (state.classmates || [])[idx];
   if (!c) return { ok: false, msg: '没有这位同学' };
-  if (state.flags.married) return { ok: false, msg: '你已经结婚了' };
   const lv = loveInit(state);
   const gender = state.gender === 'M' ? 'F' : 'M';
   if (c.gender === state.gender) return { ok: false, msg: '你们只是好朋友' };
@@ -85,10 +91,11 @@ function meetFromClassmate(state, idx) {
   const tp = TEMPERAMENTS[randInt(0, TEMPERAMENTS.length - 1)];
   const bg = MATCH_BACKGROUNDS[randInt(0, MATCH_BACKGROUNDS.length - 1)];
   const l = {
-    name: c.name, gender: gender, age: state.age + randInt(-2, 2),
+    name: c.name, gender: gender, age: c.age || (state.age + randInt(-2, 2)),
     look: c.charm, charm: c.charm, tp: tp.key, bg: bg.key, src: '同学', stage: c.stage,
     affinity: clamp(c.affinity + randInt(2, 8), 5, 100),
-    alive: true, lastTouch: -1, touches: 0, met: state.age, pregnant: false
+    alive: true, lastTouch: -1, touches: 0, met: state.age, pregnant: false,
+    outside: !!state.flags.married
   };
   lv.candidates.push(l);
   pushLog(state, `【心动】你开始在意 ${l.name} 了。早恋这件事，老师和家长都反对，但你控制不了自己。`, 'story');
@@ -162,24 +169,115 @@ function loveAct(state, idx, kind) {
 }
 
 /* ---------- 亲密关系与怀孕 ---------- */
-function loveIntimate(state, idx) {
+/* safe=true：做好措施，几乎不会怀孕（要花一点钱，且少了点兴致） */
+function loveIntimate(state, idx, safe) {
   const lv = loveInit(state);
   const l = lv.candidates[idx];
   if (!l) return { ok: false, msg: '没有这个人' };
-  if (state.flags.married) return { ok: false, msg: '你已经结婚了' };
+  if (!l.alive) return { ok: false, msg: 'TA 已经不在了' };
   if (l.affinity < LOVE_META.touchAffinity) return { ok: false, msg: `好感还不够（需 ${LOVE_META.touchAffinity}%）` };
   if (state.age < 16) return { ok: false, msg: '太早了' };
+  const married = !!state.flags.married;
+  if (safe) {
+    const cost = LOVE_META.safeCost;
+    if (state.stats.MONEY < cost) return { ok: false, msg: '连这个钱都拿不出来' };
+    state.stats.MONEY -= cost;
+  }
   lv.partner = l;
-  state.flags.dating = true;
-  state.flags.in_love = true;
-  applyEffects(state, { LOVE: 6, SEC: 3, STRESS: 2 });
-  const p = LOVE_META.pregnantBase + (l.look / 400) + (state.stats.CHA / 500);
+  if (!married) { state.flags.dating = true; state.flags.in_love = true; }
+  applyEffects(state, { LOVE: safe ? 5 : 6, SEC: married ? -4 : 3, STRESS: married ? 6 : 2 });
+
+  if (married) {
+    // 婚内出轨：道德、名声与家庭一起付出代价，还有被发现的风险
+    applyEffects(state, { ETH: -12, FAME: -4 });
+    if (state.spouse) state.spouse.affinity = clamp((state.spouse.affinity || 60) - 5, 0, 100);
+    l.outside = true;
+    pushLog(state, `【越界】你和 ${l.name} 走到了一起。回家时你在楼下站了很久才敢上楼。`, 'warn');
+    if (chance(LOVE_META.affairRisk)) {
+      state.queue = state.queue || [];
+      state.extraQueue = state.extraQueue || [];
+      state.extraQueue.push({ type: 'event', ev: makeAffairEvent(state, l) });
+      return { ok: true, pregnant: false, affair: true, caught: true };
+    }
+    return { ok: true, pregnant: false, affair: true, caught: false };
+  }
+
+  const p = safe ? LOVE_META.safePregnant : (LOVE_META.pregnantBase + (l.look / 400) + (state.stats.CHA / 500));
   if (chance(p)) {
     l.pregnant = true;
     return { ok: true, pregnant: true, lover: l };
   }
-  pushLog(state, `【亲密】你和 ${l.name} 走到了一起。${state.age < 22 ? '老师要是知道了，会把你叫去办公室。' : ''}`, 'story');
+  pushLog(state, `【亲密】你和 ${l.name} 走到了一起。${safe ? '这一次你们做足了措施。' : ''}${state.age < 22 ? '老师要是知道了，会把你叫去办公室。' : ''}`, 'story');
   return { ok: true, pregnant: false };
+}
+
+/* ---------- 东窗事发 ---------- */
+function makeAffairEvent(state, l) {
+  const sp = state.spouse || { name: '你爱人' };
+  return {
+    id: 'affair_at_' + state.age,
+    loverName: l ? l.name : null,
+    age: [16, 200], w: 0,
+    text: `【东窗事发】${sp.name} 看到了那条消息。TA 没有吵，只是把手机放在桌上，屏幕朝上。\n` +
+      `「${l ? l.name : '那个人'}是谁。」——这句话不是问句。`,
+    choices: [
+      {
+        text: '断了，回家好好过日子', risk: 2,
+        eff: { LOVE: -4, STRESS: 6, ETH: -3, MONEY: -3000000 }, flags: ['affair_cut']
+      },
+      {
+        text: '坦白，把话说清楚', risk: 3,
+        eff: { LOVE: -10, STRESS: 10, MOOD: -6, SEC: -6 }, flags: ['affair_confess']
+      },
+      {
+        text: '离婚，和 TA 在一起', risk: 3,
+        eff: { LOVE: -14, SEC: -14, STRESS: 12, ETH: -10, MOOD: -5 }, flags: ['affair_divorce']
+      }
+    ]
+  };
+}
+
+/* ---------- 婚姻危机（长期不经营会自己找上门） ---------- */
+function makeMarriageEvent(state) {
+  const sp = state.spouse || { name: '你爱人' };
+  return {
+    id: 'marry_at_' + state.age,
+    age: [22, 200], w: 0,
+    text: `【婚姻危机】${sp.name} 把碗放进水池，背对着你说：「我们多久没一起吃过饭了。」\n` +
+      `这些年你把所有力气都给了外面，家里只剩下冰箱的灯亮着。`,
+    choices: [
+      { text: '请一次假，把时间还给他们', risk: 1, eff: { MONEY: -6000000, LOVE: 8, STRESS: -6, MOOD: 4 }, flags: ['m_fix'] },
+      { text: '今晚摊开来说清楚', risk: 2, eff: { LOVE: 3, STRESS: 6, MOOD: -2 }, flags: ['m_talk'] },
+      { text: '离婚吧，这样对谁都好', risk: 3, eff: { LOVE: -18, SEC: -12, STRESS: 10 }, flags: ['m_split'] }
+    ]
+  };
+}
+
+/* ---------- 离婚 ---------- */
+function divorce(state, reason) {
+  if (!state.flags.married) return { ok: false, msg: '你还没有结婚' };
+  const lv = loveInit(state);
+  const sp = state.spouse || { name: state.spouseName || '爱人', affinity: 40, age: state.age, since: state.age };
+  const worth = (typeof netWorth === 'function') ? netWorth(state) : state.stats.MONEY;
+  const kids = state.childCount || 0;
+  const keep = kids > 0 ? (chance(0.5) ? kids : Math.floor(kids / 2)) : 0;
+  const lost = kids - keep;
+  // 分家产：优先从现金里走，钱不够就按现有现金分
+  const want = Math.round(Math.max(0, worth) * rand(0.25, 0.4));
+  const paid = Math.min(want, Math.max(0, state.stats.MONEY));
+  state.stats.MONEY -= paid;
+  state.childCount = keep;
+  delete state.flags.married;
+  delete state.flags.in_love;
+  state.flags.divorced = true;
+  state.ex = { name: sp.name, age: sp.age, met: sp.since || state.age, at: state.age, reason: reason || '' };
+  state.spouse = null;
+  state.spouseName = null;
+  applyEffects(state, { LOVE: -22, SEC: -14, MOOD: -10, STRESS: 14, ETH: -8, FAME: -6, HP: -4 });
+  pushLog(state, `【离婚】你和 ${sp.name} 把证换成了另一本${reason ? '（' + reason + '）' : ''}。` +
+    `分走了 ${fmtMoney(paid)}${lost ? `，${lost} 个孩子跟着对方走了` : ''}。房子空了一半，你花了很久才习惯。`, 'warn');
+  if (typeof addGrief === 'function') addGrief(state, `和 ${sp.name} 离婚`, 10);
+  return { ok: true, paid: paid, lost: lost, ex: state.ex };
 }
 
 /* 未婚怀孕：三选一 */
@@ -241,6 +339,7 @@ function propose(state, idx) {
 function marry(state, l) {
   const lv = loveInit(state);
   lv.partner = l;
+  if (l) delete l.outside;
   state.flags.married = true;
   state.flags.in_love = true;
   state.spouseName = l.name;
@@ -295,13 +394,35 @@ function loveTick(state) {
       pushLog(state, `【永别】${state.spouse.name} 先你一步走了。你们说好要一起变老的。`, 'warn');
     } else {
       state.spouse.age += 1;
+      // 婚姻是要经营的：一年到头不闻不问，感情会冷下来
+      const touch = state.socialTouch || {};
+      if (touch.spouse !== state.age) {
+        state.spouse.affinity = clamp((state.spouse.affinity || 60) - randInt(2, 5), 0, 100);
+        if (state.spouse.affinity <= 22 && (state.marryCrisisYear || 0) + 3 <= state.age && chance(0.3)) {
+          state.marryCrisisYear = state.age;
+          state.extraQueue = state.extraQueue || [];
+          state.extraQueue.push({ type: 'event', ev: makeMarriageEvent(state) });
+        }
+      }
     }
   }
-  // 候选人冷却：长期不联系，好感自然流失
+  // 候选人：人也在一年年变老
+  const dropped = [];
   lv.candidates.forEach(l => {
+    l.age = (l.age || state.age) + 1;
+    // 候选人冷却：长期不联系，好感自然流失
     l.touches = 0;
     if (l.lastTouch !== state.age) l.affinity = clamp(l.affinity - randInt(1, 4), 0, 100);
+    // 太多年没见的人，就真的走丢了
+    if (l.lastTouch >= 0 && state.age - l.lastTouch > 8 && chance(0.25)) {
+      dropped.push(l);
+      pushLog(state, `【失联】${l.name} 的消息再也没有出现过。有些人，是你亲自弄丢的。`, 'muted');
+    }
   });
-  // 偶遇
-  if (!state.flags.married && state.age >= 17) meetByChance(state);
+  if (dropped.length) {
+    lv.candidates = lv.candidates.filter(x => dropped.indexOf(x) < 0);
+    if (lv.partner && dropped.indexOf(lv.partner) >= 0) lv.partner = null;
+  }
+  // 偶遇（已婚也会遇上——那是另一回事）
+  if (state.age >= 17) meetByChance(state);
 }
