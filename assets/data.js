@@ -1,166 +1,178 @@
 /* =========================================================
- *  CANGAME · 江南逆袭 (강남 역습)
- *  数据层：天赋 / 出身 / 事件库 / 投资 / 结局
+ * CANGAME · 江南逆袭 ()
+ * 数据层：天赋 / 出身 / 事件库 / 投资 / 结局
  * ========================================================= */
 
 const GAME_META = {
   title: '江南逆袭',
-  subtitle: '강남 역습 · 从半地下室到汉江之巅',
-  version: '4.0.0',
+  subtitle: '从城中村到江景大平层',
+  version: '5.0.0',
   startYear: 1985,
   endAge: 105
 };
 
-/* ---------------- 随机姓名库 ---------------- */
-const SURNAMES = ['김', '박', '이', '최', '정', '강', '조', '윤', '장', '한'];
+/* ---------------- 随机姓名库（中国百家姓） ---------------- */
+const SURNAMES = ['王', '李', '张', '刘', '陈', '杨', '黄', '赵', '周', '吴',
+                  '徐', '孙', '马', '朱', '胡', '林', '郭', '何', '高', '罗',
+                  '郑', '梁', '谢', '宋', '唐', '许', '韩', '冯', '邓', '曹'];
 const GIVEN_NAMES = {
-  M: ['민준', '서준', '도윤', '예준', '시우', '하준', '지호', '지훈', '준서', '건우',
-      '시윤', '주원', '현우', '윤서', '동혁', '수호', '예찬', '태양', '은호', '재윤'],
-  F: ['서연', '하은', '지우', '수아', '예은', '민서', '다은', '유나', '채원', '소율',
-      '지민', '하린', '시은', '아윤', '서진', '지아', '수빈', '예린', '나윤', '효진']
+  M: ['浩然', '子轩', '俊杰', '宇航', '思远', '嘉豪', '晨阳', '博文', '一鸣', '天佑',
+      '梓睿', '泽宇', '锦程', '家豪', '志强', '建国', '伟', '磊', '鹏', '昊天',
+      '书航', '亦凡', '慕白', '长风', '知远', '承宇', '明轩', '昱辰', '星辰', '子墨'],
+  F: ['诗涵', '欣怡', '梓萱', '雨欣', '思彤', '梦琪', '嘉怡', '静怡', '子涵', '心怡',
+      '晓雪', '雅静', '婉清', '若曦', '雨薇', '佳琪', '慧敏', '小雅', '丽', '婷',
+      '知微', '映雪', '南栀', '书瑶', '语汐', '安然', '锦瑟', '灵犀', '未央', '清和']
 };
 
 /* ---------------- 出生叙事素材（随机人生故事） ---------------- */
 const BIRTH_OPENERS = [
-  '首尔的雪盖住了整条巷子。你在江南区一间看不见天空的半地下室里，第一次睁开了眼睛。',
-  '那一年汉江还没那么多桥。母亲说，你哭得很大声，像是不情愿来到这个世界。',
-  '父亲的工厂还在运转，家里勉强供得起一盏暖黄色的灯。你就在那盏灯下出生。',
-  '庆尚北道的稻花香里，你降生在老家的厢房。接生婆说：这孩子命硬，能走出去。',
-  '首尔大雨的夜里，你提前三周来到人间。护士把你裹进一条旧毛毯，说活着就好。',
-  '教会孤儿院的钟声响起时，你被放在门口的篮子里。没有人知道你的父母是谁。',
-  '教授家的书房比客厅还大。你在满墙的书影里出生，第一眼看到的是父亲的显微镜。',
+  '那年的雪盖住了整条巷子。你在城中村一间看不见天空的出租屋里，第一次睁开了眼睛。',
+  '江上还没有几座桥。母亲说，你哭得很大声，像是不情愿来到这个世界。',
+  '父亲的厂子还在运转，家里勉强供得起一盏暖黄色的灯。你就在那盏灯下出生。',
+  '稻花香里，你降生在老家的偏房。接生婆说：这孩子命硬，能走出去。',
+  '大雨的夜里，你提前三周来到人间。护士把你裹进一条旧毛毯，说活着就好。',
+  '福利院的铁门在清晨打开时，你被放在台阶上的襁褓里。没有人知道你的父母是谁。',
+  '父亲的书房比客厅还大。你在满墙的书影里出生，第一眼看到的是一架子旧书。',
   '母亲独自把你生了下来。她说，从那天起，她的命就不是自己的了。'
 ];
 const BIRTH_PARENTS = [
   '父亲在走廊里来回踱步，直到护士把你抱出来。这个一辈子没哭过的男人，第一次红了眼眶。',
   '母亲抱着你看了整整一夜，在日记里写：无论多难，你要比妈妈走得远。',
-  '祖父母从乡下寄来一袋米和一封信，信上只有四个字：平安长大。',
+  '爷爷奶奶从乡下寄来一袋米和一封信，信上只有四个字：平安长大。',
   '父亲摸了摸你皱巴巴的脸，对母亲说：咱们这辈子受的苦，到他这里为止。',
   '母亲把仅有的金戒指当了，换来一罐奶粉。她说：你先活，别的以后再说。',
   '养母把你搂在怀里，对院长说：这孩子，我带回去。'
 ];
 const BIRTH_OMENS = [
   '助产士低声说：这孩子安静得不像刚出生，像是见过世面似的。',
-  '那夜汉江起了雾，老一辈人说：雾里生的人，要么大起，要么大落。',
+  '那夜江上起了雾，老一辈人说：雾里生的人，要么大起，要么大落。',
   '一只黑猫蹲在窗台上看了你很久，母亲说那是好运，父亲说那是野猫。',
-  '你出生时，电视里正播着韩国第一条地铁通车的消息——一个新世代的开端。',
+  '你出生那天，巷口的广播里正播着第一条地铁通车的消息——一个新世代的开端。',
   '算命的远房亲戚看了你的生辰，只说了一句：此子，命里多水。',
   '没人知道，你在午夜曾睁开眼，盯着虚空看了几秒，又睡了过去。'
 ];
 const BIRTH_BY_FAMILY = {
-  banjiha: ['半地下室的墙上长着霉斑。你学会的第一件事，是屏住呼吸——因为地下的空气总是不够。'],
-  factory: ['安山工厂的机器声是你童年的白噪音。父亲的手比同龄人粗糙十倍。'],
-  province: ['大邱文具店的账本永远是母亲在算。你从小就会在心里给每一支笔标价。'],
-  single: ['母亲一个人打三份工。你最早的记忆，是她趴在餐桌上睡着的背影。'],
-  orphan: ['孤儿院的编号比名字来得更早。你学会了不期待，也不失望。'],
-  rentier: ['家里有几间考试院在收租。你第一次知道，有些人的钱，是睡着也会来的。'],
-  prof: ['父亲的书架顶到天花板。他常说：穷点没关系，脑子里的东西谁也拿不走。'],
-  chaebol_edge: ['母亲那边的远房亲戚在海外做生意。你从小听着外面的故事长大，总觉得世界比这条巷子大得多。']
+  chengzhongcun: ['城中村的墙上贴着「拆」字，又被人用红漆划掉。你学会的第一件事，是辨认楼下哪一家的灯泡更亮。'],
+  xiangong: ['厂区宿舍的机器声是你童年的白噪音。父亲的手比同龄人粗糙十倍。'],
+  nongcun: ['村里小卖部的账本永远是母亲在算。你从小就会在心里给每一包盐标价。'],
+  getihu: ['自家饭馆的油烟味从后厨飘到堂屋。你在收银台下面写完了小学六年的作业。'],
+  jiaoshi: ['母亲的书架顶到天花板。她常说：穷点没关系，脑子里的东西谁也拿不走。'],
+  tizhinei: ['父亲的单位分了这套两居室。家里的电话铃一响，往往是有人求他办事。'],
+  chaiqian: ['拆迁协议签下来的那天，家里第一次有人谈论「几百万」这个词。'],
+  shangren: ['父亲常年在外跑生意。你从小听着外面的故事长大，总觉得世界比这条巷子大得多。'],
+  danqin: ['母亲一个人打三份工。你最早的记忆，是她趴在餐桌上睡着的背影。'],
+  fuli: ['福利院的编号比名字来得更早。你学会了不期待，也不失望。']
 };
 
 /* ---------------- 数值定义 ---------------- */
 const STATS = [
-  { key: 'INT',  name: '지력 智力',  hint: '学习、考试、谋略' },
-  { key: 'STR',  name: '체력 体魄',  hint: '兵役、打架、耐力' },
-  { key: 'CHA',  name: '매력 魅力',  hint: '人脉、恋爱、影响力' },
-  { key: 'WILL', name: '의지 意志',  hint: '抗压、低谷反弹' },
-  { key: 'HP',   name: '건강 健康',  hint: '归零即人生结束' },
-  { key: 'STRESS', name: '스트레스 压力', hint: '过高会损伤健康' }
+  { key: 'INT', name: '智力', hint: '学习、考试、谋略' },
+  { key: 'STR', name: '体魄', hint: '参军、打架、耐力' },
+  { key: 'CHA', name: '魅力', hint: '人脉、恋爱、影响力' },
+  { key: 'WILL', name: '意志', hint: '抗压、低谷反弹' },
+  { key: 'HP', name: '健康', hint: '归零即人生结束' },
+  { key: 'STRESS', name: '压力', hint: '过高会损伤健康' }
 ];
 
 const RESOURCES = [
-  { key: 'MONEY', name: '자산 资产', hint: '韩元 ₩' },
-  { key: 'NET',   name: '인맥 人脉', hint: '关键时刻能调动的人' },
-  { key: 'FAME',  name: '명성 声望', hint: '社会知名度' },
-  { key: 'LOY',   name: '직장 평판 职场口碑', hint: '在公司与行业里的信誉' }
+  { key: 'MONEY', name: '资产', hint: '元 ₩' },
+  { key: 'NET', name: '人脉', hint: '关键时刻能调动的人' },
+  { key: 'FAME', name: '声望', hint: '社会知名度' },
+  { key: 'LOY', name: '职场口碑', hint: '在公司与行业里的信誉' }
 ];
 
 /* ---------------- 8 项人生指标（主面板） ---------------- */
 const LIFE_METRICS = [
-  { key: 'HP',   name: '건강 健康',     hint: '归零即人生结束' },
-  { key: 'CUR',  name: '호기심 好奇心', hint: '探索与学习欲' },
-  { key: 'LOVE', name: '애정 关爱',     hint: '爱与归属感' },
-  { key: 'SEC',  name: '안전감 安全感', hint: '内心的安稳' },
-  { key: 'FAME', name: '명성 声望',     hint: '社会知名度' },
-  { key: 'AUTO', name: '자율성 自主性', hint: '掌控自己的人生' },
-  { key: 'CHA',  name: '대인관계 人际关系', hint: '与人相处' },
-  { key: 'GROW', name: '성장 成长',     hint: '一辈子的积累' }
+  { key: 'HP', name: '健康', hint: '归零即人生结束' },
+  { key: 'CUR', name: '好奇心', hint: '探索与学习欲' },
+  { key: 'LOVE', name: '关爱', hint: '爱与归属感' },
+  { key: 'SEC', name: '安全感', hint: '内心的安稳' },
+  { key: 'FAME', name: '声望', hint: '社会知名度' },
+  { key: 'AUTO', name: '自主性', hint: '掌控自己的人生' },
+  { key: 'CHA', name: '人际关系', hint: '与人相处' },
+  { key: 'GROW', name: '成长', hint: '一辈子的积累' }
 ];
 
 /* ---------------- 擅长领域（开局选择，影响人生倾向） ---------------- */
 const PRIORITIES = [
-  { key: 'career',   name: '사업 事业', desc: '把精力押在学习与事业上，财富与能力滚雪球。' },
-  { key: 'relation', name: '관계 关系', desc: '重视爱、家庭与朋友，关爱与安全感更高。' },
-  { key: 'balance',  name: '균형 平衡', desc: '健康与心境并重，少一点挣扎，稳稳地走。' },
-  { key: 'success',  name: '성공 成功', desc: '追逐名望与人脉，离聚光灯更近。' }
+  { key: 'career', name: '事业', desc: '把精力押在学习与事业上，财富与能力滚雪球。' },
+  { key: 'relation', name: '关系', desc: '重视爱、家庭与朋友，关爱与安全感更高。' },
+  { key: 'balance', name: '平衡', desc: '健康与心境并重，少一点挣扎，稳稳地走。' },
+  { key: 'success', name: '成功', desc: '追逐名望与人脉，离聚光灯更近。' }
 ];
 
 /* ---------------- 天赋 ---------------- */
 /* cost > 0 消耗点数，cost < 0 返还点数（负面天赋） */
 const TALENTS = [
-  { id: 'memory',   name: '전생의 기억 前世记忆', cost: 4, desc: '你活过两世。前世的记忆让你记得未来三十年的大事件——汇率、房价、危机与风口。',
+  { id: 'memory', name: '前世记忆', cost: 4, desc: '你活过两世。前世的记忆让你记得未来三十年的大事件——汇率、房价、危机与风口。',
     eff: { WILL: 6, INT: 3 }, flags: ['past_life'], tag: '核心' },
-  { id: 'math',     name: '수학천재 数学天才', cost: 3, desc: '数字在你脑中自己排队。', eff: { INT: 9 } },
-  { id: 'iron',     name: '철강체력 钢铁体魄', cost: 2, desc: '从小没打过点滴。', eff: { STR: 9, HP: 10 } },
-  { id: 'face',     name: '얼굴천재 天生丽质', cost: 3, desc: '江南的整形医院以你的脸为模板。', eff: { CHA: 9 } },
-  { id: 'will',     name: '불굴의 의지 不屈意志', cost: 2, desc: '被打倒多少次，就站起来多少次。', eff: { WILL: 9 } },
-  { id: 'gangnam',  name: '강남 토박이 江南土著', cost: 3, desc: '户口本上写着江南区，哪怕只是半地下室。', eff: { CHA: 4, MONEY: 8000000 }, flags: ['gangnam'] },
-  { id: 'legacy',   name: '아버지의 유산 父亲的遗物', cost: 2, desc: '一只旧铁盒，里面是父亲攒了一辈子的钱。', eff: { MONEY: 6000000, WILL: 2 } },
-  { id: 'code',     name: '천재 프로그래머 编程天才', cost: 2, desc: '你在 DOS 里写出了第一个韩文输入法。', eff: { INT: 5, STR: -2 }, flags: ['coder'] },
-  { id: 'speech',   name: '언변의 달인 辩才无碍', cost: 2, desc: '一张嘴能把黑的说成白的。', eff: { CHA: 5, NET: 5 } },
-  { id: 'stock',    name: '주식 귀재 股神直觉', cost: 2, desc: '你天生懂得恐惧与贪婪的周期。', eff: { INT: 3 }, flags: ['stock_buff'] },
-  { id: 'estate',   name: '미래의 집 房产直觉', cost: 2, desc: '你总能闻到哪块地要涨价。', eff: { INT: 2 }, flags: ['estate_buff'] },
-  { id: 'network',  name: '인맥世家 人脉世家', cost: 2, desc: '叔叔的表哥的岳父，总在某个要害部门。', eff: { NET: 10 } },
-  { id: 'health',   name: '건강염려증 养生达人', cost: 1, desc: '你熟读每一本健康杂志。', eff: { HP: 15, STRESS: -10 } },
-  { id: 'revenge',  name: '불타는 야망 燃烧的野心', cost: 2, desc: '你不甘平庸。这种不甘既是燃料，也是火。', eff: { WILL: 6, STRESS: 12 }, flags: ['ambition'] },
-  { id: 'lucky',    name: '운빨 锦鲤附体', cost: 2, desc: '好事总在你身上多绕一圈。', eff: {}, flags: ['lucky'] },
-  { id: 'diligent', name: '성실 勤勉', cost: 1, desc: '你相信一天十四小时的力量。', eff: { INT: 2, STR: 2, CHA: 2, WILL: 2 } },
-  { id: 'absolutepitch', name: '절대음감 绝对音感', cost: 1, desc: '随便一首歌你都能弹出调子。', eff: { CHA: 4 }, flags: ['music'] },
-  { id: 'dual',     name: '이중국적 双重国籍', cost: 2, desc: '一本美国护照，让兵役成为别人的故事。', eff: { CHA: 2 }, flags: ['no_military'] },
-  { id: 'flatfoot', name: '평발 扁平足', cost: -2, desc: '免除兵役的唯一好处，是你能早两年进入社会。', eff: { STR: -3 }, flags: ['no_military'] },
-  { id: 'debt',     name: '빚더미 负债之子', cost: -3, desc: '父亲的债，写在你的户口本上。', eff: { MONEY: -4000000, WILL: 5 } },
-  { id: 'ugly',     name: '외모 콤플렉스 外貌自卑', cost: -2, desc: '你习惯了被忽略，也因此更懂得观察。', eff: { CHA: -4, INT: 4 } },
-  { id: 'sick',     name: '허약체질 病弱', cost: -2, desc: '医院的走廊你比教室还熟。', eff: { HP: -9, INT: 3 } },
-  { id: 'country',  name: '시골 출신 乡下出身', cost: -2, desc: '庆尚北道的稻田，和首尔的霓虹隔着一整个时代。', eff: { CHA: -2, STR: 4, WILL: 2 } },
-  { id: 'temper',   name: '다혈질 暴脾气', cost: -2, desc: '拳头总比脑子先动。', eff: { STR: 5, CHA: -3, WILL: 2 } }
+  { id: 'math', name: '数学天才', cost: 3, desc: '数字在你脑中自己排队。', eff: { INT: 9 } },
+  { id: 'iron', name: '钢铁体魄', cost: 2, desc: '从小没打过点滴。', eff: { STR: 9, HP: 10 } },
+  { id: 'face', name: '天生丽质', cost: 3, desc: '江南的整形医院以你的脸为模板。', eff: { CHA: 9 } },
+  { id: 'will', name: '不屈意志', cost: 2, desc: '被打倒多少次，就站起来多少次。', eff: { WILL: 9 } },
+  { id: 'gangnam', name: '城里户口', cost: 3, desc: '户口本上写着城区，哪怕住的是隔断间。', eff: { CHA: 4, MONEY: 8000000 }, flags: ['gangnam'] },
+  { id: 'legacy', name: '父亲的遗物', cost: 2, desc: '一只旧铁盒，里面是父亲攒了一辈子的钱。', eff: { MONEY: 6000000, WILL: 2 } },
+  { id: 'code', name: '编程天才', cost: 2, desc: '你在 DOS 里写出了第一个中文输入法。', eff: { INT: 5, STR: -2 }, flags: ['coder'] },
+  { id: 'speech', name: '辩才无碍', cost: 2, desc: '一张嘴能把黑的说成白的。', eff: { CHA: 5, NET: 5 } },
+  { id: 'stock', name: '股神直觉', cost: 2, desc: '你天生懂得恐惧与贪婪的周期。', eff: { INT: 3 }, flags: ['stock_buff'] },
+  { id: 'estate', name: '房产直觉', cost: 2, desc: '你总能闻到哪块地要涨价。', eff: { INT: 2 }, flags: ['estate_buff'] },
+  { id: 'network', name: '人脉世家', cost: 2, desc: '叔叔的表哥的岳父，总在某个要害部门。', eff: { NET: 10 } },
+  { id: 'health', name: '养生达人', cost: 1, desc: '你熟读每一本健康杂志。', eff: { HP: 15, STRESS: -10 } },
+  { id: 'revenge', name: '燃烧的野心', cost: 2, desc: '你不甘平庸。这种不甘既是燃料，也是火。', eff: { WILL: 6, STRESS: 12 }, flags: ['ambition'] },
+  { id: 'lucky', name: '锦鲤附体', cost: 2, desc: '好事总在你身上多绕一圈。', eff: {}, flags: ['lucky'] },
+  { id: 'diligent', name: '勤勉', cost: 1, desc: '你相信一天十四小时的力量。', eff: { INT: 2, STR: 2, CHA: 2, WILL: 2 } },
+  { id: 'absolutepitch', name: '绝对音感', cost: 1, desc: '随便一首歌你都能弹出调子。', eff: { CHA: 4 }, flags: ['music'] },
+  { id: 'dual', name: '双重国籍', cost: 2, desc: '家里有海外关系，很多事对你来说只是手续。', eff: { CHA: 2 }, flags: ['no_military'] },
+  { id: 'flatfoot', name: '扁平足', cost: -2, desc: '体检没过关，倒让你比同龄人早两年进了社会。', eff: { STR: -3 }, flags: ['no_military'] },
+  { id: 'debt', name: '负债之子', cost: -3, desc: '父亲的债，写在你的户口本上。', eff: { MONEY: -4000000, WILL: 5 } },
+  { id: 'ugly', name: '外貌自卑', cost: -2, desc: '你习惯了被忽略，也因此更懂得观察。', eff: { CHA: -4, INT: 4 } },
+  { id: 'sick', name: '病弱', cost: -2, desc: '医院的走廊你比教室还熟。', eff: { HP: -9, INT: 3 } },
+  { id: 'country', name: '乡下出身', cost: -2, desc: '老家的稻田，和这座城的霓虹隔着一整个时代。', eff: { CHA: -2, STR: 4, WILL: 2 } },
+  { id: 'temper', name: '暴脾气', cost: -2, desc: '拳头总比脑子先动。', eff: { STR: 5, CHA: -3, WILL: 2 } }
 ];
 
-/* ---------------- 出身 ---------------- */
+/* ---------------- 出身（中国国情） ---------------- */
 const FAMILIES = [
-  { id: 'banjiha', name: '반지하 江南半地下室', desc: '窗子与地面齐平，能看见路人的鞋。首尔江南区，一间 12 平的半地下室。',
-    eff: { MONEY: 1200000, INT: 3, CHA: 2, WILL: 4 }, flags: ['poor', 'seoul'] },
-  { id: 'factory', name: '공장노동자 京畿道工厂家庭', desc: '父亲在安山的工厂做冲压工，母亲在食堂洗碗。',
-    eff: { MONEY: 800000, STR: 5, WILL: 5, INT: 1 }, flags: ['poor'] },
-  { id: 'province', name: '지방 大邱小商人家庭', desc: '家里开着一间文具店，账本永远差几百块。',
-    eff: { MONEY: 1500000, INT: 2, CHA: 4, NET: 3 }, flags: ['province'] },
-  { id: 'single',   name: '한부모 单亲家庭', desc: '母亲一个人打三份工，把你拉扯大。',
-    eff: { MONEY: 500000, WILL: 8, INT: 3, CHA: 1 }, flags: ['poor', 'single'] },
-  { id: 'orphan',   name: '고아 教会孤儿院', desc: '你没有户口本上的父母，只有一排编号。',
-    eff: { MONEY: 200000, WILL: 9, INT: 5, CHA: -2 }, flags: ['poor', 'orphan'] },
-  { id: 'rentier',  name: '임대업 月收家庭', desc: '家里有几间考试院在收租，不算富，但饿不死。',
-    eff: { MONEY: 5000000, INT: 2, CHA: 3, NET: 4 }, flags: ['rentier'] },
-  { id: 'prof',     name: '교수 教授家庭', desc: '父亲是地方大学的讲师，家里的墙都是书架。',
+  { id: 'chengzhongcun', name: '城中村 出租屋', desc: '窗子对着一米宽的握手楼天井，能看见对面邻居的袜子。大城市边缘，一间 12 平的隔断间。',
+    eff: { MONEY: 1200000, INT: 3, CHA: 2, WILL: 4 }, flags: ['poor', 'city'] },
+  { id: 'xiangong', name: '县城 双职工家庭', desc: '父亲在县纺织厂做机修，母亲在食堂帮工。厂里的广播每天六点准时响。',
+    eff: { MONEY: 800000, STR: 5, WILL: 5, INT: 1 }, flags: ['poor', 'town'] },
+  { id: 'nongcun', name: '农村 务农家庭', desc: '家里有几亩地和一头牛。交完公粮，剩下的才是自己的。',
+    eff: { MONEY: 600000, STR: 7, WILL: 6, CHA: -1, INT: 1 }, flags: ['poor', 'rural'] },
+  { id: 'getihu', name: '县城 个体户家庭', desc: '临街一间十几平的小卖部，柜台后面就是全家的饭桌。',
+    eff: { MONEY: 1500000, INT: 2, CHA: 4, NET: 3 }, flags: ['town', 'shop'] },
+  { id: 'jiaoshi', name: '教师 知识分子家庭', desc: '母亲是中学语文老师，家里的墙都是书架，寒暑假比谁都长。',
     eff: { MONEY: 3000000, INT: 9, CHA: 2, NET: 5 }, flags: ['prof'] },
-  { id: 'chaebol_edge', name: '먼 친척 海外阔亲', desc: '母亲那边的远房亲戚，据说在海外做生意。逢年过节，会寄来意想不到的礼物。',
-    eff: { MONEY: 2500000, CHA: 3, NET: 8 }, flags: ['oversea_tie'] }
+  { id: 'tizhinei', name: '体制内 干部家庭', desc: '父亲在县里某个局上班，单位分了两居室。家里的电话一响，常是有人求办事。',
+    eff: { MONEY: 4000000, INT: 4, CHA: 3, NET: 10, SEC: 8 }, flags: ['tizhinei', 'stable'] },
+  { id: 'chaiqian', name: '拆迁户 城中村改造', desc: '老房子拆了，赔了三套房和一笔钱。家里第一次有人谈论「几百万」这个词。',
+    eff: { MONEY: 5000000, INT: 2, CHA: 3, NET: 4, SEC: 6 }, flags: ['rentier'] },
+  { id: 'shangren', name: '私企 老板家庭', desc: '父亲常年在外跑生意，一年在家不到两个月。他的名片上印着三个公司。',
+    eff: { MONEY: 2500000, CHA: 3, NET: 8, WILL: 3 }, flags: ['business'] },
+  { id: 'danqin', name: '单亲 母亲带大', desc: '母亲一个人打三份工，把你拉扯大。她从不说累，只是睡得越来越早。',
+    eff: { MONEY: 500000, WILL: 8, INT: 3, CHA: 1 }, flags: ['poor', 'single'] },
+  { id: 'fuli', name: '福利院 孤儿', desc: '你的档案袋上没有一个亲属的名字，只有一排编号。',
+    eff: { MONEY: 200000, WILL: 9, INT: 5, CHA: -2 }, flags: ['poor', 'orphan'] }
 ];
 
-/* ---------------- 家庭财务（出生时父母的资产 / 负债，1985년 基准，按年代缩放） ----------------
+/* ---------------- 家庭财务（出生时父母的资产 / 负债，1985 年 基准，按年代缩放） ----------------
  * 未成年期间由家庭承担生活与教育费：家庭资产不够，就转成家庭负债。
- * 父母离世时可「단순승인 全额继承 / 한정승인 限定继承 / 상속포기 放弃继承」。
+ * 父母离世时可「全额继承 / 限定继承 / 放弃继承」。
  */
 const FAMILY_FIN = {
-  banjiha:       { assets: 30000000,  debt: 45000000 },
-  factory:       { assets: 25000000,  debt: 30000000 },
-  province:      { assets: 60000000,  debt: 25000000 },
-  single:        { assets: 15000000,  debt: 38000000 },
-  orphan:        { assets: 5000000,   debt: 0 },
-  rentier:       { assets: 350000000, debt: 120000000 },
-  prof:          { assets: 180000000, debt: 60000000 },
-  chaebol_edge:  { assets: 150000000, debt: 40000000 }
+  chengzhongcun: { assets: 30000000, debt: 45000000 },
+  xiangong: { assets: 25000000, debt: 30000000 },
+  nongcun: { assets: 18000000, debt: 22000000 },
+  getihu: { assets: 60000000, debt: 25000000 },
+  jiaoshi: { assets: 180000000, debt: 60000000 },
+  tizhinei: { assets: 220000000, debt: 50000000 },
+  chaiqian: { assets: 350000000, debt: 120000000 },
+  shangren: { assets: 150000000, debt: 40000000 },
+  danqin: { assets: 15000000, debt: 38000000 },
+  fuli: { assets: 5000000, debt: 0 }
 };
 
-/* 年代金额缩放：1955년 的 1 块钱比 2005년 值钱得多 */
+/* 年代金额缩放：1955 年 的 1 块钱比 2005 年 值钱得多 */
 const FIN_SCALE = [
   [1955, 0.10], [1965, 0.18], [1975, 0.42], [1985, 1.00],
   [1995, 1.85], [2005, 2.70], [2015, 3.40], [2025, 4.20], [2060, 5.00]
@@ -173,58 +185,58 @@ const FIN_SCALE = [
  */
 const EVENTS = [
   /* ===== 幼儿 0-6 ===== */
-  { id: 'c01', age: [0, 3], w: 10, text: '你出生在首尔的冬天。母亲抱着你，窗外是汉江对岸尚未点亮的江南。',
+  { id: 'c01', age: [0, 3], w: 10, text: '你出生在这座城的冬天。母亲抱着你，窗外是江对岸尚未点亮的江南。',
     eff: { HP: 2 }, flags: [] },
-  { id: 'c02', age: [0, 4], w: 8, text: '半地下室的雨季。墙纸鼓起又脱落，你第一次知道「首尔」有两种：地上的和地下的。',
+  { id: 'c02', age: [0, 4], w: 8, text: '城中村隔断间的雨季。墙纸鼓起又脱落，你第一次知道「这座城」有两种：地上的和地下的。',
     cond: { need: ['poor'] }, eff: { WILL: 2, INT: 1 } },
   { id: 'c03', age: [1, 5], w: 7, text: '隔壁姐姐教你念韩文字母。你学得很快，母亲在灯下笑出了眼泪。', eff: { INT: 3, CHA: 1 } },
-  { id: 'c04', age: [2, 6], w: 7, text: '你在旧书摊捡到一本破旧的《世界地图册》，翻到「首尔」那一页，用蜡笔画了一个圈。', eff: { INT: 2, WILL: 1 } },
+  { id: 'c04', age: [2, 6], w: 7, text: '你在旧书摊捡到一本破旧的《世界地图册》，翻到「这座城」那一页，用蜡笔画了一个圈。', eff: { INT: 2, WILL: 1 } },
   { id: 'c05', age: [2, 6], w: 6, text: '父亲喝醉回家，把桌子掀翻。你躲在衣柜里，学会了屏住呼吸。',
     cond: { ban: ['single', 'orphan'] }, eff: { WILL: 3, STRESS: 6 } },
   { id: 'c06', age: [3, 6], w: 6, text: '教会发来一箱旧衣服。你穿着不合身的外套去幼儿园，被笑了整整一年。',
     cond: { need: ['poor'] }, eff: { CHA: -2, WILL: 2 } },
   { id: 'c07', age: [1, 6], w: 5, text: '你发高烧到 40 度，母亲背着你跑了三家医院。活下来之后，你的身体似乎更强了。', eff: { HP: 5, WILL: 2 } },
-  { id: 'c08', age: [3, 6], w: 5, text: '母亲在你耳边反复说一句话：「우리는 못 살아도, 너는 살아야 한다.」再穷，你也得活出个人样。', eff: { WILL: 4 } },
+  { id: 'c08', age: [3, 6], w: 5, text: '母亲在你耳边反复说一句话：「, .」再穷，你也得活出个人样。', eff: { WILL: 4 } },
   { id: 'c09', age: [0, 2], w: 4, text: '前世的记忆在午夜涌来：冰冷的江水，和一双擦得发亮的皮鞋。你哭醒了。',
     cond: { need: ['past_life'] }, eff: { INT: 3, WILL: 2, STRESS: 4 } },
   { id: 'c10', age: [4, 6], w: 5, text: '你在纸上画了一栋很高的楼，指着它说：这以后是我的。大人笑作一团。', eff: { WILL: 2, FAME: 1 } },
 
   /* ===== 小学 7-12 ===== */
-  { id: 'p01', age: [7, 12], w: 9, text: '小学入学。老师的名牌上写着「학부모 직업」一栏，你在上面填了「会社员」。', eff: { INT: 2 } },
+  { id: 'p01', age: [7, 12], w: 9, text: '小学入学。老师的名牌上写着「家长职业」一栏，你在上面填了「公司职员」。', eff: { INT: 2 } },
   { id: 'p02', age: [7, 12], w: 8, text: '班里的富家子带了一台 Game Boy。你只远远看过一眼，但记住了它的电路板结构。', eff: { INT: 2, STRESS: 2 } },
   { id: 'p03', age: [8, 12], w: 8, text: '你考了年级第一。母亲把成绩单贴在墙上，那一刻比过年还亮。', eff: { INT: 4, FAME: 2 } },
-  { id: 'p04', age: [8, 12], w: 7, text: '학원 补习班。母亲把最后的钱交给了大峙洞的数学学院。', cond: { min: { MONEY: 500000 } },
+  { id: 'p04', age: [8, 12], w: 7, text: '补习班。母亲把最后的钱交给了学区的数学学院。', cond: { min: { MONEY: 500000 } },
     eff: { INT: 5, MONEY: -600000 } },
-  { id: 'p05', age: [8, 12], w: 7, text: '大峙洞的学院太贵了。你在图书馆自学到闭馆，路灯下背单词。', cond: { max: { MONEY: 500000 } },
+  { id: 'p05', age: [8, 12], w: 7, text: '学区的学院太贵了。你在图书馆自学到闭馆，路灯下背单词。', cond: { max: { MONEY: 500000 } },
     eff: { INT: 4, WILL: 3, HP: -2 } },
   { id: 'p06', age: [9, 12], w: 6, text: '你在操场上被富家子推倒，爬起来把他的鼻子打出了血。第一次明白：道理是讲给有地位的人听的。',
     cond: { min: { STR: 15 } }, eff: { STR: 3, CHA: -2, WILL: 3, STRESS: 4 } },
   { id: 'p07', age: [9, 12], w: 6, text: '你成了班里最会讲故事的人。孩子们围着你，连那个富家子也凑过来。',
     cond: { min: { CHA: 15 } }, eff: { CHA: 3, NET: 3 } },
-  { id: 'p08', age: [10, 12], w: 6, text: '父亲失业了。家里的晚饭从三菜一汤变成了泡菜和饭。你开始去便利店打工。', eff: { WILL: 5, MONEY: 300000, STRESS: 5 } },
-  { id: 'p09', age: [10, 12], w: 5, text: '第一次坐地铁穿过汉江。对岸的公寓灯火通明，你说不出话。', eff: { WILL: 3, INT: 1 } },
-  { id: 'p10', age: [11, 12], w: 5, text: '你在作文里写《나의 꿈 我的梦想》：我要在江南最高的楼上，看首尔的夜景。老师给了满分。', eff: { INT: 2, FAME: 2, WILL: 2 } },
+  { id: 'p08', age: [10, 12], w: 6, text: '父亲失业了。家里的晚饭从三菜一汤变成了咸菜和米饭。你开始去便利店打工。', eff: { WILL: 5, MONEY: 300000, STRESS: 5 } },
+  { id: 'p09', age: [10, 12], w: 5, text: '第一次坐地铁穿过江。对岸的公寓灯火通明，你说不出话。', eff: { WILL: 3, INT: 1 } },
+  { id: 'p10', age: [11, 12], w: 5, text: '你在作文里写《我的梦想》：我要在江南最高的楼上，看这座城的夜景。老师给了满分。', eff: { INT: 2, FAME: 2, WILL: 2 } },
 
   /* ===== 中学 13-15 ===== */
   { id: 'm01', age: [13, 15], w: 9, text: '中学。青春期，贫穷第一次变成一种刺在皮肤上的东西。', eff: { STRESS: 4 } },
   { id: 'm02', age: [13, 15], w: 8, text: '你爱上了隔壁班的女孩。你在她课桌里塞了一封没署名的信，然后转学去了别的补习班。', eff: { CHA: 2, INT: -1, WILL: 1 } },
   { id: 'm03', age: [13, 15], w: 8, text: '你在网吧第一次接触到互联网。那一刻你听见了时代转动的声音。', eff: { INT: 4 }, flags: ['net_gen'] },
   { id: 'm04', age: [13, 15], w: 7, text: '你加入了学校的棒球队。汗水是最便宜的解药。', cond: { min: { STR: 20 } }, eff: { STR: 5, HP: 4 } },
-  { id: 'm05', age: [14, 15], w: 7, text: '你偷了一本《주식투자 입문 股票投资入门》。看不懂，但你记住了两个字：复利。', eff: { INT: 3 }, flags: ['stock_interest'] },
+  { id: 'm05', age: [14, 15], w: 7, text: '你偷了一本《股票投资入门》。看不懂，但你记住了两个字：复利。', eff: { INT: 3 }, flags: ['stock_interest'] },
   { id: 'm06', age: [13, 15], w: 6, text: '校园霸凌。你被拉进厕所，交出了一周的饭钱。你记住了他们的名字。', cond: { ban: ['lucky'] }, eff: { WILL: 4, STRESS: 8, HP: -3 } },
   { id: 'm07', age: [14, 15], w: 6, text: '你考进了「特目高」的预备班。母亲去学校门口给老师鞠躬。', cond: { min: { INT: 35 } }, eff: { INT: 4, FAME: 3 } },
   { id: 'm08', age: [14, 15], w: 5, text: '你在旧货市场淘到一台 486 电脑，整夜研究 DOS。', cond: { need: ['coder'] }, eff: { INT: 5, STR: -2 }, flags: ['coder'] },
 
   /* ===== 高中 16-19 ===== */
-  { id: 'h01', age: [16, 17], w: 9, text: '高中。韩国最残酷的三年开始了——有人把它叫做「지옥 地狱」。', eff: { STRESS: 6 } },
+  { id: 'h01', age: [16, 17], w: 9, text: '高中。韩国最残酷的三年开始了——有人把它叫做「地狱」。', eff: { STRESS: 6 } },
   { id: 'h02', age: [16, 18], w: 8, text: '你在自习室待到凌晨两点。走廊的灯灭了，你借着应急灯背书。', eff: { INT: 5, HP: -4, STRESS: 5 } },
-  { id: 'h03', age: [16, 18], w: 7, text: '你和几个同学组了乐队，在弘大的地下 Live House 演出。台下只有七个人，但他们在鼓掌。',
+  { id: 'h03', age: [16, 18], w: 7, text: '你和几个同学组了乐队，在大学城的地下 Live House 演出。台下只有七个人，但他们在鼓掌。',
     cond: { need: ['music'] }, eff: { CHA: 4, FAME: 3 } },
-  { id: 'h04', age: [17, 19], w: 9, text: '수능 高考日。全韩国的飞机为你们停飞十五分钟。你走出考场时，手在抖。',
+  { id: 'h04', age: [17, 19], w: 9, text: '高考 高考日。全韩国的飞机为你们停飞十五分钟。你走出考场时，手在抖。',
     cond: { min: { INT: 45 } }, eff: {}, flags: ['suneung_good'] },
-  { id: 'h05', age: [17, 19], w: 8, text: '수능 失利。你在汉江边坐了一整夜，江水很冷，但你没有跳下去。',
+  { id: 'h05', age: [17, 19], w: 8, text: '高考 失利。你在江边坐了一整夜，江水很冷，但你没有跳下去。',
     cond: { max: { INT: 45 } }, eff: { WILL: 5, STRESS: 10 } },
-  { id: 'h06', age: [17, 19], w: 6, text: '你拿到了 SKY（首尔大/高丽/延世）的录取通知书。整个巷子都知道了。',
+  { id: 'h06', age: [17, 19], w: 6, text: '你拿到了 SKY（这座城大/高丽/延世）的录取通知书。整个巷子都知道了。',
     cond: { need: ['suneung_good'], min: { INT: 55 } }, eff: { INT: 4, FAME: 8, NET: 5 }, flags: ['sky'], job: '大学生' },
   { id: 'h07', age: [17, 19], w: 6, text: '你进了地方大学。学费是母亲借来的，但你发誓不会浪费。',
     cond: { ban: ['sky'] }, eff: { INT: 2, NET: 2 }, job: '大学生' },
@@ -233,45 +245,45 @@ const EVENTS = [
   { id: 'h09', age: [18, 19], w: 5, text: '你在便利店打夜班，遇到一个醉醺醺的大叔。他是一家大公司的部长，说了一句你记了一辈子的话。',
     eff: { NET: 4, WILL: 2 }, flags: ['met_mentor'] },
 
-  /* ===== 大学 / 兵役 19-24 ===== */
-  { id: 'u01', age: [19, 23], w: 9, text: '大学。你第一次和江南出身的同学坐在同一间教室里，听懂了什么叫「격차 差距」。', cond: { job: ['大学生'] }, eff: { INT: 3, NET: 3 } },
+  /* ===== 大学 / 参军 19-24 ===== */
+  { id: 'u01', age: [19, 23], w: 9, text: '大学。你第一次和江南出身的同学坐在同一间教室里，听懂了什么叫「差距」。', cond: { job: ['大学生'] }, eff: { INT: 3, NET: 3 } },
   { id: 'u02', age: [19, 23], w: 7, text: '你加入了投资社团，第一次买入股票——然后亏掉了一半。', cond: { need: ['stock_interest'] }, eff: { INT: 3, MONEY: -500000 } },
-  { id: 'u03', age: [19, 23], w: 7, text: '你在自习室认识了一个家住 압구정 狎鸥亭的同学。他随手借你的两万块，够你吃一个月。', cond: { min: { CHA: 30 } }, eff: { NET: 8, CHA: 2 } },
-  { id: 'u04', age: [19, 23], w: 6, text: '你拿到了美国大学的交换名额。机场里，母亲塞给你一袋辣白菜。', cond: { min: { INT: 60 } }, eff: { INT: 5, CHA: 3, FAME: 4 }, flags: ['exchange'] },
-  { id: 'u05', age: [20, 24], w: 9, text: '병역 兵役通知书来了。两年，是你欠这个国家的。', cond: { gender: 'M', ban: ['no_military'] }, eff: { STR: 4, WILL: 3, HP: 3 }, flags: ['military'], job: '军人' },
+  { id: 'u03', age: [19, 23], w: 7, text: '你在自习室认识了一个家住 滨江的同学。他随手借你的两万块，够你吃一个月。', cond: { min: { CHA: 30 } }, eff: { NET: 8, CHA: 2 } },
+  { id: 'u04', age: [19, 23], w: 6, text: '你拿到了美国大学的交换名额。机场里，母亲塞给你一袋咸菜。', cond: { min: { INT: 60 } }, eff: { INT: 5, CHA: 3, FAME: 4 }, flags: ['exchange'] },
+  { id: 'u05', age: [20, 24], w: 9, text: '参军通知书来了。两年，是你欠这个国家的。', cond: { gender: 'M', ban: ['no_military'] }, eff: { STR: 4, WILL: 3, HP: 3 }, flags: ['military'], job: '军人' },
   { id: 'u06', age: [20, 24], w: 7, text: '部队里你学会了两件事：服从，以及观察谁在真正发号施令。', cond: { need: ['military'] }, eff: { STR: 3, WILL: 3, NET: 3 } },
-  { id: 'u07', age: [20, 24], w: 6, text: '你在部队考上了「카투사 KATUSA」，美军基地里的英语让你的世界大了一圈。', cond: { need: ['military'], min: { INT: 55 } }, eff: { INT: 4, CHA: 3, NET: 5 } },
+  { id: 'u07', age: [20, 24], w: 6, text: '你在部队考上了「部队考学」，美军基地里的英语让你的世界大了一圈。', cond: { need: ['military'], min: { INT: 55 } }, eff: { INT: 4, CHA: 3, NET: 5 } },
   { id: 'u08', age: [20, 24], w: 5, text: '免役。你比同龄人多了两年，但少了军营里的人脉。', cond: { need: ['no_military'] }, eff: { INT: 3, WILL: 2 } },
-  { id: 'u09', age: [21, 24], w: 6, text: '你在大学创业社团做的小程序，被一家小公司用 3000 万韩元买走。',
+  { id: 'u09', age: [21, 24], w: 6, text: '你在大学创业社团做的小程序，被一家小公司用 3000 万元买走。',
     cond: { need: ['coder'] }, eff: { MONEY: 30000000, FAME: 5, INT: 3 }, flags: ['first_exit'] },
 
   /* ===== 社会初期 23-32 ===== */
-  { id: 's01', age: [23, 32], w: 9, text: '취업 求职季。你穿上人生第一套西装，在汝矣岛的招聘会上排了四个小时。', eff: { STRESS: 6 } },
-  { id: 's02', age: [23, 32], w: 8, text: '你通过了一家大集团的公开招聘。入职那天，你在大厅的集团标志前站了很久。',
+  { id: 's01', age: [23, 32], w: 9, text: '求职季。你穿上人生第一套西装，在金融街的招聘会上排了四个小时。', eff: { STRESS: 6 } },
+  { id: 's02', age: [23, 32], w: 8, text: '你通过了一家大公司的公开招聘。入职那天，你在大厅的集团标志前站了很久。',
     cond: { min: { INT: 50 } }, eff: { MONEY: 35000000, NET: 6, LOY: 10 }, job: '大企业职员', flags: ['bigco_staff'] },
-  { id: 's03', age: [23, 32], w: 7, text: '你进了一家中小企业。加班到十一点是常态，회식 聚餐是必修课。', eff: { MONEY: 26000000, STR: -3, STRESS: 7 }, job: '会社员' },
+  { id: 's03', age: [23, 32], w: 7, text: '你进了一家中小企业。加班到十一点是常态，团建聚餐是必修课。', eff: { MONEY: 26000000, STR: -3, STRESS: 7 }, job: '公司职员' },
   { id: 's04', age: [23, 32], w: 6, text: '你考上了公务员。母亲在电话那头哭了。', cond: { min: { INT: 60 } }, eff: { MONEY: 24000000, NET: 6, FAME: 4 }, job: '公务员' },
   { id: 's05', age: [24, 32], w: 7, text: '江南的房价每天都在涨。中介说：再不买就永远买不起了。', eff: { STRESS: 5 }, flags: ['house_pressure'] },
-  { id: 's06', age: [24, 32], w: 6, text: '你在狎鸥亭的酒桌上替上司挡了一杯酒。从此他记得你的名字。', cond: { min: { CHA: 40 } }, eff: { NET: 8, LOY: 5, HP: -3 } },
-  { id: 's07', age: [25, 32], w: 6, text: '你和相恋三年的女友分手了。她说：你什么都好，就是没有「집 房子」。', eff: { STRESS: 10, WILL: 4 } },
+  { id: 's06', age: [24, 32], w: 6, text: '你在滨江的酒桌上替上司挡了一杯酒。从此他记得你的名字。', cond: { min: { CHA: 40 } }, eff: { NET: 8, LOY: 5, HP: -3 } },
+  { id: 's07', age: [25, 32], w: 6, text: '你和相恋三年的女友分手了。她说：你什么都好，就是没有「房子」。', eff: { STRESS: 10, WILL: 4 } },
   { id: 's08', age: [25, 32], w: 5, text: '你结婚了。婚礼在江南的小型礼堂，礼金刚好够付半年的房租。', cond: { min: { CHA: 35 } }, eff: { WILL: 4, NET: 5, MONEY: 5000000 }, flags: ['married'] },
   { id: 's09', age: [24, 30], w: 6, text: '你被派到中国的分公司。两年的海外经历，换来了别人没有的视野。', cond: { need: ['bigco_staff'] }, eff: { INT: 5, NET: 8, LOY: 6 } },
-  { id: 's10', age: [26, 33], w: 6, text: '部门结构调整，你被列入「명예퇴직 名誉退职」名单。三十岁，你第一次失业。',
+  { id: 's10', age: [26, 33], w: 6, text: '部门结构调整，你被列入「优化 名誉退职」名单。三十岁，你第一次失业。',
     cond: { ban: ['lucky'] }, eff: { MONEY: 20000000, STRESS: 12, WILL: 4 }, job: '无业' },
-  { id: 's11', age: [26, 34], w: 6, text: '你在清潭洞开了第一家店：一间只有八平米的咖啡馆。', cond: { min: { MONEY: 30000000 } }, eff: { MONEY: -30000000, NET: 6, CHA: 4 }, job: '个体户', flags: ['own_shop'] },
+  { id: 's11', age: [26, 34], w: 6, text: '你在酒吧街开了第一家店：一间只有八平米的咖啡馆。', cond: { min: { MONEY: 30000000 } }, eff: { MONEY: -30000000, NET: 6, CHA: 4 }, job: '个体户', flags: ['own_shop'] },
   { id: 's12', age: [27, 35], w: 6, text: '你辞职创业。办公室在九老区的数字园，六个工位，四个人。',
     cond: { min: { WILL: 40, INT: 50 } }, eff: { MONEY: -20000000, WILL: 5, STRESS: 10 }, job: '创业者', flags: ['startup'] },
 
   /* ===== 经济事件（时代） ===== */
-  { id: 'e1997', age: [8, 60], w: 12, once: true, era: true, text: '1997년 IMF。电视里，总理向全国低下了头。街头的金店前排起长队，有人交出戒指，有人交出婚礼的项链。',
+  { id: 'e1997', age: [8, 60], w: 12, once: true, era: true, text: '1997 年，亚洲金融风暴。周边国家的货币一个接一个崩，出口订单说没就没。工厂开始裁员，下岗的名单贴在公告栏上。',
     cond: { yearMin: 1997, yearMax: 1998 },
-    eff: { WILL: 6, STRESS: 10, MONEY: -2000000 }, flags: ['imf'], log: 'IMF 外汇危机：全国进入紧缩。' },
+    eff: { WILL: 6, STRESS: 10, MONEY: -2000000 }, flags: ['imf'], log: '亚洲金融风暴：出口断崖，国企改制，下岗潮开始。' },
   { id: 'e1998gold', age: [9, 70], w: 8, once: true, era: true, text: '全民献金运动。人们把金首饰放进街头的募捐箱，有人说：国家也是家。',
     cond: { need: ['imf'], yearMin: 1998, yearMax: 1999 }, eff: { WILL: 4, FAME: 2 } },
-  { id: 'e2002', age: [10, 70], w: 8, once: true, era: true, text: '2002 世界杯。整个韩国变成了红色的海。你在光化门前和几十万人一起喊「대한민국」。',
+  { id: 'e2002', age: [10, 70], w: 8, once: true, era: true, text: '2002 世界杯。整个韩国变成了红色的海。你在光化门前和几十万人一起喊「中国」。',
     cond: { yearMin: 2002, yearMax: 2003 },
     eff: { WILL: 3, CHA: 2, STRESS: -8 } },
-  { id: 'e2008', age: [16, 75], w: 11, once: true, era: true, text: '2008 金融海啸。KOSPI 单日暴跌，办公室里没有人说话。有人在楼下抽烟，抽完就上楼辞职了。',
+  { id: 'e2008', age: [16, 75], w: 11, once: true, era: true, text: '2008 金融海啸。大盘 单日暴跌，办公室里没有人说话。有人在楼下抽烟，抽完就上楼辞职了。',
     cond: { yearMin: 2008, yearMax: 2009 },
     eff: { STRESS: 8, WILL: 3 }, flags: ['crisis2008'], log: '2008 金融危机：资产大幅缩水，但也是抄底之年。' },
   { id: 'e2012gangnam', age: [14, 70], w: 8, once: true, era: true, text: '《江南 Style》火遍全球。全世界的综艺都在跳骑马舞，而江南的房价又涨了一倍。',
@@ -284,23 +296,23 @@ const EVENTS = [
   /* ===== 事业期 30-45 ===== */
   { id: 'b01', age: [30, 45], w: 9, text: '你的公司拿到了第一轮投资。投资人在合同上签字那一刻，你的手是凉的。',
     cond: { need: ['startup'] }, eff: { MONEY: 500000000, FAME: 10, NET: 8 } },
-  { id: 'b02', age: [30, 45], w: 7, text: '你被一家大集团挖角，成为战略室的次长。你终于走进了那栋楼的顶层。',
-    cond: { min: { INT: 70 } }, eff: { MONEY: 120000000, LOY: 20, NET: 10, FAME: 8 }, job: '大集团战略次长', flags: ['bigco_core'] },
+  { id: 'b02', age: [30, 45], w: 7, text: '你被一家大公司挖角，成为战略室的次长。你终于走进了那栋楼的顶层。',
+    cond: { min: { INT: 70 } }, eff: { MONEY: 120000000, LOY: 20, NET: 10, FAME: 8 }, job: '大公司战略次长', flags: ['bigco_core'] },
   { id: 'b03', age: [30, 45], w: 7, text: '你在江南买下了第一套属于自己的公寓。签约那天，你在空房子里坐到天黑。',
     cond: { min: { MONEY: 800000000 } }, eff: { MONEY: -800000000, WILL: 6, CHA: 4, FAME: 5 }, flags: ['gangnam_owner'] },
   { id: 'b04', age: [32, 45], w: 6, text: '你的公司被大企业以极低的价格强行收购。你明白了：在这里，做大就会被吃掉。',
     cond: { need: ['startup'], ban: ['lucky'] }, eff: { MONEY: 300000000, STRESS: 14, WILL: 5 } },
-  { id: 'b05', age: [32, 46], w: 6, text: '你出版了自传《반지하에서 강남까지》。签售会排了三百人。',
+  { id: 'b05', age: [32, 46], w: 6, text: '你出版了自传《市中心》。签售会排了三百人。',
     cond: { min: { FAME: 40 } }, eff: { FAME: 15, MONEY: 150000000 } },
-  { id: 'b06', age: [33, 45], w: 6, text: '体检报告上写着「과로 过劳」和三个红色箭头。医生说：你再这样会死。', eff: { HP: -8, STRESS: 10 } },
-  { id: 'b07', age: [34, 48], w: 6, text: '你在济州岛休假两周。海风吹过来的时候，你第一次觉得活着是件好事。', eff: { HP: 8, STRESS: -15 } },
+  { id: 'b06', age: [33, 45], w: 6, text: '体检报告上写着「过劳」和三个红色箭头。医生说：你再这样会死。', eff: { HP: -8, STRESS: 10 } },
+  { id: 'b07', age: [34, 48], w: 6, text: '你在海岛休假两周。海风吹过来的时候，你第一次觉得活着是件好事。', eff: { HP: 8, STRESS: -15 } },
   { id: 'b08', age: [35, 46], w: 6, text: '你成立了基金，开始做真正的资本运作。钱第一次开始为你工作。',
     cond: { min: { MONEY: 3000000000, INT: 70 } }, eff: { MONEY: 500000000, NET: 12, FAME: 10 }, flags: ['fund'] },
   { id: 'b09', age: [33, 45], w: 5, text: '检察机关上门调查。你坐在审讯室里，第一次看清了这个国家真正的权力结构。',
     cond: { min: { FAME: 30 } }, eff: { STRESS: 12, WILL: 4, NET: 5 }, flags: ['probed'] },
 
-  /* ===== 대기업선 大企业线 36-60 ===== */
-  { id: 't01', age: [36, 60], w: 10, text: '集团会长召见你。老人的手指敲着桌面：「我听说过你。你很像年轻时的我。」',
+  /* ===== 大企业线 36-60 ===== */
+  { id: 't01', age: [36, 60], w: 10, text: '董事长召见你。老人的手指敲着桌面：「我听说过你。你很像年轻时的我。」',
     cond: { min: { LOY: 30, FAME: 30 } }, eff: { LOY: 15, NET: 10 }, flags: ['bigco_inner'] },
   { id: 't02', age: [36, 60], w: 9, text: '公司高层的斗争开始了。保守派元老、实干派专务、以及一位空降的太子党，三方都在拉拢你。',
     cond: { need: ['bigco_inner'] }, eff: {}, flags: ['war_start'],
@@ -311,12 +323,12 @@ const EVENTS = [
     ] },
   { id: 't04', age: [38, 60], w: 8, text: '你注意到一家老牌上市集团被严重低估。你开始在市场里悄悄吸纳它的流通股。3%，5%，7.4%……每一次都踩在披露线以下。',
     cond: { min: { MONEY: 5000000000 } }, eff: { MONEY: -2000000000, INT: 5, STRESS: 8 }, flags: ['buying_stake'] },
-  { id: 't05', age: [38, 62], w: 7, text: '股东大会那天，你走进会场。闪光灯亮起的瞬间，你想起了很多年前那间半地下室的窗。',
+  { id: 't05', age: [38, 62], w: 7, text: '股东大会那天，你走进会场。闪光灯亮起的瞬间，你想起了很多年前那间城中村隔断间的窗。',
     cond: { need: ['buying_stake'] }, eff: { FAME: 25, LOY: -20, WILL: 8 }, flags: ['showdown'] },
   { id: 't06', age: [40, 62], w: 7, text: '一场突如其来的税务调查。你的对手比你想象的更不体面。',
     cond: { min: { FAME: 60 } }, eff: { STRESS: 14, MONEY: -300000000, WILL: 5 }, flags: ['tax_raid'] },
-  { id: 't07', age: [40, 62], w: 6, text: '你成了大集团的副会长。汉江对岸的灯，终于有一盏是你点亮的。',
-    cond: { need: ['side_second'], min: { LOY: 70 } }, eff: { MONEY: 2000000000, FAME: 20, LOY: 10 }, job: '大集团副会长' },
+  { id: 't07', age: [40, 62], w: 6, text: '你成了大公司的副董事长。江对岸的灯，终于有一盏是你点亮的。',
+    cond: { need: ['side_second'], min: { LOY: 70 } }, eff: { MONEY: 2000000000, FAME: 20, LOY: 10 }, job: '大公司副董事长' },
 
   /* ===== 通用 / 随机小事件 ===== */
   { id: 'r01', age: [20, 60], w: 6, text: '你在地铁里给一位老人让座。他递给你一张名片——那是你此后十年最重要的一通电话。',
@@ -327,7 +339,7 @@ const EVENTS = [
       { text: '拒绝，并拉黑他', eff: { INT: 3, WILL: 2, NET: -3 } }
     ] },
   { id: 'r03', age: [25, 55], w: 5, text: '你连续三个月每天只睡四小时。身体开始抗议。', eff: { HP: -6, STRESS: 8 } },
-  { id: 'r04', age: [25, 55], w: 5, text: '你开始跑步。清晨六点的汉江公园，跑着跑着就想通了很多事。', eff: { HP: 8, STR: 3, STRESS: -8 } },
+  { id: 'r04', age: [25, 55], w: 5, text: '你开始跑步。清晨六点的江公园，跑着跑着就想通了很多事。', eff: { HP: 8, STR: 3, STRESS: -8 } },
   { id: 'r05', age: [26, 50], w: 5, text: '你参加了一场婚礼，认识了某个人。命运有时候就藏在一句客套话里。', cond: { min: { CHA: 40 } }, eff: { NET: 7 } },
   { id: 'r06', age: [28, 55], w: 4, text: '你的名字第一次出现在报纸上。不是讣告，是新闻。', cond: { min: { FAME: 25 } }, eff: { FAME: 6, CHA: 2 } },
   { id: 'r07', age: [30, 60], w: 5, text: '母亲病了。你在病房外走廊里签了一大堆单据，忽然发现自己是家里唯一能做决定的人。', eff: { WILL: 5, STRESS: 8, MONEY: -6000000 } },
@@ -336,39 +348,39 @@ const EVENTS = [
   { id: 'r10', age: [40, 75], w: 6, text: '你有了孩子。你把那个从小就画在纸上的高塔故事，讲给了他听。', cond: { need: ['married'] }, eff: { WILL: 5, STRESS: -6, HP: 3 } },
   { id: 'r11', age: [45, 75], w: 5, text: '你去医院做了全面体检。医生说：你比你看起来老十岁。', eff: { HP: -5, STRESS: 5 } },
   { id: 'r12', age: [55, 80], w: 6, text: '你开始写回忆录。第一句话是：我出生在一个看不见天空的房间里。', eff: { INT: 3, FAME: 5 } },
-  { id: 'r13', age: [60, 80], w: 6, text: '你回到老家的巷子。半地下室还在，只是换了人家。', eff: { WILL: 3, STRESS: -5 } },
-  { id: 'r14', age: [50, 80], w: 5, text: '有人在电视节目里提到你的名字，说你是「개천에서 용 난 사나이 从泥沟里飞出的龙」。', cond: { min: { FAME: 50 } }, eff: { FAME: 8, WILL: 4 } },
-  { id: 'r15', age: [20, 50], w: 4, text: '你在书店站着看完了《자본론》。合上书时，你对自己的人生有了另一种解释。', cond: { min: { INT: 55 } }, eff: { INT: 4, WILL: 3 } },
+  { id: 'r13', age: [60, 80], w: 6, text: '你回到老家的巷子。城中村隔断间还在，只是换了人家。', eff: { WILL: 3, STRESS: -5 } },
+  { id: 'r14', age: [50, 80], w: 5, text: '有人在电视节目里提到你的名字，说你是「从泥沟里飞出的龙」。', cond: { min: { FAME: 50 } }, eff: { FAME: 8, WILL: 4 } },
+  { id: 'r15', age: [20, 50], w: 4, text: '你在书店站着看完了《资本论》。合上书时，你对自己的人生有了另一种解释。', cond: { min: { INT: 55 } }, eff: { INT: 4, WILL: 3 } },
 
   /* ===== 晚年 60+ ===== */
-  { id: 'o01', age: [60, 80], w: 8, text: '你退休了，或者说被退休了。名誉会长，一个没有实权的头衔。', eff: { STRESS: 6, WILL: -2 } },
-  { id: 'o02', age: [62, 80], w: 7, text: '你在汉江边的长椅上坐了一下午。江水还是那个江水。', eff: { STRESS: -12, WILL: 3 } },
-  { id: 'o03', age: [65, 80], w: 6, text: '你把大部分财产捐了出去，成立了一个帮助半地下室孩子的基金。', cond: { min: { MONEY: 10000000000 } }, eff: { MONEY: -5000000000, FAME: 15, WILL: 6 } },
+  { id: 'o01', age: [60, 80], w: 8, text: '你退休了，或者说被退休了。名誉董事长，一个没有实权的头衔。', eff: { STRESS: 6, WILL: -2 } },
+  { id: 'o02', age: [62, 80], w: 7, text: '你在江边的长椅上坐了一下午。江水还是那个江水。', eff: { STRESS: -12, WILL: 3 } },
+  { id: 'o03', age: [65, 80], w: 6, text: '你把大部分财产捐了出去，成立了一个帮助城中村城中村孩子的基金。', cond: { min: { MONEY: 10000000000 } }, eff: { MONEY: -5000000000, FAME: 15, WILL: 6 } },
   { id: 'o04', age: [70, 80], w: 6, text: '医生把你叫到一边，说了那个词。你反而很平静。', eff: { HP: -12, STRESS: 8 } }
 ];
 
 /* ---------------- 投资机会（前世记忆核心玩法） ---------------- */
 /* year: 触发年份；hold: 持有到哪年结算；base: 基准倍率；vol: 波动 */
 const INVESTMENTS = [
-  { id: 'inv_imf_usd', year: 1997, name: '1997 IMF · 美元与黄金', hold: 2, cost: 2000000,
-    hint: '원화는 무너진다 韩元会崩。你记得那一年，一美元从 900 韩元涨到了近 2000。',
+  { id: 'inv_imf_usd', year: 1997, name: '1997 · 危机中的黄金', hold: 2, cost: 2000000,
+    hint: '元会崩。你记得那一年，一美元从 900 元涨到了近 2000。',
     base: 2.6, vol: 0.5, kind: 'macro' },
   { id: 'inv_imf_junk', year: 1998, name: '1998 · 收购破产企业债券', hold: 3, cost: 5000000,
-    hint: '大宇、起亚的债券被打到面值的两成。国家会兜底。', base: 4.2, vol: 1.2, kind: 'macro' },
+    hint: '一堆企业的债券被打到面值的两成。有人说：国家不会让它倒。', base: 4.2, vol: 1.2, kind: 'macro' },
   { id: 'inv_dotcom', year: 1999, name: '1999 · 互联网概念股', hold: 2, cost: 5000000,
-    hint: '닷컴 버블。它会在 2000 年 3 月破裂，但在那之前会涨到荒唐的高度。', base: 2.4, vol: 1.0, kind: 'stock' },
-  { id: 'inv_gangnam_apt', year: 2001, name: '2001 · 江南区公寓', hold: 6, cost: 20000000,
-    hint: '江南区大峙洞的「은마아파트」。你记得它后来涨了十倍。', base: 3.2, vol: 0.4, kind: 'estate' },
+    hint: '。它会在 2000 年 3 月破裂，但在那之前会涨到荒唐的高度。', base: 2.4, vol: 1.0, kind: 'stock' },
+  { id: 'inv_gangnam_apt', year: 2001, name: '2001 · 市中心公寓', hold: 6, cost: 20000000,
+    hint: '市中心学区的「」。你记得它后来涨了十倍。', base: 3.2, vol: 0.4, kind: 'estate' },
   { id: 'inv_china', year: 2004, name: '2004 · 中国制造概念', hold: 3, cost: 10000000,
-    hint: '중국 특수。韩国的中间材会跟着中国的工厂一起起飞。', base: 2.0, vol: 0.6, kind: 'stock' },
-  { id: 'inv_2008', year: 2008, name: '2008 危机 · 抄底 KOSPI', hold: 3, cost: 30000000,
+    hint: '。韩国的中间材会跟着中国的工厂一起起飞。', base: 2.0, vol: 0.6, kind: 'stock' },
+  { id: 'inv_2008', year: 2008, name: '2008 危机 · 抄底 大盘', hold: 3, cost: 30000000,
     hint: '所有人都恐慌的十月，是你一生中最好的买点。', base: 3.4, vol: 0.8, kind: 'stock' },
   { id: 'inv_kpop', year: 2011, name: '2011 · 娱乐公司股票', hold: 4, cost: 20000000,
-    hint: '한류。你知道明年会有一个骑马的胖子让全世界认识江南。', base: 4.0, vol: 1.1, kind: 'stock' },
+    hint: '。你知道明年会有一个骑马的胖子让全世界认识江南。', base: 4.0, vol: 1.1, kind: 'stock' },
   { id: 'inv_btc', year: 2013, name: '2013 · 比特币', hold: 4, cost: 10000000,
-    hint: '一个叫 비트코인 的东西，现在几百美元，你记得它后来能买一辆车。', base: 8.0, vol: 2.5, kind: 'crypto' },
+    hint: '一个叫 的东西，现在几百美元，你记得它后来能买一辆车。', base: 8.0, vol: 2.5, kind: 'crypto' },
   { id: 'inv_rebuild', year: 2015, name: '2015 · 江南再建筑', hold: 5, cost: 50000000,
-    hint: '재건축。三十年老公寓拆掉重建的那几年，是韩国最稳的暴利。', base: 2.8, vol: 0.5, kind: 'estate' },
+    hint: '。三十年老公寓拆掉重建的那几年，是韩国最稳的暴利。', base: 2.8, vol: 0.5, kind: 'estate' },
   { id: 'inv_covid', year: 2020, name: '2020 · 疫情熔断抄底', hold: 2, cost: 100000000,
     hint: '三月的熔断，所有人都在抛。然后流动性来了。', base: 2.5, vol: 0.7, kind: 'stock' },
   { id: 'inv_semicon', year: 2022, name: '2022 · 半导体超级周期', hold: 3, cost: 200000000,
@@ -378,75 +390,75 @@ const INVESTMENTS = [
 /* ---------------- 结局 ---------------- */
 /* cond: 判定函数 (s) => bool；rank: S/A/B/C/D */
 const ENDINGS = [
-  { id: 'end_king', rank: 'S', title: '기업의 주인 企业之主',
-    text: '你从半地下室走进了会长办公室的落地窗前。汉江在你脚下。当年那个看不见天空的起点，终于被你亲手改写。',
+  { id: 'end_king', rank: 'S', title: '企业之主',
+    text: '你从城中村隔断间走进了董事长办公室的落地窗前。江在你脚下。当年那个看不见天空的起点，终于被你亲手改写。',
     cond: s => s.flags.took_over },
-  { id: 'end_avenger', rank: 'S', title: '날카로운 칼날 锋利的规则',
-    text: '你没有拿走谁的名字，你只是让规则锋利了一次。那家集团的招牌换下的那天，你在汉江大桥上站了很久。',
+  { id: 'end_avenger', rank: 'S', title: '锋利的规则',
+    text: '你没有拿走谁的名字，你只是让规则锋利了一次。那家集团的招牌换下的那天，你在江大桥上站了很久。',
     cond: s => s.flags.exposed && s.stats.FAME >= 60 },
-  { id: 'end_stock', rank: 'A', title: '주식의 신 股神',
-    text: '你在汝矣岛有一间没有招牌的办公室。屏幕上的曲线你看了四十年，最后它们都变成了你的名字。',
+  { id: 'end_stock', rank: 'A', title: '股神',
+    text: '你在金融街有一间没有招牌的办公室。屏幕上的曲线你看了四十年，最后它们都变成了你的名字。',
     cond: s => (s.market && s.market.stocks.length >= 1 ? stockValue(s) : 0) >= 100000000000 },
-  { id: 'end_landlord', rank: 'A', title: '건물주 收租的房东',
+  { id: 'end_landlord', rank: 'A', title: '收租的房东',
     text: '你名下的收租物业排到了第十九号。每个月的第一天，手机会准时响起——那是租金到账的声音。',
     cond: s => (s.market ? s.market.props.filter(p => {
       const r = propRef(p); return r && (r.rent || 0) > 0;
     }).length : 0) >= 2 && (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) >= 30000000000 },
-  { id: 'end_tycoon', rank: 'A', title: '자수성가亿万富豪',
-    text: '你不属于任何家族，你只属于你自己。报纸称你为「흙수저의 반란 土勺子的叛乱」。',
+  { id: 'end_tycoon', rank: 'A', title: '亿万富豪',
+    text: '你不属于任何家族，你只属于你自己。报纸称你为「土勺子的叛乱」。',
     cond: s => (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) >= 150000000000 },
-  { id: 'end_vice', rank: 'A', title: '회장의 오른팔 会长之右臂',
+  { id: 'end_vice', rank: 'A', title: '董事长之右臂',
     text: '你一生都在别人的影子里，但那个影子覆盖了整个韩国的天际线。',
     cond: s => s.flags.side_second && s.stats.LOY >= 60 },
-  { id: 'end_politician', rank: 'A', title: '여의도의 별 汝矣岛之星',
+  { id: 'end_politician', rank: 'A', title: '金融街之星',
     text: '你走进了国会议事堂。韩国最锋利的权力不在江南的办公室，而在这里的一张票上。',
     cond: s => s.stats.FAME >= 95 && s.stats.NET >= 150 },
-  { id: 'end_legend', rank: 'A', title: '전설 传说',
+  { id: 'end_legend', rank: 'A', title: '传说',
     text: '你的名字被写进了教科书。孩子们不知道你出生在哪儿，只知道你做过什么。',
     cond: s => s.stats.FAME >= 160 },
-  { id: 'end_escape', rank: 'B', title: '해외 도피 远走他乡',
+  { id: 'end_escape', rank: 'B', title: '远走他乡',
     text: '你在仁川机场的贵宾室里等着最后一班航班。钱还在，名声臭了。这也是一种活法。',
     cond: s => s.flags.tax_raid && (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) >= 1000000000 && s.flags.took_bribe },
-  { id: 'end_fund', rank: 'B', title: '은퇴한 투자자 退休投资人',
-    text: '你在济州岛有一栋房子和一片橘子园。钱够用，故事也够讲。',
+  { id: 'end_fund', rank: 'B', title: '退休投资人',
+    text: '你在海岛有一栋房子和一片橘子园。钱够用，故事也够讲。',
     cond: s => (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) >= 3000000000 },
-  { id: 'end_shop', rank: 'B', title: '따뜻한 가게 温暖的店',
-    text: '你的咖啡馆还在清潭洞的巷子里。老顾客来了一茬又一茬，你记得每个人的口味。',
+  { id: 'end_shop', rank: 'B', title: '温暖的店',
+    text: '你的咖啡馆还在酒吧街的巷子里。老顾客来了一茬又一茬，你记得每个人的口味。',
     cond: s => s.flags.own_shop && (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) > 0
       && (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) < 3000000000 && s.stats.FAME < 40 },
-  { id: 'end_family', rank: 'A', title: '대대로 家族绵延',
-    text: '你儿孙满堂。年夜饭的桌上，三代人抢着给你夹菜。你这辈子没当上财阀，但你种下的根，扎得很深。',
+  { id: 'end_family', rank: 'A', title: '家族绵延',
+    text: '你儿孙满堂。年夜饭的桌上，三代人抢着给你夹菜。你这辈子没当上大老板，但你种下的根，扎得很深。',
     cond: s => s.grandCount > 0 && s.stats.LOVE >= 45 },
-  { id: 'end_salary', rank: 'C', title: '평범한 회사원 平凡的会社员',
-    text: '你按时上下班，按时退休。回首尔的夜景时，你还是会想起小时候画的那个圈。',
-    cond: s => ['会社员', '公务员', '大企业职员', '工厂工人', '个体户'].indexOf(s.job) >= 0
+  { id: 'end_salary', rank: 'C', title: '平凡的公司职员',
+    text: '你按时上下班，按时退休。回这座城的夜景时，你还是会想起小时候画的那个圈。',
+    cond: s => ['公司职员', '公务员', '大企业职员', '工厂工人', '个体户'].indexOf(s.job) >= 0
       && s.stats.FAME < 40 && (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) < 3000000000 },
-  { id: 'end_broken', rank: 'D', title: '빚 负债者',
-    text: '你奋斗了一辈子，最后只剩下一张催缴单和半地下室的钥匙。',
+  { id: 'end_broken', rank: 'D', title: '负债者',
+    text: '你奋斗了一辈子，最后只剩下一张催缴单和城中村隔断间的钥匙。',
     cond: s => (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) < 0 },
-  { id: 'end_lonely', rank: 'C', title: '혼자 独行者',
-    text: '你爬得不算高，但每一步都是自己的。天黑了，你给自己倒了一杯烧酒。',
+  { id: 'end_lonely', rank: 'C', title: '独行者',
+    text: '你爬得不算高，但每一步都是自己的。天黑了，你给自己倒了一杯白酒。',
     cond: s => s.stats.WILL >= 60 },
-  { id: 'end_normal', rank: 'C', title: '보통의 인생 普通的人生',
-    text: '你的一生没有奇迹，也没有崩塌。像汉江的水，平稳地流过。',
+  { id: 'end_normal', rank: 'C', title: '普通的人生',
+    text: '你的一生没有奇迹，也没有崩塌。像江的水，平稳地流过。',
     cond: () => true }
 ];
 
 /* =========================================================
- *  扩展事件库 · 每个事件 3 个选项，风险与回报各不相同
- *  risk: 1 低 / 2 中 / 3 高   gamble: {p, win, lose} 概率赌注
+ * 扩展事件库 · 每个事件 3 个选项，风险与回报各不相同
+ * risk: 1 低 / 2 中 / 3 高 gamble: {p, win, lose} 概率赌注
  * ========================================================= */
 const EVENTS_EXTRA = [
 
-  /* ===== 주거 居住 / 房产 ===== */
-  { id: 'x_h01', age: [23, 45], w: 8, text: '월세 到期，房东说要涨三成。你在半地下室的墙前站了很久——这里是你的起点，也是你最想逃离的地方。',
+  /* ===== 居住 / 房产 ===== */
+  { id: 'x_h01', age: [23, 45], w: 8, text: '租约到期，房东说要涨三成。你在城中村隔断间的墙前站了很久——这里是你的起点，也是你最想逃离的地方。',
     choices: [
       { text: '续租，忍一年', eff: { MONEY: -3000000, STRESS: 5 }, risk: 1 },
-      { text: '搬到京畿道，通勤两小时', eff: { MONEY: -1200000, STR: -3, STRESS: 8, WILL: 3 }, risk: 2 },
-      { text: '咬牙凑 전세 押金，一次性解决', eff: { MONEY: -18000000, WILL: 4, STRESS: 10 }, risk: 3,
+      { text: '搬到城郊，通勤两小时', eff: { MONEY: -1200000, STR: -3, STRESS: 8, WILL: 3 }, risk: 2 },
+      { text: '咬牙凑齐押金，一次性解决', eff: { MONEY: -18000000, WILL: 4, STRESS: 10 }, risk: 3,
         gamble: { p: 0.45, win: { MONEY: 6000000, WILL: 3 }, lose: { MONEY: -8000000, STRESS: 8 } } }
     ] },
-  { id: 'x_h02', age: [25, 50], w: 8, text: '中介打来电话：大峙洞有一套 24 坪，业主急售，比市价低一成。首付要在三天内到位。',
+  { id: 'x_h02', age: [25, 50], w: 8, text: '中介打来电话：学区有一套 24 坪，业主急售，比市价低一成。首付要在三天内到位。',
     cond: { min: { MONEY: 60000000 } },
     choices: [
       { text: '再等等，也许还有更便宜的', eff: { STRESS: 4 }, risk: 1 },
@@ -470,7 +482,7 @@ const EVENTS_EXTRA = [
       { text: '全部换成商铺，转收租模式', eff: { MONEY: -20000000, NET: 6, INT: 3 }, risk: 3,
         gamble: { p: 0.5, win: { MONEY: 70000000 }, lose: { MONEY: -25000000 } } }
     ] },
-  { id: 'x_h05', age: [33, 58], w: 6, text: '你所住的那片老公寓贴出了「재건축 重建」公告。业主大会要投票，你的一票很关键。',
+  { id: 'x_h05', age: [33, 58], w: 6, text: '你所住的那片老公寓贴出了「重建」公告。业主大会要投票，你的一票很关键。',
     cond: { need: ['own_house'] },
     choices: [
       { text: '反对，重建期间没地方住', eff: { STRESS: 4, WILL: -2 }, risk: 1 },
@@ -478,7 +490,7 @@ const EVENTS_EXTRA = [
       { text: '赞成，并低价收购邻居的份额', eff: { MONEY: -90000000, INT: 5, STRESS: 12 }, flags: ['rebuild_player'], risk: 3,
         gamble: { p: 0.48, win: { MONEY: 420000000, FAME: 5 }, lose: { MONEY: -40000000, STRESS: 10 } } }
     ] },
-  { id: 'x_h06', age: [40, 70], w: 6, text: '你在中介那里看到一套汉南洞的房子。价格是你十年前想都不敢想的数字，而你居然买得起了。',
+  { id: 'x_h06', age: [40, 70], w: 6, text: '你在中介那里看到一套滨江的房子。价格是你十年前想都不敢想的数字，而你居然买得起了。',
     cond: { min: { MONEY: 2000000000 } },
     choices: [
       { text: '买，这是给自己一个交代', eff: { MONEY: -1800000000, CHA: 10, FAME: 8, WILL: 6 }, flags: ['own_house'], risk: 2 },
@@ -486,7 +498,7 @@ const EVENTS_EXTRA = [
       { text: '买两套，一套住一套租', eff: { MONEY: -2600000000, CHA: 12, NET: 8 }, flags: ['own_house'], risk: 3,
         gamble: { p: 0.5, win: { MONEY: 900000000 }, lose: { MONEY: -400000000, STRESS: 10 } } }
     ] },
-  { id: 'x_h07', age: [24, 40], w: 6, text: '母亲从老家来首尔看你。她在半地下室里坐了一晚，第二天说：这地方，怎么住人。',
+  { id: 'x_h07', age: [24, 40], w: 6, text: '母亲从老家来这座城看你。她在城中村隔断间里坐了一晚，第二天说：这地方，怎么住人。',
     cond: { need: ['poor'] },
     choices: [
       { text: '笑着说，快了', eff: { WILL: 4, STRESS: 5 }, risk: 1 },
@@ -494,7 +506,7 @@ const EVENTS_EXTRA = [
       { text: '当场签下一套首付合同', eff: { MONEY: -60000000, WILL: 8, STRESS: 14 }, flags: ['own_house', 'mortgage'], risk: 3,
         gamble: { p: 0.45, win: { MONEY: 50000000, CHA: 4 }, lose: { MONEY: -20000000, HP: -5 } } }
     ] },
-  { id: 'x_h08', age: [28, 50], w: 5, text: '老家传来消息：那条规划了十年的地铁线，终于要动工了。你手里有一块京畿道的地。',
+  { id: 'x_h08', age: [28, 50], w: 5, text: '老家传来消息：那条规划了十年的地铁线，终于要动工了。你手里有一块城郊的地。',
     cond: { min: { MONEY: 30000000 } },
     choices: [
       { text: '不折腾，继续持有', eff: { INT: 2 }, risk: 1 },
@@ -503,8 +515,8 @@ const EVENTS_EXTRA = [
         gamble: { p: 0.4, win: { MONEY: 620000000, NET: 8 }, lose: { MONEY: -90000000, HP: -7 } } }
     ] },
 
-  /* ===== 자동차 汽车 ===== */
-  { id: 'x_c01', age: [23, 40], w: 7, text: '你攒够了第一辆车的钱。销售员说：在首尔，车不是交通工具，是名片。',
+  /* ===== 汽车 ===== */
+  { id: 'x_c01', age: [23, 40], w: 7, text: '你攒够了第一辆车的钱。销售员说：在这座城，车不是交通工具，是名片。',
     cond: { min: { MONEY: 15000000 } },
     choices: [
       { text: '买一辆二手小排量，能开就行', eff: { MONEY: -8000000, STR: 1 }, flags: ['own_car'], risk: 1 },
@@ -520,7 +532,7 @@ const EVENTS_EXTRA = [
       { text: '直接换车，一次到位', eff: { MONEY: -95000000, CHA: 9, NET: 8 }, flags: ['own_car'], risk: 3,
         gamble: { p: 0.5, win: { NET: 14, MONEY: 60000000 }, lose: { MONEY: -20000000, STRESS: 6 } } }
     ] },
-  { id: 'x_c03', age: [30, 55], w: 5, text: '你在清潭洞的红灯前停着，隔壁车道是一辆和你同款的车。对方摇下车窗，是那家大集团的人。',
+  { id: 'x_c03', age: [30, 55], w: 5, text: '你在酒吧街的红灯前停着，隔壁车道是一辆和你同款的车。对方摇下车窗，是那家大公司的人。',
     cond: { min: { MONEY: 120000000 } },
     choices: [
       { text: '点头示意，各自开走', eff: { WILL: 2 }, risk: 1 },
@@ -544,7 +556,7 @@ const EVENTS_EXTRA = [
         gamble: { p: 0.35, win: { NET: 12, FAME: 6 }, lose: { CHA: -6, NET: -5, STRESS: 8 } } }
     ] },
 
-  /* ===== 주식 股市 ===== */
+  /* ===== 股市 ===== */
   { id: 'x_s01', age: [20, 40], w: 9, text: '你在证券公司开了户。营业厅的屏幕上全是红绿数字，客户经理递给你一杯速溶咖啡。',
     choices: [
       { text: '只买大盘 ETF，慢慢来', eff: { INT: 3, MONEY: -5000000 }, flags: ['investor'], risk: 1 },
@@ -552,7 +564,7 @@ const EVENTS_EXTRA = [
       { text: '全部押在当下最火的那只', eff: { INT: 3, MONEY: -30000000, STRESS: 12 }, flags: ['investor', 'degen'], risk: 3,
         gamble: { p: 0.38, win: { MONEY: 60000000, INT: 5 }, lose: { MONEY: -18000000, STRESS: 10 } } }
     ] },
-  { id: 'x_s02', age: [21, 45], w: 7, text: '你买的第一只股票连跌三天。论坛里全是「존버 死扛」和「손절 止损」的声音。',
+  { id: 'x_s02', age: [21, 45], w: 7, text: '你买的第一只股票连跌三天。论坛里全是「死扛」和「止损」的声音。',
     cond: { need: ['investor'] },
     choices: [
       { text: '死扛，等它回来', eff: { WILL: 4, STRESS: 8 }, risk: 2 },
@@ -644,14 +656,14 @@ const EVENTS_EXTRA = [
       { text: '提案罢免一名董事', eff: { FAME: 22, WILL: 8, LOY: -18, STRESS: 14 }, flags: ['activist'], risk: 3,
         gamble: { p: 0.35, win: { MONEY: 600000000, FAME: 15 }, lose: { LOY: -15, MONEY: -200000000 } } }
     ] },
-  { id: 'x_s14', age: [26, 50], w: 5, text: '你在汝矣岛的券商大厅遇见一个老人。他看了你一眼，说：小伙子，你是来赚钱的，还是来证明什么的？',
+  { id: 'x_s14', age: [26, 50], w: 5, text: '你在金融街的券商大厅遇见一个老人。他看了你一眼，说：小伙子，你是来赚钱的，还是来证明什么的？',
     choices: [
       { text: '赚钱', eff: { INT: 4 }, risk: 1 },
       { text: '都有', eff: { INT: 3, WILL: 4, NET: 4 }, risk: 2 },
       { text: '证明一些事', eff: { WILL: 8, INT: 2, STRESS: 8 }, flags: ['prove_self'], risk: 3,
         gamble: { p: 0.4, win: { WILL: 10, INT: 6, MONEY: 80000000 }, lose: { WILL: -4, STRESS: 12 } } }
     ] },
-  { id: 'x_s15', age: [24, 55], w: 5, text: '同事都在买同一只「국민주 国民股」。有人说不买就落伍了。',
+  { id: 'x_s15', age: [24, 55], w: 5, text: '同事都在买同一只「国民股」。有人说不买就落伍了。',
     choices: [
       { text: '不买，落伍就落伍', eff: { INT: 4, WILL: 2 }, risk: 1 },
       { text: '买一点，随大流', eff: { MONEY: -10000000, NET: 3 }, risk: 2 },
@@ -659,12 +671,12 @@ const EVENTS_EXTRA = [
         gamble: { p: 0.32, win: { MONEY: 260000000, INT: 8 }, lose: { MONEY: -120000000, NET: -5 } } }
     ] },
 
-  /* ===== 직장 职场 ===== */
+  /* ===== 职场 ===== */
   { id: 'x_w01', age: [23, 45], w: 8, text: '上司把一份不属于你的错误，压到了你头上。会议室里所有人都在看你。',
     choices: [
       { text: '认下来，记在心里', eff: { WILL: 5, STRESS: 8, NET: 4 }, risk: 1 },
       { text: '当场解释清楚', eff: { INT: 4, WILL: 3, NET: -4, STRESS: 6 }, risk: 2 },
-      { text: '把证据发给会长的秘书', eff: { WILL: 8, INT: 6, LOY: 6, STRESS: 16 }, risk: 3,
+      { text: '把证据发给董事长的秘书', eff: { WILL: 8, INT: 6, LOY: 6, STRESS: 16 }, risk: 3,
         gamble: { p: 0.35, win: { NET: 15, LOY: 15, MONEY: 60000000 }, lose: { NET: -12, STRESS: 14, job: '无业' } } }
     ] },
   { id: 'x_w02', age: [25, 50], w: 7, text: '一家竞争对手开出两倍的薪水挖你。合同就在邮箱里，回信期限是今晚十二点。',
@@ -682,7 +694,7 @@ const EVENTS_EXTRA = [
       { text: '主动请缨去最苦的那个市场', eff: { INT: 10, WILL: 8, NET: 12, HP: -6, STRESS: 12 }, risk: 3,
         gamble: { p: 0.5, win: { MONEY: 180000000, FAME: 10, LOY: 10 }, lose: { HP: -8, STRESS: 14 } } }
     ] },
-  { id: 'x_w04', age: [28, 52], w: 7, text: '회식 聚餐。上司把一杯烧酒推到你面前，说：喝了这杯，这个单子就是你的。',
+  { id: 'x_w04', age: [28, 52], w: 7, text: '团建聚餐。上司把一杯白酒推到你面前，说：喝了这杯，这个单子就是你的。',
     choices: [
       { text: '以身体为由，换成水', eff: { WILL: 3, CHA: -3, STRESS: 5 }, risk: 1 },
       { text: '喝了，然后去洗手间吐掉', eff: { NET: 6, HP: -4, CHA: 2 }, risk: 2 },
@@ -729,12 +741,12 @@ const EVENTS_EXTRA = [
     cond: { min: { LOY: 20 } },
     choices: [
       { text: '等，等到该轮到你', eff: { WILL: 4, INT: 3 }, risk: 1 },
-      { text: '主动向会长汇报一次', eff: { LOY: 10, FAME: 6, NET: 6 }, risk: 2 },
+      { text: '主动向董事长汇报一次', eff: { LOY: 10, FAME: 6, NET: 6 }, risk: 2 },
       { text: '把对手的问题整理成一份材料', eff: { LOY: 14, INT: 6, WILL: 5, STRESS: 14 }, flags: ['backstab'], risk: 3,
         gamble: { p: 0.45, win: { MONEY: 300000000, LOY: 15 }, lose: { LOY: -20, FAME: -10, NET: -12 } } }
     ] },
 
-  /* ===== 관계 / 가족 关系与家庭 ===== */
+  /* ===== / 关系与家庭 ===== */
   { id: 'x_f01', age: [24, 45], w: 7, text: '相恋三年的女友坐下来认真地说：我们要不要先买房，再结婚？房价每天都在变。',
     cond: { min: { CHA: 30 } },
     choices: [
@@ -750,7 +762,7 @@ const EVENTS_EXTRA = [
       { text: '把房子抵押出去，请国外专家', eff: { MONEY: -120000000, WILL: 8, STRESS: 18 }, flags: ['leveraged'], risk: 3,
         gamble: { p: 0.42, win: { WILL: 12, HP: 8, NET: 6 }, lose: { MONEY: -60000000, HP: -7 } } }
     ] },
-  { id: 'x_f03', age: [28, 48], w: 6, text: '孩子的학원 补习班。妻子说：别人都在上，我们不能不上。账单是每月两百万。',
+  { id: 'x_f03', age: [28, 48], w: 6, text: '孩子的补习班。妻子说：别人都在上，我们不能不上。账单是每月两百万。',
     cond: { need: ['married'] },
     choices: [
       { text: '只上一个，其他的自己教', eff: { INT: 4, WILL: 3, MONEY: -12000000 }, risk: 1 },
@@ -777,7 +789,7 @@ const EVENTS_EXTRA = [
     cond: { need: ['married'] },
     choices: [
       { text: '答应这个周末一定回来', eff: { WILL: 2, STRESS: -4 }, risk: 1 },
-      { text: '把周末全空出来，带她去济州', eff: { MONEY: -8000000, WILL: 5, HP: 5, STRESS: -10 }, risk: 2 },
+      { text: '把周末全空出来，带她去海岛', eff: { MONEY: -8000000, WILL: 5, HP: 5, STRESS: -10 }, risk: 2 },
       { text: '什么也不说，关掉手机陪她一整天', eff: { WILL: 8, HP: 8, STRESS: -16, MONEY: -50000000 }, risk: 3,
         gamble: { p: 0.5, win: { WILL: 10, HP: 10 }, lose: { MONEY: -120000000, STRESS: 8 } } }
     ] },
@@ -789,7 +801,7 @@ const EVENTS_EXTRA = [
         gamble: { p: 0.45, win: { WILL: 12, FAME: 8 }, lose: { HP: -7, STRESS: 10 } } }
     ] },
 
-  /* ===== 도박 / 사기 风险金钱 ===== */
+  /* ===== / 风险金钱 ===== */
   { id: 'x_g01', age: [24, 55], w: 6, text: '朋友带你去了一间地下赌场。他说：就玩一把，输赢都不超过十万。',
     choices: [
       { text: '转身就走', eff: { WILL: 4, INT: 3 }, risk: 1 },
@@ -811,7 +823,7 @@ const EVENTS_EXTRA = [
       { text: '签了，朋友就该这样', eff: { NET: 8, WILL: 4, STRESS: 12 }, flags: ['guarantor'], risk: 3,
         gamble: { p: 0.3, win: { NET: 14, MONEY: 50000000 }, lose: { MONEY: -300000000, NET: -10 } } }
     ] },
-  { id: 'x_g04', age: [27, 52], w: 5, text: '急用钱。银行的门关着，街边的「대출 小额贷款」招牌亮着，月息三分。',
+  { id: 'x_g04', age: [27, 52], w: 5, text: '急用钱。银行的门关着，街边的「小额贷款」招牌亮着，月息三分。',
     cond: { max: { MONEY: 20000000 } },
     choices: [
       { text: '去找朋友借', eff: { MONEY: 15000000, NET: -4, WILL: 3 }, risk: 1 },
@@ -835,7 +847,7 @@ const EVENTS_EXTRA = [
         gamble: { p: 0.42, win: { MONEY: 400000000, LOY: 12 }, lose: { MONEY: -100000000, FAME: -14, HP: -6 } } }
     ] },
 
-  /* ===== 기업선 企业线 ===== */
+  /* ===== 企业线 ===== */
   { id: 'x_t10', age: [34, 58], w: 7, text: '你重仓的龙头股价异动。你在屏幕上看到那条曲线——它和你多年经验里的某个形态重合了。',
     cond: { min: { MONEY: 300000000 } },
     choices: [
@@ -866,7 +878,7 @@ const EVENTS_EXTRA = [
       { text: '收手，把股份卖掉落袋', eff: { MONEY: 800000000, WILL: -4 }, risk: 1 },
       { text: '再买 2%，站到台前', eff: { MONEY: -2000000000, FAME: 20, WILL: 8, LOY: -15 }, flags: ['buying_stake'], risk: 2 },
       { text: '全押，明天之后不再有退路', eff: { MONEY: -6000000000, FAME: 30, WILL: 12, LOY: -25, STRESS: 20 }, flags: ['buying_stake', 'showdown'], risk: 3,
-        gamble: { p: 0.42, win: { FAME: 40, MONEY: 3000000000, flags: ['took_over'], job: '企业会长' }, lose: { MONEY: -3000000000, LOY: -30, HP: -8 } } }
+        gamble: { p: 0.42, win: { FAME: 40, MONEY: 3000000000, flags: ['took_over'], job: '企业董事长' }, lose: { MONEY: -3000000000, LOY: -30, HP: -8 } } }
     ] },
   { id: 'x_t14', age: [40, 65], w: 6, text: '检察官请你喝了一杯茶。他说：我们知道一些事，也想知道一些事。',
     cond: { min: { FAME: 40 } },
@@ -877,8 +889,8 @@ const EVENTS_EXTRA = [
         gamble: { p: 0.5, win: { FAME: 30, WILL: 10, NET: 10 }, lose: { MONEY: -800000000, HP: -8 } } }
     ] },
 
-  /* ===== 시대 时代 ===== */
-  { id: 'x_e01', age: [10, 65], w: 10, once: true, era: true, text: '1997년。街头的电视都在放同一条新闻：国家向 IMF 求助。工厂在裁员，金店的队伍排到了拐角。',
+  /* ===== 时代 ===== */
+  { id: 'x_e01', age: [10, 65], w: 10, once: true, era: true, text: '1997 年。街头的电视都在放同一条新闻：亚洲金融风暴蔓延。工厂在裁员，金店的队伍排到了拐角。',
     cond: { yearMin: 1997, yearMax: 1998 },
     choices: [
       { text: '把零花钱全部交给母亲', eff: { WILL: 6, MONEY: -100000, STRESS: 6 }, risk: 1 },
@@ -886,7 +898,7 @@ const EVENTS_EXTRA = [
       { text: '把家里最后一点钱拿去买美元', eff: { MONEY: -500000, INT: 8, WILL: 6, STRESS: 14 }, flags: ['imf_buyer'], risk: 3,
         gamble: { p: 0.6, win: { MONEY: 12000000, INT: 6 }, lose: { MONEY: -400000, STRESS: 8 } } }
     ] },
-  { id: 'x_e02', age: [18, 70], w: 9, once: true, era: true, text: '2008년。雷曼兄弟倒下的那个秋天，办公室里没人说话。账户每天少掉一个月的工资。',
+  { id: 'x_e02', age: [18, 70], w: 9, once: true, era: true, text: '2008 年。雷曼兄弟倒下的那个秋天，办公室里没人说话。账户每天少掉一个月的工资。',
     cond: { yearMin: 2008, yearMax: 2009 },
     choices: [
       { text: '清仓，保住剩下的', eff: { INT: 5, WILL: 3, STRESS: -6 }, risk: 1 },
@@ -894,7 +906,7 @@ const EVENTS_EXTRA = [
       { text: '借钱抄底，赌国运', eff: { WILL: 10, STRESS: 20 }, flags: ['bottom_fisher', 'leveraged'], risk: 3,
         gamble: { p: 0.55, win: { MONEY: 700000000, INT: 10 }, lose: { MONEY: -220000000, HP: -8 } } }
     ] },
-  { id: 'x_e03', age: [18, 75], w: 9, once: true, era: true, text: '2020년。三月，股市熔断两次。四月，所有人都在家里打开证券 App。你的手机也在推送开户广告。',
+  { id: 'x_e03', age: [18, 75], w: 9, once: true, era: true, text: '2020 年。三月，股市熔断两次。四月，所有人都在家里打开证券 App。你的手机也在推送开户广告。',
     cond: { yearMin: 2020, yearMax: 2021 },
     choices: [
       { text: '关掉推送，去阳台上透气', eff: { HP: 6, STRESS: -8 }, risk: 1 },
@@ -902,7 +914,7 @@ const EVENTS_EXTRA = [
       { text: '满仓，这是十年一次的价钱', eff: { MONEY: -200000000, WILL: 8, STRESS: 18 }, flags: ['bottom_fisher'], risk: 3,
         gamble: { p: 0.55, win: { MONEY: 1200000000, INT: 8 }, lose: { MONEY: -120000000, HP: -7 } } }
     ] },
-  { id: 'x_e04', age: [10, 65], w: 8, once: true, era: true, text: '2002년 世界杯。整个首尔变成了红色的海，你在光化门前和几十万人一起喊「대한민국」。',
+  { id: 'x_e04', age: [10, 65], w: 8, once: true, era: true, text: '2002 年 世界杯。整个这座城变成了红色的海，你在光化门前和几十万人一起喊「中国」。',
     cond: { yearMin: 2002, yearMax: 2003 },
     choices: [
       { text: '喊到嗓子哑，然后回家背书', eff: { WILL: 4, INT: 3, STRESS: -10 }, risk: 1 },
@@ -927,7 +939,7 @@ const EVENTS_EXTRA = [
         gamble: { p: 0.45, win: { MONEY: 4000000000, FAME: 15 }, lose: { MONEY: -500000000, HP: -7 } } }
     ] },
 
-  /* ===== 말년 晚年 ===== */
+  /* ===== 年 晚年 ===== */
   { id: 'x_o05', age: [58, 72], w: 7, text: '你开始考虑交接。把公司交给职业经理人，还是留给自己的孩子？',
     cond: { min: { MONEY: 3000000000 } },
     choices: [
@@ -936,12 +948,12 @@ const EVENTS_EXTRA = [
       { text: '成立财团，谁也拿不走', eff: { FAME: 15, NET: 10, WILL: 8, MONEY: -500000000 }, flags: ['foundation'], risk: 3,
         gamble: { p: 0.5, win: { FAME: 20, WILL: 10 }, lose: { FAME: -8, MONEY: -1200000000 } } }
     ] },
-  { id: 'x_o06', age: [60, 76], w: 6, text: '一个年轻人写信给你，说他在半地下室里读完了你的自传。他问：我还有机会吗？',
+  { id: 'x_o06', age: [60, 76], w: 6, text: '一个年轻人写信给你，说他在城中村隔断间里读完了你的自传。他问：我还有机会吗？',
     cond: { min: { FAME: 30 } },
     choices: [
       { text: '回一句：有', eff: { WILL: 4, FAME: 3 }, risk: 1 },
       { text: '资助他读完大学', eff: { MONEY: -30000000, WILL: 6, FAME: 6 }, risk: 2 },
-      { text: '成立一个资助半地下室孩子的基金', eff: { MONEY: -2000000000, FAME: 20, WILL: 10 }, flags: ['foundation'], risk: 3,
+      { text: '成立一个资助城中村城中村孩子的基金', eff: { MONEY: -2000000000, FAME: 20, WILL: 10 }, flags: ['foundation'], risk: 3,
         gamble: { p: 0.5, win: { FAME: 25, WILL: 12 }, lose: { MONEY: -1000000000, STRESS: 8 } } }
     ] },
   { id: 'x_o07', age: [62, 80], w: 6, text: '医生给了你两个选择：手术，或者剩下的时间。',
@@ -951,7 +963,7 @@ const EVENTS_EXTRA = [
       { text: '去国外找最好的医生', eff: { MONEY: -500000000, HP: 20, STRESS: 6 }, risk: 3,
         gamble: { p: 0.45, win: { HP: 28, WILL: 8 }, lose: { MONEY: -300000000, HP: -7 } } }
     ] },
-  { id: 'x_o08', age: [65, 80], w: 6, text: '你回到那条巷子。半地下室还在，只是换了人家。门口晒着别人的鞋。',
+  { id: 'x_o08', age: [65, 80], w: 6, text: '你回到那条巷子。城中村隔断间还在，只是换了人家。门口晒着别人的鞋。',
     choices: [
       { text: '站一会儿就走', eff: { WILL: 3, STRESS: -5 }, risk: 1 },
       { text: '敲开门，和里面的人聊几句', eff: { WILL: 5, CHA: 3, NET: 3, STRESS: -8 }, risk: 2 },
@@ -962,13 +974,13 @@ const EVENTS_EXTRA = [
 EVENTS.push.apply(EVENTS, EVENTS_EXTRA);
 
 /* =========================================================
- *  扩展事件库 · 父母 / 亲人 / 妻子 互动线
- *  童年事件自带三选项（不受年龄限制）；成年事件用 need/ban 控制出现时机
+ * 扩展事件库 · 父母 / 亲人 / 妻子 互动线
+ * 童年事件自带三选项（不受年龄限制）；成年事件用 need/ban 控制出现时机
  * ========================================================= */
 const EVENTS_FAMILY = [
 
-  /* ===== 부모 · 童年与父母 ===== */
-  { id: 'f_c1', age: [4, 10], w: 7, text: '父亲把你扛在肩上去看汝矣岛的烟花。你问：爸爸，我们以后能住进那种大楼吗？',
+  /* ===== · 童年与父母 ===== */
+  { id: 'f_c1', age: [4, 10], w: 7, text: '父亲把你扛在肩上去看金融街的烟花。你问：爸爸，我们以后能住进那种大楼吗？',
     choices: [
       { text: '说：能，爸爸会努力', eff: { WILL: 2, CHA: 1 }, risk: 1 },
       { text: '沉默，把脸埋进他的衣领', eff: { WILL: 4, STRESS: 3 }, risk: 2 },
@@ -1004,13 +1016,13 @@ const EVENTS_FAMILY = [
         gamble: { p: 0.45, win: { WILL: 6, NET: 3 }, lose: { STRESS: 10 } } }
     ] },
 
-  /* ===== 부모 · 成年后与父母 ===== */
+  /* ===== · 成年后与父母 ===== */
   { id: 'f_p1', age: [18, 30], w: 6, text: '母亲第一次打电话让你别太累。你说好，然后继续熬夜。',
     cond: { need: ['parents_alive'] },
     choices: [
       { text: '周末回家一趟', eff: { WILL: 4, STRESS: -5, MONEY: -500000 }, risk: 1 },
       { text: '寄钱回去', eff: { MONEY: -3000000, WILL: 3, NET: 2 }, risk: 2 },
-      { text: '接她来首尔住一阵', eff: { MONEY: -8000000, CHA: 3, WILL: 5 }, risk: 3,
+      { text: '接她来这座城住一阵', eff: { MONEY: -8000000, CHA: 3, WILL: 5 }, risk: 3,
         gamble: { p: 0.5, win: { WILL: 6, CHA: 4, NET: 4 }, lose: { MONEY: -4000000, STRESS: 6 } } }
     ] },
   { id: 'f_p2', age: [22, 35], w: 5, text: '父亲第一次认真问你：你到底想成为什么样的人？',
@@ -1036,7 +1048,7 @@ const EVENTS_FAMILY = [
       { text: '带一个假对象回家', eff: { CHA: 4, STRESS: 10 }, risk: 3,
         gamble: { p: 0.3, win: { CHA: 6, NET: 5 }, lose: { STRESS: 12, NET: -3 } } }
     ] },
-  { id: 'f_p6', age: [35, 55], w: 5, text: '你买了大房子，把父母接来住。母亲在阳台上站了很久：这窗户，比我们半地下室大。',
+  { id: 'f_p6', age: [35, 55], w: 5, text: '你买了大房子，把父母接来住。母亲在阳台上站了很久：这窗户，比我们城中村隔断间大。',
     cond: { need: ['parents_alive', 'own_house'] },
     choices: [
       { text: '说：以后这就是家', eff: { WILL: 6, CHA: 3, FAME: 2, MONEY: -2000000 }, risk: 1 },
@@ -1059,8 +1071,8 @@ const EVENTS_FAMILY = [
       { text: '成立基金，帮助孤寡老人', eff: { MONEY: -50000000, WILL: 8, FAME: 6, flags: ['foundation'] }, risk: 3, killParents: true }
     ] },
 
-  /* ===== 친척 · 亲人 ===== */
-  { id: 'f_r1', age: [16, 25], w: 6, text: '表哥从美国回来，带你去见了他的几个朋友。你第一次知道世界不止首尔。',
+  /* ===== · 亲人 ===== */
+  { id: 'f_r1', age: [16, 25], w: 6, text: '表哥从美国回来，带你去见了他的几个朋友。你第一次知道世界不止这座城。',
     choices: [
       { text: '默默听着', eff: { INT: 3, NET: 2 }, risk: 1 },
       { text: '主动交换联系方式', eff: { NET: 6, CHA: 2 }, risk: 2 },
@@ -1103,7 +1115,7 @@ const EVENTS_FAMILY = [
         gamble: { p: 0.5, win: { FAME: 10, NET: 8 }, lose: { STRESS: 12, FAME: -5 } } }
     ] },
 
-  /* ===== 연인/배우자 · 恋爱与妻子 ===== */
+  /* ===== / · 恋爱与妻子 ===== */
   { id: 'f_s1', age: [19, 26], w: 8, text: '大学社团里，有个人总在你画图时递来一杯咖啡。你们开始一起走夜路回宿舍。',
     cond: { ban: ['married'] },
     choices: [
@@ -1192,7 +1204,7 @@ const EVENTS_FAMILY = [
       { text: '另买一套相邻的公寓', eff: { MONEY: -400000000, WILL: 8, NET: 6, STRESS: -10 }, risk: 3,
         gamble: { p: 0.5, win: { WILL: 10, NET: 8 }, lose: { MONEY: -150000000, STRESS: 8 } } }
     ] },
-  { id: 'f_s12', age: [45, 65], w: 5, text: '你们一起回到半地下室旧址。TA笑着说：还好没听我妈的，不然哪有今天。',
+  { id: 'f_s12', age: [45, 65], w: 5, text: '你们一起回到城中村隔断间旧址。TA笑着说：还好没听我妈的，不然哪有今天。',
     cond: { need: ['married'] },
     choices: [
       { text: '说：是你撑住了我', eff: { WILL: 6, STRESS: -8 }, risk: 1 },
@@ -1407,15 +1419,15 @@ const EVENTS_FAMILY2 = [
 EVENTS.push.apply(EVENTS, EVENTS_FAMILY2);
 
 /* =========================================================
- *  年代事件库 · 按「公历年份窗口」触发
- *  出生年份决定你在什么年纪遇到它们——1955년 生的人童年在废墟与新村运动里，
- *  1995년 生的人童年在智能手机与韩流里。每个人生都是独一份的年代切片。
+ * 年代事件库 · 按「公历年份窗口」触发
+ * 出生年份决定你在什么年纪遇到它们——1955 年 生的人童年在废墟与农田基建里，
+ * 1995 年 生的人童年在智能手机与韩流里。每个人生都是独一份的年代切片。
  * ========================================================= */
 const EVENTS_ERA = [
-  { id: 'y1960', age: [3, 18], w: 10, once: true, era: true, text: '战后的首尔还在重建。你排队领过救济面粉，也在废墟边上放过风筝。大人们说：熬过这段就好了。',
+  { id: 'y1960', age: [3, 18], w: 10, once: true, era: true, text: '战后的这座城还在重建。你排队领过救济面粉，也在废墟边上放过风筝。大人们说：熬过这段就好了。',
     cond: { yearMin: 1958, yearMax: 1963 },
     eff: { WILL: 5, SEC: -3 } },
-  { id: 'y1970', age: [5, 65], w: 9, once: true, era: true, text: '새마을운동 新村运动。家乡的土路变成了柏油路，村口立起了「근면·자조·협동」的牌子。母亲说：路通了，人就活了。',
+  { id: 'y1970', age: [5, 65], w: 9, once: true, era: true, text: '农田基建。家乡的土路变成了柏油路，村口立起了「勤劳 · 自强」的牌子。母亲说：路通了，人就活了。',
     cond: { yearMin: 1968, yearMax: 1973 },
     eff: { SEC: 4, WILL: 2 } },
   { id: 'y1973', age: [8, 65], w: 9, once: true, era: true, text: '第一次石油危机。加油站排起长队，工厂的烟囱矮了一半。家里的灯，入夜后只准开一盏。',
@@ -1424,13 +1436,13 @@ const EVENTS_ERA = [
   { id: 'y1979', age: [14, 65], w: 8, once: true, era: true, text: '那个冬天，电视里频繁出现「戒严」「更迭」的字样。大人们压低声音说话，你在写作业的间隙抬头看了一眼。',
     cond: { yearMin: 1979, yearMax: 1981 },
     eff: { INT: 5, SEC: -6, WILL: 3 } },
-  { id: 'y1988', age: [5, 60], w: 10, once: true, era: true, text: '서울올림픽 汉城奥运会。汉江上的桥一座接一座地通车，老师在黑板上写下四个字：汉江奇迹。',
+  { id: 'y1988', age: [5, 60], w: 10, once: true, era: true, text: '奥运。江上的桥一座接一座地通车，老师在黑板上写下四个字：江奇迹。',
     cond: { yearMin: 1988, yearMax: 1989 },
     eff: { FAME: 3, WILL: 4, SEC: 5 } },
-  { id: 'y1995', age: [8, 65], w: 8, once: true, era: true, text: '1995年，首尔的一场大坍塌让整个国家沉默。电视里循环播放着救援画面。你第一次意识到：钢筋水泥也会说谎。',
+  { id: 'y1995', age: [8, 65], w: 8, once: true, era: true, text: '1995年，这座城的一场大坍塌让整个国家沉默。电视里循环播放着救援画面。你第一次意识到：钢筋水泥也会说谎。',
     cond: { yearMin: 1994, yearMax: 1996 },
     eff: { SEC: -5, WILL: 5, LOVE: 3 } },
-  { id: 'y2000', age: [16, 55], w: 8, once: true, era: true, text: '新千年的钟声。风险投资的钱像潮水一样涌进狎鸥亭的写字楼，随便一份 PPT 就能换到几亿韩元。',
+  { id: 'y2000', age: [16, 55], w: 8, once: true, era: true, text: '新千年的钟声。风险投资的钱像潮水一样涌进滨江的写字楼，随便一份 PPT 就能换到几亿元。',
     cond: { yearMin: 2000, yearMax: 2001 },
     eff: { INT: 4, CUR: 6, AUTO: 3 } },
   { id: 'y2010', age: [14, 65], w: 8, once: true, era: true, text: '智能手机元年。地铁里的人忽然都低下了头。你也不例外——但你比别人多看见了一层：注意力，就是钱。',
@@ -1439,7 +1451,7 @@ const EVENTS_ERA = [
   { id: 'y2016', age: [10, 80], w: 7, once: true, era: true, text: '一个会下棋的 AI 赢了人类世界冠军。棋院里的老人们直摇头，而你听见的，是另一个时代开门的声音。',
     cond: { yearMin: 2016, yearMax: 2017 },
     eff: { INT: 4, CUR: 6 } },
-  { id: 'y2024', age: [10, 85], w: 7, once: true, era: true, text: '又一个春天。汉江边的樱花照常开，人们在讨论 AI、利率和房价。你发现：每个时代，都有属于它的下一场。',
+  { id: 'y2024', age: [10, 85], w: 7, once: true, era: true, text: '又一个春天。江边的樱花照常开，人们在讨论 AI、利率和房价。你发现：每个时代，都有属于它的下一场。',
     cond: { yearMin: 2024, yearMax: 2026 },
     eff: { CUR: 4, WILL: 3, SEC: 2 } }
 ];
@@ -1449,16 +1461,84 @@ EVENTS.push.apply(EVENTS, EVENTS_ERA);
 const FRIEND_TYPES = [
   { key: 'childhood', avatar: '🧑‍🤝‍🧑', label: '发小', pass: { LOVE: 0.5 }, line: '每年关爱 +' },
   { key: 'colleague', avatar: '👔', label: '同事', pass: { LOY: 0.5 }, line: '每年职场口碑 +' },
-  { key: 'biz',       avatar: '🤝', label: '生意伙伴', pass: { MONEY: 250000 }, line: '每年现金 +' },
-  { key: 'neighbor',  avatar: '🏘', label: '老友', pass: { HP: 0.4 }, line: '每年健康 +' },
-  { key: 'teacher',   avatar: '👩‍🏫', label: '恩师', pass: { INT: 0.4 }, line: '每年智力 +' }
+  { key: 'biz', avatar: '🤝', label: '生意伙伴', pass: { MONEY: 250000 }, line: '每年现金 +' },
+  { key: 'neighbor', avatar: '🏘', label: '老友', pass: { HP: 0.4 }, line: '每年健康 +' },
+  { key: 'teacher', avatar: '👩‍🏫', label: '恩师', pass: { INT: 0.4 }, line: '每年智力 +' }
 ];
 
 /* ---------------- 称号（按人生阶段显示身份） ---------------- */
 const TITLES = [
-  { min: 0,   max: 6,   name: '갓난아이 婴儿' },
-  { min: 7,   max: 12,  name: '초등학생 小学生' },
-  { min: 13,  max: 15,  name: '중학생 初中生' },
-  { min: 16,  max: 18,  name: '고등학생 高中生' },
-  { min: 19,  max: 200, name: '' }
+  { min: 0, max: 6, name: '婴儿' },
+  { min: 7, max: 12, name: '小学生' },
+  { min: 13, max: 15, name: '初中生' },
+  { min: 16, max: 18, name: '高中生' },
+  { min: 19, max: 200, name: '' }
 ];
+
+/* =========================================================
+ * 三选一文案模板 · 按事件语义生成，不再千篇一律
+ * 事件可用 t:'tag' 显式指定语义；未指定时由 engine 依据 eff 主属性推断。
+ * 每组三句依次对应：低风险 / 中风险 / 高风险
+ * ========================================================= */
+const CHOICE_TEMPLATES = {
+  study: [
+    ['沉下心把它啃明白', '照常上课，按部就班', '熬夜突击，赌一次大的'],
+    ['去问老师，别装懂', '自己再想想', '通宵硬刚，眼睛红了也不停'],
+    ['借同学的笔记补一补', '就这样吧，明天再说', '把整本书撕成三份，一天背完'],
+    ['报个辅导班补短板', '照常刷题', '押题，押中就是天堂']
+  ],
+  work: [
+    ['稳妥推进，先交差', '按流程做完', '通宵赶工，抢在所有人前面'],
+    ['先请示一下上级', '照常处理', '越级汇报，赌一把赏识'],
+    ['把风险写进邮件里', '做好自己这份', '全揽下来，出事我担'],
+    ['推给更合适的人', '自己干完', '主动请缨，干不好就走人']
+  ],
+  love: [
+    ['把话说清楚', '随缘，慢慢来', '直接表白，不管结果'],
+    ['先做朋友，再看看', '保持现状', '今晚就去找 TA'],
+    ['送点不贵但用心的东西', '照常联系', '倾其所有，办一场大的'],
+    ['克制一点，别越界', '照常相处', '豁出去，说出那句话']
+  ],
+  money: [
+    ['先留够过冬的钱', '照常花销', '把能动的都押上去'],
+    ['只投一小笔试试', '按计划来', '梭哈，成王败寇'],
+    ['货比三家再决定', '照常买', '刷卡，不看价格'],
+    ['找人合伙分摊风险', '自己承担', '借钱也要拿下']
+  ],
+  health: [
+    ['去医院好好查一次', '扛一扛，应该没事', '不管它，先把事做完'],
+    ['请假休息两天', '照常上班', '硬撑，谁劝跟谁急'],
+    ['开始锻炼，慢慢养', '维持现状', '猛练一把，疼也要练'],
+    ['把酒局推了', '照常赴约', '喝到天亮，反正还年轻']
+  ],
+  family: [
+    ['坐下来好好说', '照常过日子', '摊牌，把话全说出来'],
+    ['先退一步', '维持原样', '据理力争，寸步不让'],
+    ['多陪陪他们', '照常联系', '放下一切，立刻回家'],
+    ['托亲戚从中说和', '等着看情况', '当面把旧账算清楚']
+  ],
+  social: [
+    ['礼貌地应下来', '照常相处', '主动凑上去，搏个脸熟'],
+    ['保持距离，先观察', '顺其自然', '当场表态，站到明面上'],
+    ['请对方吃顿饭', '照常来往', '把人脉一次性用足'],
+    ['婉拒，留个好印象', '照常应付', '硬着头皮接下这活']
+  ],
+  risk: [
+    ['先看看再说', '照常应对', '赌一把，赢了就翻身'],
+    ['退到安全线外', '硬着头皮上', '把所有筹码推上桌'],
+    ['找人一起分担', '自己扛', '单挑，谁怕谁'],
+    ['留一条退路', '走一步看一步', '不留退路，才有活路']
+  ],
+  moral: [
+    ['按规矩办', '照常处理', '打擦边球，快一点'],
+    ['公开透明地做', '闷声做完', '走捷径，反正没人看见'],
+    ['拒绝这笔好处', '拿了，但不声张', '照单全收，先落袋为安'],
+    ['把话挑明，宁可吃亏', '睁一只眼闭一只眼', '既然都这样，那就别怪我']
+  ],
+  default: [
+    ['谨慎一点', '照常应对', '豁出去'],
+    ['先稳住局面', '按部就班', '赌一把大的'],
+    ['留三分余地', '照常走下去', '把一切押上'],
+    ['低调度过', '照常', '冲一次，不留遗憾']
+  ]
+};

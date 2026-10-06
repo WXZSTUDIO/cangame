@@ -3,13 +3,13 @@ const fs = require('fs'), path = require('path'), vm = require('vm');
 const root = path.join(__dirname, '..');
 const ctx = { console, Math, JSON, Date, isNaN, parseInt, Number };
 vm.createContext(ctx);
-['assets/data.js', 'assets/engine.js'].forEach(f =>
+['assets/data.js', 'assets/market.js', 'assets/engine.js', 'assets/school.js', 'assets/career.js', 'assets/love.js', 'assets/loan.js' ].forEach(f =>
   vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }));
 const { createGame, step, resolveEvent, resolveInvest, finish, fmtMoney } =
   vm.runInContext('({createGame, step, resolveEvent, resolveInvest, finish, fmtMoney})', ctx);
 
 function run(strategy) {
-  const st = createGame({ name: 'POWER', gender: 'M', familyId: 'banjiha', talents: ['memory', 'stock', 'estate', 'gangnam', 'math'] });
+  const st = createGame({ name: 'POWER', gender: 'M', familyId: 'chengzhongcun', talents: ['memory', 'stock', 'estate', 'gangnam', 'math'] });
   let guard = 0;
   const drain = () => {
     while (st.queue && st.queue.length && !st.finished) {

@@ -5,7 +5,7 @@ const vm = require('vm');
 const root = path.join(__dirname, '..');
 const ctx = { console, Math, JSON, Date, isNaN, parseInt, Number };
 vm.createContext(ctx);
-['assets/data.js', 'assets/engine.js', 'assets/market.js'].forEach(f =>
+['assets/data.js', 'assets/engine.js', 'assets/market.js', 'assets/school.js', 'assets/career.js', 'assets/love.js', 'assets/loan.js' ].forEach(f =>
   vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }));
 vm.runInContext('this.__EVENTS = EVENTS;', ctx);
 const { createGame, resolveEvent, randomKoreanName } = ctx;
@@ -16,7 +16,7 @@ const m = randomKoreanName('M'), f = randomKoreanName('F');
 console.log('男名示例:', m, '| 女名示例:', f, '| 长度合格:', m.length >= 2 && f.length >= 2);
 
 // 2. 出生故事 4+ 行
-const st = createGame({ name: '테스트', gender: 'M', familyId: 'banjiha', talents: ['memory'] });
+const st = createGame({ name: '테스트', gender: 'M', familyId: 'chengzhongcun', talents: ['memory'] });
 const birthLines = st.log.filter(l => l.type === 'story' && l.age === 0);
 console.log('出生故事行数:', birthLines.length, '| 父母在场:', st.flags.parents_alive);
 

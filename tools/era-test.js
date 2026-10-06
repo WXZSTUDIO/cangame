@@ -5,7 +5,7 @@ const vm = require('vm');
 const root = path.join(__dirname, '..');
 const ctx = { console, Math, JSON, Date, isNaN, parseInt, Number };
 vm.createContext(ctx);
-['assets/data.js', 'assets/engine.js', 'assets/market.js'].forEach(f =>
+['assets/data.js', 'assets/engine.js', 'assets/market.js', 'assets/school.js', 'assets/career.js', 'assets/love.js', 'assets/loan.js' ].forEach(f =>
   vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }));
 vm.runInContext('this.__EVENTS = EVENTS; this.__META = GAME_META;', ctx);
 const { createGame, step, resolveEvent, resolveInvest } = ctx;
@@ -16,7 +16,7 @@ console.log('年代事件池:', ERA_IDS.length, '个');
 
 // 完整模拟一生，收集触发过的事件 id
 function simulateLife(startYear) {
-  const st = createGame({ name: '테스트', gender: 'M', familyId: 'banjiha', startYear, talents: [] });
+  const st = createGame({ name: '테스트', gender: 'M', familyId: 'chengzhongcun', startYear, talents: [] });
   const fired = new Set();
   let guard = 0;
   while (!st.finished && guard++ < 400) {
@@ -52,7 +52,7 @@ console.log('年代组合互不相同的出生年数:', distinct, '/', cohorts.l
 
 // 窗口校验：y1960 只应在 1958-1963 年间触发
 const ev1960 = EVENTS.find(e => e.id === 'y1960');
-const st1960 = createGame({ name: 't', gender: 'F', familyId: 'prof', startYear: 1960, talents: [] });
+const st1960 = createGame({ name: 't', gender: 'F', familyId: 'jiaoshi', startYear: 1960, talents: [] });
 st1960.age = 5; // 1965 年，窗口外
 console.log('y1960 在 1965 年不可触发(应 true):', !ctx.matchEvent(st1960, ev1960));
 st1960.age = 3; // 1963 年，窗口内

@@ -24,7 +24,8 @@ const w = dom.window;
 w.addEventListener('error', e => errors.push('window.error: ' + e.message));
 
 // 必须在同一次 eval 中执行：共享 top-level const 词法作用域
-w.eval(['assets/data.js', 'assets/market.js', 'assets/engine.js', 'assets/ui.js']
+w.eval(['assets/data.js', 'assets/market.js', 'assets/engine.js',
+        'assets/school.js', 'assets/career.js', 'assets/love.js', 'assets/loan.js', 'assets/ui.js']
   .map(f => fs.readFileSync(path.join(root, f), 'utf8'))
   .concat(['window.__getState = function(){ return STATE; };'])
   .join('\n;\n'));
@@ -52,17 +53,25 @@ console.log('进入:', activeScreen());
 let steps = 0, traded = 0, viewChecked = false;
 while (activeScreen() === 'screen-game' && steps++ < 800) {
   // 对局中途检查底部导航视图（人际关系 / 工作）
-  if (steps === 5 && !viewChecked) {
-    viewChecked = true;
+  if ((steps === 5 || steps === 40) && !viewChecked) {
+    viewChecked = steps === 40;
     click(w.document.getElementById('dockRel'));
     console.log('人际关系视图:', w.document.getElementById('view-rel').style.display !== 'none',
       '| 卡片数:', w.document.querySelectorAll('#view-rel .rel-card').length);
     w.document.querySelectorAll('#view-rel .rel-act:not([disabled])').forEach(b => click(b));
-    w.document.querySelector('.rel-tab:nth-child(2)').dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
-    console.log('朋友卡片数:', w.document.querySelectorAll('#view-rel .rel-card').length);
+    // 四个 tab 全部点一遍
+    const tabs = w.document.querySelectorAll('.rel-tab');
+    tabs.forEach(t => {
+      click(t);
+      console.log('  tab[' + t.textContent.trim() + '] 卡片:', w.document.querySelectorAll('#view-rel .rel-card').length);
+    });
     click(w.document.getElementById('dockJob'));
     console.log('工作视图:', w.document.getElementById('view-job').style.display !== 'none',
-      '| 工作卡:', w.document.querySelectorAll('#view-job .job-card').length);
+      '| 工作卡:', w.document.querySelectorAll('#view-job .job-card').length,
+      '| 岗位:', w.document.querySelectorAll('#view-job .offer').length);
+    // 试一下一键互动与相亲按钮
+    const allBtn = [...w.document.querySelectorAll('#view-job .btn')].find(b => /相亲/.test(b.textContent));
+    if (allBtn) { click(allBtn); console.log('  相亲按钮可用'); }
     click(w.document.getElementById('dockNext'));
     console.log('回主视图:', w.document.getElementById('view-main').style.display !== 'none');
   }

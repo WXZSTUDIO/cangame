@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>江南逆袭 · 강남 역습 | 韩国人生模拟</title>
-<meta name="description" content="文字版韩国人生模拟游戏：随机投胎、年代事件、投资市场、人际关系，从0岁活到100岁以上。">
-<link rel="stylesheet" href="assets/style.css?v=4.1.0">
+<title>江南逆袭 | 人生模拟 · 从城中村到江景房</title>
+<meta name="description" content="文字版人生模拟游戏：随机投胎、中考高考、职业晋升、恋爱婚姻、贷款与投资，从 0 岁活到 100 岁以上。">
+<link rel="stylesheet" href="assets/style.css?v=5.0.0">
 </head>
 <body>
 
@@ -14,8 +14,8 @@
 
 <header class="topbar">
   <div class="brand">
-    <span class="kr">강남 역습</span>
-    <span class="cn">江南逆袭</span>
+    <span class="kr">江南逆袭</span>
+    <span class="cn">人生模拟</span>
   </div>
   <div class="top-actions">
     <button id="btnSavesTop" class="btn tiny">存档</button>
@@ -26,10 +26,10 @@
 <section id="screen-title" class="screen active">
   <div class="title-wrap">
     <h1 class="big-title">江南逆袭</h1>
-    <p class="big-sub">강남 역습 · 从半地下室到汉江之巅</p>
-    <p class="lead">每一次「出生」，你都会被随机投胎到某个韩国家庭、某个年代——<br>
-      1956년 生在废墟与新村运动里，1998년 生在智能手机与韩流里。<br>
-      从 0 岁长到 100 岁以上，恋爱、事业、买房、炒股、养一只狗。<br>
+    <p class="big-sub">从城中村到江景大平层</p>
+    <p class="lead">每一次「出生」，你都会被随机投胎到某个中国家庭、某个年代——<br>
+      1958 年出生的人童年在粮票与厂房里，1998 年出生的人童年在网吧与手机里。<br>
+      中考、高考、找工作、谈恋爱、买房、贷款、炒股、养一只狗。<br>
       每一步都要做选择——这一局投胎差了？点一下，下一世重新来过。</p>
     <div class="title-btns">
       <button id="btnNew" class="btn primary big">开始新的人生</button>
@@ -39,21 +39,24 @@
     </div>
     <div id="howBox" class="how">
       <ul>
-        <li><b>随机投胎</b>：出生年份（1955–2005）、家庭、天赋、姓名每局都随机。年份决定你这一世会亲身经历哪些年代大事——战后的废墟、88 奥运、97 IMF、08 危机、20 疫情，各是各的人生。</li>
-        <li><b>推进</b>：点「下一年」，每年触发 1–2 个事件，从童年走到 100 岁以上的老年。健康归零、过劳或自然老死都会走向结局。</li>
-        <li><b>三选一</b>：成年后的每个事件都有 3 个选项——<b>慎重（低风险）</b> / <b>照常（中）</b> / <b>豁出去（高风险，带概率赌注）</b>。收益和风险同时放大。</li>
-        <li><b>擅长领域</b>：开局可押注一个方向（事业 / 关系 / 平衡 / 成功），这一世的成长会向你选的方向倾斜。</li>
-        <li><b>人际关系</b>：底部的「人际」里，有父母、恋人/配偶、孩子、宠物和三位朋友。每年都可以互动一次——关系是要经营的。</li>
-        <li><b>未成年不用愁钱</b>：18 岁之前，生活与教育费由父母承担，你不会背债。父母的家底（资产 / 负债）在「工作」页和「人际 → 父母」里随时可查。</li>
-        <li><b>遗产继承</b>：父母离世时，你可以三选一——<b>全额继承</b>（遗产与债务一并接下）／<b>限定继承</b>（只还遗产范围内的债）／<b>放弃继承</b>（什么都不要，也什么都不欠）。</li>
-        <li><b>市场</b>：20 岁后随时进入「시장 市场」。买房（可贷款）、买车、买金条土地商铺比特币，还能炒股——12 只股票随年代涨跌，遇 IMF / 互联网泡沫 / 金融危机 / 疫情会剧烈波动。</li>
-        <li><b>天赋</b>：开局抽 10 张天赋，用 10 点天赋点自由搭配。负面天赋会返还点数。</li>
-        <li><b>前世记忆</b>：带此天赋时，投资机会会显示「未来的提示」——IMF、江南房价、比特币。</li>
-        <li><b>存档</b>：每步自动缓存到本机（localStorage），另有 3 个手动存档槽，并可导出/导入存档码跨设备继续。</li>
-        <li><b>结局</b>：没有唯一的「终点」——富翁、房东、股神、温暖的店、家族绵延、平凡的会社员……16 种以上结局，看你这一世怎么过。</li>
+        <li><b>随机投胎</b>：出生年份（1955–2005）、家庭、天赋、姓名每局都随机。出身从城中村、县城双职工、农村、拆迁户、教师家庭、体制内到福利院孤儿，共 10 种。年份决定你这一世会亲身经历哪些年代大事——物价闯关、下岗潮、入世、股改、6124 点、股灾、疫情。</li>
+        <li><b>升学</b>：15 岁<b>中考</b>分档进市重点 / 普通高中 / 职高中专 / 辍学；18 岁<b>高考</b>分档上 985 / 211 / 一本 / 二本 / 专科，或者落榜直接进社会。分数由智力、意志、<b>学习投入</b>、家里能不能供补习共同决定——初中高中期间可以「熬夜刷题」，也可以早恋（会扣分）。</li>
+        <li><b>职业与晋升</b>：毕业后在「工作」页找活干。24 种职业（程序员、产品经理、idol、主播、外卖骑手、群演、公务员、医生、律师、黑客、创业者……），每种都有 4–6 级职级阶梯。学历越高起步职级越高，绩效好会升职，混日子会降职甚至被裁。</li>
+        <li><b>恋爱与婚姻</b>：同学里可以早恋，成年后能偶遇，也可以花钱托人相亲。聊天 / 约会 / 送礼涨好感，好够 80 且年满 22 岁可以求婚——对方家境越好，对你的存款要求越高。<b>未婚怀孕</b>会重挫道德与声望，你要在「生下来 / 奉子成婚 / 打掉」之间做选择。</li>
+        <li><b>同学与校园</b>：初中、高中、大学各有自己的一班同学，可以逐个互动，也能「一键和全班互动」。大学期间每年还能选一项校园活动：泡图书馆、聚餐喝酒、社团、实习、兼职、通宵打游戏、考研、校园创业、谈恋爱、健身。</li>
+        <li><b>父母分开互动</b>：父亲和母亲是两个人，各自有名有姓、各自老去、各自离开。任何一位（或朋友、宠物、配偶）离世都会让你陷入<b>悲伤</b>，压住心情与健康。</li>
+        <li><b>寿命有限</b>：没有人能一直活着。健康、心情和年纪共同决定你能走多远，105 岁是这条路的尽头。</li>
+        <li><b>三选一</b>：13 岁后的每个事件都有 3 个选项，文案会跟着事件内容变化（学习的事就给你学习的选项）。风险越高，收益与后果同时放大，还带概率赌注。</li>
+        <li><b>贷款</b>：助学贷、消费贷、信用贷、经营贷、抵押贷，还有会吃人的网贷。借钱一时爽，逾期会砸掉征信和名声，欠款会滚雪球。</li>
+        <li><b>未成年不用愁钱</b>：18 岁之前，生活与学费由家里承担，你不会背债。父母的家底（资产 / 负债）在「工作」页和「人际 → 家人」里随时可查。</li>
+        <li><b>遗产继承</b>：父母离世时三选一——<b>全额继承</b>／<b>限定继承</b>／<b>放弃继承</b>。</li>
+        <li><b>市场</b>：20 岁后可买房（可贷款）、买车、买金条土地商铺比特币，还能炒股——12 只股票随年代涨跌，遇互联网泡沫、6124 点、股灾、疫情会剧烈波动。</li>
+        <li><b>天赋</b>：开局抽 10 张天赋，用 10 点自由搭配。负面天赋会返还点数。<b>前世记忆</b>能看到投资机会的未来提示。</li>
+        <li><b>存档</b>：每步自动缓存到本机，另有 3 个手动槽，可导出 / 导入存档码跨设备继续。</li>
+        <li><b>结局</b>：没有唯一的终点——亿万富豪、收租的房东、股神、家族绵延、平凡的程序员……16 种以上结局，看你这一世怎么过。</li>
       </ul>
     </div>
-    <p class="foot">本作人物、公司、事件均为虚构。 · v4.1.0 · 가계와 상속 · 家庭账簿与继承</p>
+    <p class="foot">本作人物、公司、事件均为虚构。 · v5.0.0 · 中考高考 · 职业晋升 · 恋爱婚姻 · 贷款与寿命</p>
   </div>
 </section>
 
@@ -61,22 +64,22 @@
 <section id="screen-create" class="screen">
   <div class="create-wrap">
     <div class="row-line">
-      <label>이름 姓名</label>
+      <label>姓名</label>
       <input id="inputName" type="text" maxlength="10" placeholder="留空则出生时随机生成">
       <button id="btnRerollName" class="btn tiny" type="button">🎲 随机</button>
       <div class="gender">
-        <label><input type="radio" name="gender" value="M" checked> 남 男</label>
-        <label><input type="radio" name="gender" value="F"> 여 女</label>
+        <label><input type="radio" name="gender" value="M" checked> 男</label>
+        <label><input type="radio" name="gender" value="F"> 女</label>
       </div>
     </div>
 
-    <h3 class="sec">출신 出身 <span class="hint">（随机家庭背景，决定你的起跑线）</span></h3>
+    <h3 class="sec">出身 <span class="hint">（随机家庭背景，决定你的起跑线）</span></h3>
     <div id="familyList" class="fam-list"></div>
 
-    <h3 class="sec">특성 天赋 <span class="hint">剩余点数 <b id="points">10</b> · 点击选择/取消</span></h3>
+    <h3 class="sec">天赋 <span class="hint">剩余点数 <b id="points">10</b> · 点击选择/取消</span></h3>
     <div id="talentList" class="talent-list"></div>
 
-    <h3 class="sec">성향 擅长领域 <span class="hint">（你最想押注的人生方向，会塑造这一世的倾向）</span></h3>
+    <h3 class="sec">擅长领域 <span class="hint">（你最想押注的人生方向，会塑造这一世的倾向）</span></h3>
     <div id="priorityList" class="fam-list"></div>
 
     <div class="create-btns">
@@ -100,8 +103,8 @@
         </div>
       </div>
       <div class="hud-money">
-        <button class="pill cash" id="pillCash" title="打开市场·持有">💵 현금 <b id="hudCash">0</b></button>
-        <button class="pill worth" id="pillWorth" title="打开市场·持有">🏦 총자산 <b id="hudWorth">0</b></button>
+        <button class="pill cash" id="pillCash" title="打开市场·持有">💵 <b id="hudCash">0</b></button>
+        <button class="pill worth" id="pillWorth" title="打开市场·持有">🏦 <b id="hudWorth">0</b></button>
       </div>
       <div class="hud-btns">
         <button id="btnSaveGame" class="icon-btn" title="缓存">💾</button>
@@ -139,18 +142,18 @@
   <div class="market-wrap">
     <div class="market-head">
       <div class="mh-left">
-        <h2>시장 市场</h2>
+        <h2>市场</h2>
         <div class="mh-sub" id="marketYear"></div>
       </div>
       <div class="mh-wallet" id="marketWallet"></div>
       <button id="btnMarketBack" class="btn">返回人生 ◂</button>
     </div>
     <div class="market-tabs">
-      <button class="mtab active" data-tab="house">부동산 房产</button>
-      <button class="mtab" data-tab="car">자동차 汽车</button>
-      <button class="mtab" data-tab="good">자산 资产</button>
-      <button class="mtab" data-tab="stock">주식 股市</button>
-      <button class="mtab" data-tab="hold">보유 持有</button>
+      <button class="mtab active" data-tab="house">房产</button>
+      <button class="mtab" data-tab="car">汽车</button>
+      <button class="mtab" data-tab="good">资产</button>
+      <button class="mtab" data-tab="stock">股市</button>
+      <button class="mtab" data-tab="hold">持有</button>
     </div>
     <div id="marketBody" class="market-body"></div>
   </div>
@@ -168,7 +171,7 @@
     </div>
     <p id="endText" class="end-text"></p>
     <div id="endStats" class="end-stats"></div>
-    <h3 class="sec">인생 회고 人生回顾</h3>
+    <h3 class="sec">人生回顾</h3>
     <div id="endReview" class="stream end-stream"></div>
     <div class="end-btns">
       <button id="btnAgain" class="btn primary">再来一世 ▸</button>
@@ -194,9 +197,13 @@
   </div>
 </div>
 
-<script src="assets/data.js?v=4.1.0"></script>
-<script src="assets/market.js?v=4.1.0"></script>
-<script src="assets/engine.js?v=4.1.0"></script>
-<script src="assets/ui.js?v=4.1.0"></script>
+<script src="assets/data.js?v=5.0.0"></script>
+<script src="assets/market.js?v=5.0.0"></script>
+<script src="assets/engine.js?v=5.0.0"></script>
+<script src="assets/school.js?v=5.0.0"></script>
+<script src="assets/career.js?v=5.0.0"></script>
+<script src="assets/love.js?v=5.0.0"></script>
+<script src="assets/loan.js?v=5.0.0"></script>
+<script src="assets/ui.js?v=5.0.0"></script>
 </body>
 </html>

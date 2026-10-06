@@ -6,13 +6,15 @@ const vm = require('vm');
 const root = path.join(__dirname, '..');
 const ctx = { console, Math, JSON, Date, isNaN, parseInt, Number };
 vm.createContext(ctx);
-['assets/data.js', 'assets/market.js', 'assets/engine.js'].forEach(f => {
+['assets/data.js', 'assets/market.js', 'assets/engine.js',
+ 'assets/school.js', 'assets/career.js', 'assets/love.js', 'assets/loan.js'].forEach(f => {
   vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f });
 });
 
 const api = vm.runInContext(
   '({createGame, step, resolveEvent, resolveInvest, finish, scoreOf, eventChoices, fmtMoney,' +
-  ' FAMILIES, TALENTS, ENDINGS, EVENTS, INVESTMENTS, netWorth, HOUSES, CARS, GOODS, STOCKS, marketTick})',
+  ' FAMILIES, TALENTS, ENDINGS, EVENTS, INVESTMENTS, netWorth, HOUSES, CARS, GOODS, STOCKS, marketTick,' +
+  ' resolveExam, EDU_LEVELS, UNIVERSITIES, HIGH_SCHOOLS, CAREERS, loanTotal})',
   ctx
 );
 const {
@@ -58,32 +60,39 @@ function trade(st, style) {
   }
 }
 
+function handleItem(st, item, style) {
+  if (!item || item.type === 'end') return false;
+  if (item.type === 'year') return true;
+  if (item.type === 'exam') {
+    st.pending = item;
+    const n = item.exam.options.length;
+    // 保守派选中间，激进派冲最高的
+    const idx = style === 'aggressive' ? 0 : (style === 'safe' ? n - 1 : Math.floor(Math.random() * n));
+    ctx.resolveExam(st, Math.max(0, Math.min(n - 1, idx)));
+    return true;
+  }
+  if (item.type === 'event') { resolveEvent(st, item.ev, pickIndex(st, item.ev, style)); return true; }
+  if (item.type === 'invest') {
+    const opts = item.choices.filter(c => !c.disabled && c.act === 'invest');
+    if (opts.length && Math.random() < 0.85) resolveInvest(st, opts[Math.floor(Math.random() * opts.length)]);
+    else resolveInvest(st, item.choices[item.choices.length - 1]);
+    return true;
+  }
+  return true;
+}
+
 function playOne(seedTalents, style) {
   const st = createGame({
-    name: '테스트', gender: Math.random() < 0.5 ? 'M' : 'F',
+    name: '测试', gender: Math.random() < 0.5 ? 'M' : 'F',
     familyId: FAMILIES[Math.floor(Math.random() * FAMILIES.length)].id,
     talents: seedTalents
   });
   let guard = 0;
   while (!st.finished && guard++ < 600) {
-    let item = step(st);
-    if (!item || item.type === 'end') { if (!st.finished) finish(st); break; }
-    if (item.type === 'year') continue;
-    if (item.type === 'event') resolveEvent(st, item.ev, pickIndex(st, item.ev, style));
-    else if (item.type === 'invest') {
-      const opts = item.choices.filter(c => !c.disabled && c.act === 'invest');
-      if (opts.length && Math.random() < 0.85) resolveInvest(st, opts[Math.floor(Math.random() * opts.length)]);
-      else resolveInvest(st, item.choices[item.choices.length - 1]);
-    }
+    const item = step(st);
+    if (!handleItem(st, item, style)) { if (!st.finished) finish(st); break; }
     while (st.queue && st.queue.length && !st.finished) {
-      const q = st.queue.shift();
-      if (q.type === 'year') continue;
-      if (q.type === 'event') resolveEvent(st, q.ev, pickIndex(st, q.ev, style));
-      else if (q.type === 'invest') {
-        const opts = q.choices.filter(c => !c.disabled && c.act === 'invest');
-        if (opts.length) resolveInvest(st, opts[Math.floor(Math.random() * opts.length)]);
-        else resolveInvest(st, q.choices[q.choices.length - 1]);
-      }
+      if (!handleItem(st, st.queue.shift(), style)) break;
     }
     trade(st, style);
   }

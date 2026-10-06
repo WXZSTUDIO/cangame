@@ -30,6 +30,10 @@ PUBLISH = [
     'assets/data.js',
     'assets/market.js',
     'assets/engine.js',
+    'assets/school.js',
+    'assets/career.js',
+    'assets/love.js',
+    'assets/loan.js',
     'assets/ui.js',
 ]
 

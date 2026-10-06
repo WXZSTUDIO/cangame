@@ -339,6 +339,37 @@ body[data-screen="screen-game"] .topbar{display:none}
 .spark{display:flex;align-items:flex-end;gap:2px;height:20px;margin-top:10px}
 .spark i{width:5px;background:linear-gradient(180deg,var(--teal),var(--teal-d));border-radius:1px;display:block}
 
+/* ===== v5：职级阶梯 / 岗位与贷款卡片 / 考试 / 多人互动 ===== */
+.metric-strip{flex-wrap:wrap;row-gap:2px}
+
+.ladder{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:10px}
+.ladder .step{font-size:11px;padding:3px 9px;border-radius:20px;background:var(--paper);border:1.5px solid var(--line);color:var(--dim);font-weight:700;white-space:nowrap}
+.ladder .step.up{color:var(--teal-d);border-color:var(--teal)}
+.ladder .step.on{background:var(--amber-l);border-color:var(--amber);color:var(--amber-d);box-shadow:0 0 0 2px var(--amber-l)}
+.ladder .arrow{color:#cfc4a6;font-size:12px}
+
+.offer-list{display:flex;flex-direction:column;gap:10px}
+.offer{background:var(--paper);border:2px solid var(--line);border-radius:12px;padding:10px 12px}
+.offer.no{opacity:.5}
+.offer.hold{border-color:var(--amber)}
+.offer .btn{margin-top:8px}
+.of-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.of-name{font-size:13.5px;font-weight:800}
+.of-sal{font-size:12px;color:var(--amber-d);font-weight:700;white-space:nowrap}
+.of-desc{font-size:12px;color:var(--dim);line-height:1.65;margin-top:6px}
+.of-meta{font-size:11px;color:#b3a88f;margin-top:6px;line-height:1.5}
+.of-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+
+.rel-multi{display:flex;flex-direction:column;gap:5px;margin-left:8px;flex-shrink:0}
+.rel-multi .rel-act{width:100%;text-align:center}
+.rel-act.dis{opacity:.45;font-size:11px;color:var(--dim)}
+.rel-card{align-items:flex-start}
+.rel-head{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+
+.card-inner.exam{background:linear-gradient(180deg,#fffdf4 0%,#fff6e2 100%)}
+.exam-score{font-size:46px;font-weight:900;color:var(--amber-d);line-height:1.05;letter-spacing:-1px;margin:6px 0}
+.exam-score small{font-size:15px;font-weight:700;color:var(--dim);margin-left:6px}
+
 /* 响应式 */
 @media (max-width:560px){
   .hud-money{margin-left:0;width:100%}

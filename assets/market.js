@@ -1,14 +1,14 @@
 /* =========================================================
- *  CANGAME · 市场层
- *  부동산 房产 / 자동차 汽车 / 자산 资产 / 주식 股市
- *  价格随年代演进，含时代冲击（IMF / 互联网泡沫 / 金融危机 / 疫情）
+ * CANGAME · 市场层
+ * 房产 / 汽车 / 资产 / 股市
+ * 价格随年代演进，含时代冲击（IMF / 互联网泡沫 / 金融危机 / 疫情）
  * ========================================================= */
 
 const MARKET_META = {
-  stockFee: 0.0035,   // 股票交易手续费
-  propTax: 0.035,     // 房产/车卖出交易成本
-  minAge: 20,         // 进入市场的最低年龄
-  growthDamp: 0.75    // 股票年化阻尼（寿命延长后复利年限变多，需下调以维持平衡）
+  stockFee: 0.0035, // 股票交易手续费
+  propTax: 0.035, // 房产/车卖出交易成本
+  minAge: 20, // 进入市场的最低年龄
+  growthDamp: 0.75 // 股票年化阻尼（寿命延长后复利年限变多，需下调以维持平衡）
 };
 
 /* ---------- 年代价格指数（1985 = 1.0） ---------- */
@@ -25,29 +25,29 @@ const CAR_INDEX = [
 
 /* ---------- 时代冲击（作用于当年涨跌幅） ---------- */
 const STOCK_SHOCKS = {
-  1987: { k: 0.18, t: '87년 대세 상승장', d: '全世界都在涨，连出租车司机都在谈股票。' },
-  1989: { k: -0.22, t: '89년 폭락', d: '东京的泡沫开始漏气，首尔跟着打了个喷嚏。' },
-  1997: { k: -0.46, t: 'IMF 외환위기', d: 'KOSPI 腰斩。你眼睁睁看着数字往下掉，像看着汉江的水位。' },
-  1998: { k: 0.38, t: 'IMF 이후 반등', d: '废墟里长出的反弹，比谁想的都猛。' },
-  1999: { k: 0.55, t: '닷컴 버블', d: '只要名字里带「넷」，就能涨停。' },
-  2000: { k: -0.42, t: '닷컴 붕괴', d: '泡沫破了。你昨天还是天才，今天是笑柄。' },
-  2001: { k: 0.16, t: '9·11 이후 회복', d: '恐慌过去，市场重新开始呼吸。' },
-  2003: { k: 0.29, t: '신용카드 사태 이후', d: '信用卡危机出清，反弹开始。' },
-  2007: { k: 0.32, t: '사상 최고치', d: 'KOSPI 站上 2000 点，办公室里人人都是股神。' },
-  2008: { k: -0.48, t: '글로벌 금융위기', d: '雷曼倒下的那一周，你的账户少了半条命。' },
-  2009: { k: 0.45, t: 'V자 반등', d: '敢在废墟里捡东西的人，一年翻了身。' },
-  2011: { k: -0.13, t: '유럽 재정위기', d: '欧债危机，市场心神不宁。' },
-  2012: { k: 0.12, t: '한류 특수', d: '一个骑马的胖子，把韩国文化卖到了全世界。' },
-  2015: { k: 0.14, t: '중국 특수', d: '中国游客来了，免税店的队伍排到了街角。' },
-  2016: { k: -0.09, t: '최순실 게이트', d: '政治风暴，市场最怕不确定性。' },
-  2018: { k: -0.17, t: '미중 무역전쟁', d: '关税一加，全世界一起感冒。' },
-  2020: { k: -0.28, t: '코로나 폭락', d: '三月，熔断。然后是史上最快的放水。' },
-  2021: { k: 0.40, t: '유동성 장세', d: '동학개미운동。全民炒股，连你妈都开了账户。' },
-  2022: { k: -0.24, t: '인플레이션 쇼크', d: '加息，杀估值。成长股血流成河。' },
-  2023: { k: 0.26, t: 'AI 랠리', d: 'AI 吃掉一切，半导体先起飞。' },
-  2026: { k: -0.14, t: '조정장', d: '涨太多，总要歇一歇。' },
+  1990: { k: 0.30, t: '交易所开市', d: '老八股的时代。有人排了一整夜的队，只为买一张股票认购证。' },
+  1992: { k: 0.35, t: '南巡讲话之后', d: '「发展才是硬道理」。全中国的年轻人都在往南边跑。' },
+  1996: { k: 0.28, t: '大牛市', d: '营业部里人挤人，屏幕前站满了揣着存折的人。' },
+  1997: { k: -0.32, t: '亚洲金融风暴', d: '周边国家的货币一个接一个崩。我们扛住了，但股市也跟着抖了半年。' },
+  1999: { k: 0.42, t: '5·19 行情', d: '科技网络股起飞。只要名字里带「科技」，就能涨停。' },
+  2001: { k: -0.20, t: '国有股减持', d: '政策一出，指数一路向南。也是这一年，中国加入了 WTO。' },
+  2005: { k: 0.22, t: '998 点大底', d: '股权分置改革。敢在没人相信的时候买的人，三年后翻了六倍。' },
+  2007: { k: 0.62, t: '6124 点', d: '全民炒股。菜市场的阿姨都在给你荐股。那年进场的人，等了十年才解套。' },
+  2008: { k: -0.55, t: '全球金融危机', d: '从 6124 到 1664。你的账户少了三分之二，只剩下沉默。' },
+  2009: { k: 0.48, t: '四万亿', d: 'V 型反转。敢在废墟里捡东西的人，一年就翻了身。' },
+  2011: { k: -0.15, t: '紧缩与欧债', d: '通胀抬头，钱紧。市场心神不宁。' },
+  2013: { k: 0.14, t: '创业板牛市', d: '手游、影视、传媒。并购重组的钱像水一样流。' },
+  2015: { k: -0.38, t: '股灾 · 杠杆破裂', d: '上半年人人都是股神，六月之后千股跌停。配资的人，一夜回到解放前。' },
+  2016: { k: -0.12, t: '熔断', d: '开盘十五分钟就收市，历史上最荒唐的四天。' },
+  2018: { k: -0.22, t: '去杠杆与贸易摩擦', d: '质押爆仓、商誉减值。连白马都在跌。' },
+  2019: { k: 0.24, t: '科技自主行情', d: '半导体被卡脖子的那年，也正是它起飞的那年。' },
+  2020: { k: -0.26, t: '疫情冲击', d: '春节后第一天，三千只股票跌停。然后是史上最快的放水。' },
+  2021: { k: 0.32, t: '核心资产牛市', d: '「各种茅」涨上了天。一年后，它们又跌回地面。' },
+  2022: { k: -0.24, t: '估值杀', d: '成长股血流成河。躺平的基民学会了两个新词：回撤、最大回撤。' },
+  2023: { k: 0.26, t: 'AI 行情', d: '算力、模型、数据。AI 吃掉一切，芯片先起飞。' },
+  2026: { k: -0.14, t: '调整年', d: '涨太多，总要歇一歇。' },
   2030: { k: 0.16, t: '新周期', d: '新技术开始兑现成利润。' },
-  2040: { k: -0.11, t: '조정', d: '市场又一次教育了所有人。' }
+  2040: { k: -0.11, t: '又一次调整', d: '市场又一次教育了所有人。' }
 };
 
 const HOUSE_SHOCKS = {
@@ -66,142 +66,142 @@ const RATE_TABLE = [
 
 /* ---------- 房产（base = 1985 基准价） ---------- */
 const HOUSES = [
-  { id: 'h_jeonse_bjh', name: '반지하 전세 半地下室传贳', cn: '江南半地下室', base: 18000000,
+  { id: 'h_jeonse_bjh', name: '城中村隔断间（押一付三）', base: 18000000,
     jeonse: true, growth: 0.035, vol: 0.03, upkeep: 0, rent: 0, cha: -2, minYear: 1985,
-    desc: '押金一万八，没有月租，也没有窗户。전세 是穷人的杠杆。' },
-  { id: 'h_jeonse_gb', name: '강북 전세 江北传贳', cn: '江北老公寓', base: 32000000,
+    desc: '一间隔断，一扇朝北的窗，楼下是永远在修的路。押一付三，是穷人的杠杆。' },
+  { id: 'h_jeonse_gb', name: '老城区合租次卧（押一付三）', base: 32000000,
     jeonse: true, growth: 0.04, vol: 0.04, upkeep: 0, rent: 0, cha: 0, minYear: 1988,
-    desc: '过江就是江北。押金三千万，屋子朝北，冬天会结霜。' },
-  { id: 'h_villa_gj', name: '경기도 빌라 京畿道联立住宅', cn: '京畿道小楼', base: 45000000,
+    desc: '和三个陌生人共用一个卫生间。房租便宜，是因为这里没有你的名字。' },
+  { id: 'h_villa_gj', name: '郊区小户型', base: 45000000,
     growth: 0.042, vol: 0.06, upkeep: 0.006, rent: 0, cha: 1, minYear: 1990,
-    desc: '安山站步行十五分钟。楼下车库，楼顶水箱。' },
-  { id: 'h_apt_gangbuk', name: '강북 24평 아파트 江北公寓', cn: '江北 24 坪', base: 78000000,
+    desc: '地铁终点站再坐两站公交。楼下车库，楼顶水箱。' },
+  { id: 'h_apt_gangbuk', name: '市区老破小两居', base: 78000000,
     growth: 0.05, vol: 0.07, upkeep: 0.008, rent: 0, cha: 2, minYear: 1993,
-    desc: '第一次有自己的阳台。晚上能看见南山塔。' },
-  { id: 'h_apt_eunma', name: '대치동 은마아파트 大峙洞银马', cn: '大峙洞银马公寓', base: 140000000,
+    desc: '没有电梯，六楼。第一次有自己的阳台，晚上能看见远处的高架。' },
+  { id: 'h_apt_eunma', name: '重点小学学区房', base: 140000000,
     growth: 0.072, vol: 0.08, upkeep: 0.009, rent: 0, cha: 4, minYear: 1996,
-    desc: '江南学区的心脏。母亲们的战争，都在这片楼群里打响。', tag: '学区' },
-  { id: 'h_apt_apgujeong', name: '압구정 현대아파트 狎鸥亭现代', cn: '狎鸥亭现代公寓', base: 260000000,
+    desc: '一套四十平的老房子，贵在地段上那所小学。家长们的战争，都在这片楼群里打响。', tag: '学区' },
+  { id: 'h_apt_apgujeong', name: '市中心大平层', base: 260000000,
     growth: 0.078, vol: 0.09, upkeep: 0.010, rent: 0, cha: 7, minYear: 2000,
-    desc: '江南中的江南。这里的车位比车贵，邻居的名字写在财经版上。', tag: '顶级' },
-  { id: 'h_officetel_ydp', name: '여의도 오피스텔 汝矣岛商住楼', cn: '汝矣岛商住楼', base: 160000000,
+    desc: '落地窗正对江。这里的车位比车贵，邻居的名字常出现在财经版上。', tag: '顶级' },
+  { id: 'h_officetel_ydp', name: '商住公寓（可出租）', base: 160000000,
     growth: 0.055, vol: 0.07, upkeep: 0.010, rent: 0.055, cha: 3, minYear: 1998,
-    desc: '证券公司林立的街区。楼下是券商，楼上是你的床。', tag: '收租' },
-  { id: 'h_shop_gangnam', name: '강남 상가 江南商铺', cn: '江南商铺', base: 520000000,
+    desc: '写字楼林立的街区。楼下是上班的人，楼上是你的租客。', tag: '收租' },
+  { id: 'h_shop_gangnam', name: '临街商铺', base: 520000000,
     growth: 0.062, vol: 0.10, upkeep: 0.012, rent: 0.075, cha: 5, net: 4, minYear: 2002,
-    desc: '八坪的店面，租给一家美妆店。每月的租金短信，是你最爱的闹钟。', tag: '收租' },
-  { id: 'h_villa_jeju', name: '제주 별장 济州别墅', cn: '济州别墅', base: 380000000,
+    desc: '三十平的店面，租给一家奶茶店。每月的租金到账短信，是你最爱的闹钟。', tag: '收租' },
+  { id: 'h_villa_jeju', name: '海边度假房', base: 380000000,
     growth: 0.05, vol: 0.09, upkeep: 0.014, rent: 0.02, cha: 6, minYear: 2008,
-    desc: '橘子园和海。你终于有了一个可以不去的地方。', tag: '度假' },
-  { id: 'h_bldg_seongsu', name: '성수동 꼬마빌딩 圣水洞小楼', cn: '圣水洞整栋小楼', base: 1250000000,
+    desc: '推开窗就是海。你终于有了一个可以不去的地方。', tag: '度假' },
+  { id: 'h_bldg_seongsu', name: '文创园整栋小楼', base: 1250000000,
     growth: 0.075, vol: 0.11, upkeep: 0.011, rent: 0.068, cha: 8, net: 8, minYear: 2012,
-    desc: '旧工厂改造的咖啡街区。整栋楼都在替你赚钱。', tag: '收租' },
-  { id: 'h_house_hannam', name: '한남동 대저택 汉南洞大宅', cn: '汉南洞大宅', base: 3200000000,
+    desc: '旧厂房改造的咖啡街区。整栋楼都在替你赚钱。', tag: '收租' },
+  { id: 'h_house_hannam', name: '江景大平层', base: 3200000000,
     growth: 0.068, vol: 0.10, upkeep: 0.016, rent: 0, cha: 14, net: 10, minYear: 2016,
-    desc: '大使馆区的一整栋。铁门后面，是你小时候画的那栋楼。', tag: '顶级' }
+    desc: '一整层的落地窗，江在脚下。铁门后面，是你小时候画的那栋楼。', tag: '顶级' }
 ];
 
 /* ---------- 汽车 ---------- */
 const CARS = [
-  { id: 'car_tico', name: '중고 티코 二手 Tico', cn: '二手大宇 Tico', base: 2200000,
+  { id: 'car_tico', name: '二手奥拓', base: 2200000,
     dep: 0.11, upkeep: 0.16, cha: -1, minYear: 1991,
-    desc: '排量 800cc，上坡要关空调。但它带你离开了 반지하。' },
-  { id: 'car_sonata', name: '쏘나타 索纳塔', cn: '现代索纳塔', base: 16000000,
+    desc: '排量 0.8，上坡要关空调。但它带你离开了那个隔断间。' },
+  { id: 'car_sonata', name: '合资家轿 · 朗逸', base: 16000000,
     dep: 0.13, upkeep: 0.10, cha: 2, net: 1, minYear: 1988,
-    desc: '韩国中产的身份证。停车场里十辆有六辆是它。' },
-  { id: 'car_gran', name: '그랜저 君爵', cn: '现代君爵', base: 32000000,
+    desc: '中国家庭的身份证。小区停车场里十辆有六辆是它。' },
+  { id: 'car_gran', name: '中级车 · 雅阁', base: 32000000,
     dep: 0.12, upkeep: 0.11, cha: 4, net: 3, minYear: 1998,
-    desc: '科长以上的座驾。开进公司地下车库的那天，保安第一次向你敬礼。' },
-  { id: 'car_bmw', name: 'BMW 520i', cn: '宝马 5 系', base: 62000000,
+    desc: '部门经理的座驾。开进小区地下车库那天，保安第一次向你敬礼。' },
+  { id: 'car_bmw', name: '宝马 5 系', base: 62000000,
     dep: 0.15, upkeep: 0.14, cha: 6, net: 3, minYear: 2002,
-    desc: '进口车。邻居开始打听你是做什么的。' },
-  { id: 'car_benz', name: '벤츠 S350 奔驰 S 级', cn: '奔驰 S 级', base: 128000000,
+    desc: '开了它回老家，亲戚们开始打听你在外面做什么。' },
+  { id: 'car_benz', name: '奔驰 S 级', base: 128000000,
     dep: 0.14, upkeep: 0.15, cha: 9, net: 6, minYear: 2008,
     desc: '后排比前排重要。你开始坐在后面。' },
-  { id: 'car_porsche', name: '포르쉐 911 保时捷', cn: '保时捷 911', base: 185000000,
+  { id: 'car_porsche', name: '保时捷 911', base: 185000000,
     dep: 0.10, upkeep: 0.13, cha: 12, net: 4, minYear: 2013,
-    desc: '清潭洞的红灯前，你和隔壁车道的谁对视了一眼。' },
-  { id: 'car_lambo', name: '람보르기니 우루스 兰博基尼', cn: '兰博基尼 Urus', base: 420000000,
+    desc: '红灯前，你和隔壁车道的谁对视了一眼。' },
+  { id: 'car_lambo', name: '兰博基尼 Urus', base: 420000000,
     dep: 0.11, upkeep: 0.16, cha: 16, net: 5, minYear: 2020,
     desc: '排气声能震碎一条街的体面。你花了很多年，就为了这一声。' },
-  { id: 'car_ev', name: '아이오닉 EV 电动车', cn: '现代 IONIQ', base: 55000000,
+  { id: 'car_ev', name: '国产新能源', base: 55000000,
     dep: 0.09, upkeep: 0.05, cha: 5, net: 2, minYear: 2022,
     desc: '安静、省钱、有补贴。你开始在意另一件更大的事。' }
 ];
 
 /* ---------- 其他资产 ---------- */
 const GOODS = [
-  { id: 'g_deposit', name: '정기예금 定期存款', cn: '定期存款', base: 10000000,
+  { id: 'g_deposit', name: '定期存款', base: 10000000,
     growth: 0.045, vol: 0, upkeep: 0, rent: 0.0, safe: true, minYear: 1985,
     desc: '最无聊的东西，也是最不容易死的东西。利率跟着时代走。' },
-  { id: 'g_gold', name: '금괴 金条', cn: '金条 100g', base: 12000000,
+  { id: 'g_gold', name: '金条 100g', base: 12000000,
     growth: 0.055, vol: 0.09, upkeep: 0, minYear: 1985,
-    desc: '乱世的安全垫。1997 年，全国人把金戒指捐给了国家。' },
-  { id: 'g_watch', name: '명품 시계 名表', cn: '百达翡丽级名表', base: 38000000,
+    desc: '乱世的安全垫。中国大妈們抢金的那年，金价一夜之间跌穿了成本。' },
+  { id: 'g_watch', name: '名表 · 百达翡丽级', base: 38000000,
     growth: 0.05, vol: 0.12, upkeep: 0.004, cha: 5, minYear: 1995,
     desc: '手腕上的谈判筹码。酒桌上，总有人先看你的表。' },
-  { id: 'g_art', name: '미술품 艺术品', cn: '单色画派作品', base: 150000000,
+  { id: 'g_art', name: '名家字画', base: 150000000,
     growth: 0.07, vol: 0.28, upkeep: 0.006, cha: 6, net: 4, minYear: 2000,
-    desc: '看懂的人说它值一个亿，看不懂的人说这是一块白布。' },
-  { id: 'g_wine', name: '와인 컬렉션 葡萄酒收藏', cn: '波尔多收藏', base: 45000000,
+    desc: '看懂的人说它值一个小目标，看不懂的人说这是一张涂鸦的宣纸。' },
+  { id: 'g_wine', name: '白酒收藏 · 年份茅台', base: 45000000,
     growth: 0.065, vol: 0.16, upkeep: 0.005, cha: 4, net: 3, minYear: 2004,
-    desc: '酒柜恒温 13 度。每一瓶都在替你安静地赚钱。' },
-  { id: 'g_golf', name: '골프 회원권 高尔夫会员券', cn: '高尔夫会员券', base: 260000000,
+    desc: '酒柜恒温 15 度。每一瓶都在替你安静地赚钱，只要你忍住不喝。' },
+  { id: 'g_golf', name: '高尔夫会籍', base: 260000000,
     growth: 0.04, vol: 0.22, upkeep: 0.008, cha: 6, net: 12, minYear: 1998,
-    desc: '韩国的生意，一半在球场里谈成。这张卡就是入场券。' },
-  { id: 'g_land', name: '경기도 토지 京畿道土地', cn: '京畿道农地', base: 90000000,
+    desc: '有一半的生意是在球场里谈成的。这张卡就是入场券。' },
+  { id: 'g_land', name: '城郊地块', base: 90000000,
     growth: 0.06, vol: 0.10, upkeep: 0.002, minYear: 1990,
-    desc: '荒地。你赌的是十年后，这里会不会有一条地铁线。' },
-  { id: 'g_gosiwon', name: '고시원 考试院', cn: '考试院经营权', base: 320000000,
+    desc: '一片荒地。你赌的是十年后，这里会不会通一条地铁线。' },
+  { id: 'g_gosiwon', name: '小旅馆经营权', base: 320000000,
     growth: 0.035, vol: 0.08, upkeep: 0.02, rent: 0.11, net: 2, minYear: 1996,
-    desc: '四十个一坪半的房间，住着四十个想考公务员的人。你收他们的月租。', tag: '收租' },
-  { id: 'g_coin', name: '비트코인 比特币', cn: '比特币', base: 8000000,
+    desc: '四十个小房间，住着四十个来城里找工作的人。你收他们的月租。', tag: '收租' },
+  { id: 'g_coin', name: '比特币', base: 8000000,
     growth: 0.34, vol: 0.65, upkeep: 0, minYear: 2013,
-    desc: '一个没有国家的货币。涨停和跌停都不需要理由。', tag: '高风险' }
+    desc: '一个没有国家的货币。涨跌都不需要理由。', tag: '高风险' }
 ];
 
 /* ---------- 股票（base = 1985 基准股价） ---------- */
 const STOCKS = [
-  { id: 's_hansung', name: '한성전자 韩星电子', code: '005930', sector: '반도체 半导体',
+  { id: 's_hansung', name: '华兴半导体', code: '600001', sector: '半导体',
     base: 3200, growth: 0.102, vol: 0.30, div: 0.012, minYear: 1985,
-    desc: '韩国的国民股。它的K线，就是这个国家四十年的经济史。' },
-  { id: 's_hangang', name: '한강중공업 汉江重工', code: '010620', sector: '조선 造船',
+    desc: '被卡脖子的那一行，也是最争气的那一行。它的 K 线，写了半部产业史。' },
+  { id: 's_hangang', name: '长江重工', code: '600002', sector: '重工',
     base: 5400, growth: 0.062, vol: 0.34, div: 0.018, minYear: 1985,
-    desc: '造船与基建。周期来了翻倍，周期走了腰斩。' },
-  { id: 's_rainbow', name: '무지개은행 彩虹银行', code: '024110', sector: '금융 金融',
+    desc: '造船、基建、工程机械。周期来了翻倍，周期走了腰斩。' },
+  { id: 's_rainbow', name: '民生银行', code: '600003', sector: '金融',
     base: 7600, growth: 0.055, vol: 0.20, div: 0.038, minYear: 1985,
     desc: '分红最稳的那一只。老人和寡妇的最爱。' },
-  { id: 's_seolhwa', name: '설화식품 雪花食品', code: '003240', sector: '소비재 消费',
+  { id: 's_seolhwa', name: '雪花食品', code: '600004', sector: '消费',
     base: 4100, growth: 0.07, vol: 0.15, div: 0.022, minYear: 1985,
-    desc: '泡面和牛奶。无论谁当总统，人都要吃饭。' },
-  { id: 's_koryo', name: '고려통신 高丽通信', code: '030200', sector: '통신 通信',
+    desc: '酱油和牛奶。无论什么时候，人都要吃饭。' },
+  { id: 's_koryo', name: '中通通信', code: '600005', sector: '通信',
     base: 6800, growth: 0.06, vol: 0.18, div: 0.031, minYear: 1990,
-    desc: '从寻呼机到 5G。它见证了韩国每一次通信换代。' },
-  { id: 's_baekdu', name: '백두제약 白头制药', code: '019680', sector: '제약 医药',
+    desc: '从寻呼机到 5G。它见证了每一次通信换代。' },
+  { id: 's_baekdu', name: '白头制药', code: '600006', sector: '医药',
     base: 2900, growth: 0.085, vol: 0.26, div: 0.008, minYear: 1992,
-    desc: '一款新药可以吃十年。一款失败，也能跌回原点。' },
-  { id: 's_goldconst', name: '황금건설 黄金建设', code: '001880', sector: '건설 建筑',
+    desc: '一款新药可以吃十年。集采一来，也能跌回原点。' },
+  { id: 's_goldconst', name: '金鼎建设', code: '600007', sector: '地产',
     base: 4700, growth: 0.048, vol: 0.32, div: 0.015, minYear: 1988,
-    desc: '它的业绩就是韩国的房价曲线。江南一动，它就动。' },
-  { id: 's_arirang', name: '아리랑엔터 阿里郎娱乐', code: '053210', sector: '엔터 娱乐',
+    desc: '它的业绩就是房价曲线。楼市的每一次调控，都写在它的报表上。' },
+  { id: 's_arirang', name: '星光娱乐', code: '600008', sector: '传媒',
     base: 1500, growth: 0.125, vol: 0.48, div: 0.004, minYear: 2000,
-    desc: '造星工厂。一个团能救公司，一场丑闻也能毁掉它。' },
-  { id: 's_dongbang', name: '동방물류 东方物流', code: '009970', sector: '물류 物流',
+    desc: '造星工厂。一部剧能救公司，一场塌房也能毁掉它。' },
+  { id: 's_dongbang', name: '东方物流', code: '600009', sector: '物流',
     base: 3600, growth: 0.066, vol: 0.22, div: 0.016, minYear: 1996,
     desc: '港口、货车、仓库。经济的总量，写在它的卡车里程里。' },
-  { id: 's_green', name: '그린에너지 绿色能源', code: '071050', sector: '2차전지 电池',
+  { id: 's_green', name: '绿能电池', code: '600010', sector: '新能源',
     base: 22000, growth: 0.115, vol: 0.52, div: 0.002, minYear: 2015,
     desc: '电池与新能源。年轻人的最爱，也是波动最大的那一只。' },
-  { id: 's_ai', name: '네오마인드 AI', code: '108800', sector: 'AI', base: 46000,
+  { id: 's_ai', name: '智源 AI', code: '600011', sector: 'AI', base: 46000,
     growth: 0.14, vol: 0.58, div: 0.0, minYear: 2023,
     desc: '算力、模型、数据。它涨的时候，没有人不相信未来。' },
-  { id: 's_kospi', name: '코스피 ETF 大盘指数', code: '069500', sector: '지수 指数',
+  { id: 's_kospi', name: '沪深 300 ETF', code: '600012', sector: '指数基金',
     base: 5000, growth: 0.068, vol: 0.16, div: 0.020, minYear: 1985,
     desc: '买下整个市场。不刺激，但你几乎不会输给时代。', tag: '稳健' }
 ];
 
 /* =========================================================
- *  行情引擎
+ * 行情引擎
  * ========================================================= */
 
 function gauss() {
@@ -257,13 +257,13 @@ function stockPrice(state, id) { return state.market.prices[id] || 0; }
 /* ---------- 初始化 ---------- */
 function marketInit(state) {
   state.market = {
-    props: [],          // 持有的房产/车/资产
-    stocks: [],         // 持股 {id, shares, cost}
-    prices: {},         // 当前股价
-    prev: {},           // 去年股价（算涨跌幅）
-    hist: {},           // 价格历史（画走势）
-    drift: {},          // 房产/资产的额外涨跌累积
-    debt: 0,            // 贷款总额
+    props: [], // 持有的房产/车/资产
+    stocks: [], // 持股 {id, shares, cost}
+    prices: {}, // 当前股价
+    prev: {}, // 去年股价（算涨跌幅）
+    hist: {}, // 价格历史（画走势）
+    drift: {}, // 房产/资产的额外涨跌累积
+    debt: 0, // 贷款总额
     uid: 1,
     log: []
   };
@@ -307,7 +307,7 @@ function marketTick(state) {
     m.prev[s.id] = m.prices[s.id];
     let p = m.prices[s.id];
     // DAMP: 寿命延长到 100+ 后复利年限变多，年化整体下调以维持原有平衡
-    let k = s.growth * MARKET_META.growthDamp + (shock ? shock.k * (s.sector.indexOf('지수') >= 0 ? 0.6 : 1) : 0) + gauss() * s.vol;
+    let k = s.growth * MARKET_META.growthDamp + (shock ? shock.k * (s.sector.indexOf('指数') >= 0 ? 0.6 : 1) : 0) + gauss() * s.vol;
     p = Math.round(Math.max(p * 0.22, p * (1 + k)));
     m.prices[s.id] = p;
     const h = m.hist[s.id];
@@ -336,7 +336,7 @@ function marketTick(state) {
   });
   if (divTotal > 0) {
     state.stats.MONEY += divTotal;
-    lines.push(`배당금 分红到账 ${fmtMoney(divTotal)}`);
+    lines.push(`分红到账 ${fmtMoney(divTotal)}`);
   }
 
   // 资产结算：升值 / 折旧 / 维护费 / 租金 / 利息
@@ -366,15 +366,15 @@ function marketTick(state) {
   const rate = rateAt(y);
   const interest = Math.round(m.debt * rate);
 
-  if (rent > 0) { state.stats.MONEY += rent; lines.push(`임대수익 租金收入 ${fmtMoney(rent)}`); }
-  if (upkeep > 0) { state.stats.MONEY -= upkeep; lines.push(`유지비 持有成本 -${fmtMoney(upkeep)}`); }
-  if (interest > 0) { state.stats.MONEY -= interest; lines.push(`대출이자 贷款利息 -${fmtMoney(interest)}（年利率 ${(rate * 100).toFixed(1)}%）`); }
+  if (rent > 0) { state.stats.MONEY += rent; lines.push(`租金收入 ${fmtMoney(rent)}`); }
+  if (upkeep > 0) { state.stats.MONEY -= upkeep; lines.push(`持有成本 -${fmtMoney(upkeep)}`); }
+  if (interest > 0) { state.stats.MONEY -= interest; lines.push(`贷款利息 -${fmtMoney(interest)}（年利率 ${(rate * 100).toFixed(1)}%）`); }
 
   if (shock) {
-    pushLog(state, `【증시 股市 · ${y}년】${shock.t} — ${shock.d}`, shock.k >= 0 ? 'money' : 'warn');
+    pushLog(state, `【股市 · ${y} 年】${shock.t} — ${shock.d}`, shock.k >= 0 ? 'money' : 'warn');
   }
   if (lines.length) {
-    pushLog(state, `【자산 资产 · ${y}년】` + lines.join(' · '), 'money');
+    pushLog(state, `【资产 · ${y} 年】` + lines.join(' · '), 'money');
   }
   state.market.rate = rate;
   return { shock, rent, upkeep, interest, div: divTotal };
@@ -407,7 +407,7 @@ function buyProp(state, kind, refId, downRatio, qty) {
       : GOODS.find(g => g.id === refId);
   if (!ref) return { ok: false, msg: '没有这件东西' };
   const y = fmtYear(state);
-  if (y < (ref.minYear || 1985)) return { ok: false, msg: `${ref.minYear}년 之后才会出现` };
+  if (y < (ref.minYear || 1985)) return { ok: false, msg: `${ref.minYear} 年 之后才会出现` };
 
   const unit = kind === 'house' ? housePrice(state, ref)
     : kind === 'car' ? carPrice(state, ref) : goodPrice(state, ref);
@@ -429,7 +429,7 @@ function buyProp(state, kind, refId, downRatio, qty) {
   };
   m.props.push(p);
   applyEffects(state, { CHA: ref.cha || 0, NET: ref.net || 0 });
-  pushLog(state, `【구매 买入】${ref.name}${n > 1 ? ' ×' + n : ''} · 总价 ${fmtMoney(total)}` +
+  pushLog(state, `【买入】${ref.name}${n > 1 ? ' ×' + n : ''} · 总价 ${fmtMoney(total)}` +
     `（首付 ${fmtMoney(down)}${loan > 0 ? '，贷款 ' + fmtMoney(loan) : ''}）`, 'money');
   if (kind === 'house' && !ref.jeonse) state.flags.own_house = true;
   if (kind === 'house' && ref.base >= 260000000) state.flags.gangnam_owner = true;
@@ -450,7 +450,7 @@ function sellProp(state, uid) {
   state.stats.MONEY += net;
   m.props.splice(i, 1);
   if (ref) applyEffects(state, { CHA: -(ref.cha || 0), NET: -(ref.net || 0) });
-  pushLog(state, `【매각 卖出】${p.name} · 成交 ${fmtMoney(gross)}，扣除费用与贷款后到手 ${fmtMoney(net)}`, net >= p.buyPrice ? 'money' : 'warn');
+  pushLog(state, `【卖出】${p.name} · 成交 ${fmtMoney(gross)}，扣除费用与贷款后到手 ${fmtMoney(net)}`, net >= p.buyPrice ? 'money' : 'warn');
   return { ok: true, net };
 }
 
@@ -459,7 +459,7 @@ function buyStock(state, id, shares) {
   const s = STOCKS.find(x => x.id === id);
   if (!s) return { ok: false, msg: '没有这只股票' };
   const y = fmtYear(state);
-  if (y < (s.minYear || 1985)) return { ok: false, msg: `${s.minYear}년 之后才上市` };
+  if (y < (s.minYear || 1985)) return { ok: false, msg: `${s.minYear} 年 之后才上市` };
   const price = m.prices[id];
   const n = Math.floor(shares);
   if (n <= 0) return { ok: false, msg: '数量不对' };
@@ -469,7 +469,7 @@ function buyStock(state, id, shares) {
   let pos = m.stocks.find(p => p.id === id);
   if (!pos) { pos = { id, shares: 0, cost: 0 }; m.stocks.push(pos); }
   pos.shares += n; pos.cost += cost;
-  pushLog(state, `【매수 买入】${s.name} ${n}주 @ ${fmtMoney(price)}，花费 ${fmtMoney(cost)}`, 'money');
+  pushLog(state, `【买入】${s.name} ${n}股 @ ${fmtMoney(price)}，花费 ${fmtMoney(cost)}`, 'money');
   return { ok: true, cost, n };
 }
 
@@ -487,7 +487,7 @@ function sellStock(state, id, shares) {
   pos.shares -= n;
   pos.cost = Math.round(pos.cost * (pos.shares / (pos.shares + n)));
   if (pos.shares <= 0) m.stocks = m.stocks.filter(p => p.id !== id || p.shares > 0);
-  pushLog(state, `【매도 卖出】${s.name} ${n}주 @ ${fmtMoney(price)}，到手 ${fmtMoney(got)}（${profit >= 0 ? '+' : ''}${fmtMoney(profit)}）`,
+  pushLog(state, `【卖出】${s.name} ${n}股 @ ${fmtMoney(price)}，到手 ${fmtMoney(got)}（${profit >= 0 ? '+' : ''}${fmtMoney(profit)}）`,
     profit >= 0 ? 'money' : 'warn');
   return { ok: true, got, profit };
 }
@@ -506,7 +506,7 @@ function repayDebt(state, amount) {
     const d = Math.min(p.loan, left);
     p.loan -= d; left -= d;
   });
-  pushLog(state, `【상환 还贷】偿还 ${fmtMoney(pay)}，剩余贷款 ${fmtMoney(m.debt)}`, 'money');
+  pushLog(state, `【还贷】偿还 ${fmtMoney(pay)}，剩余贷款 ${fmtMoney(m.debt)}`, 'money');
   return { ok: true, pay };
 }
 

@@ -1,5 +1,5 @@
 /* =========================================================
- *  CANGAME · UI 层（含存档）
+ * CANGAME · UI 层（含存档）
  * ========================================================= */
 
 const LS = {
@@ -120,7 +120,7 @@ function renderTitle() {
   const save = loadAuto();
   if (save && !save.finished) {
     btn.style.display = '';
-    btn.innerHTML = `继续人生 <span class="sub">${save.name} · ${(save.startYear || START_YEAR) + save.age}년 · ${save.age}세 · ${fmtMoney(save.stats.MONEY)}</span>`;
+    btn.innerHTML = `继续人生 <span class="sub">${save.name} · ${(save.startYear || START_YEAR) + save.age} 年 · ${save.age}岁 · ${fmtMoney(save.stats.MONEY)}</span>`;
   } else {
     btn.style.display = 'none';
   }
@@ -233,11 +233,11 @@ function rerollName() {
 }
 
 /* ---------- 游戏页 ---------- */
-let GAME_VIEW = 'main';   // main | job | rel
-let REL_TAB = 'family';   // family | friends
+let GAME_VIEW = 'main'; // main | job | rel
+let REL_TAB = 'family'; // family | friends
 
 function enterGame() {
-  if (STATE) marketMigrate(STATE);
+  if (STATE) { marketMigrate(STATE); migrateState(STATE); }
   showScreen('screen-game');
   if (STATE.finished && STATE.ending) { renderEnd(); return; }
   showGameView('main');
@@ -259,39 +259,51 @@ function ageAvatar(age, gender) {
 function renderStats() {
   const s = STATE.stats;
   $('hudAvatar').textContent = ageAvatar(STATE.age, STATE.gender);
-  $('hudName').textContent = `${STATE.name} · ${STATE.gender === 'M' ? '남' : '여'} · ${STATE.familyName.split(' ')[0]}`;
-  $('hudAge').textContent = `나이 ${STATE.age} / ${END_AGE}세 · ${fmtYear(STATE)}년 · ${STATE.job || defaultJob(STATE.age)}`;
+  $('hudName').textContent = `${STATE.name} · ${STATE.gender === 'M' ? '男' : '女'} · ${STATE.familyName.split(' ')[0]}`;
+  $('hudAge').textContent = `${STATE.age} / ${END_AGE}岁 · ${fmtYear(STATE)} 年 · ${STATE.job || defaultJob(STATE.age)}`;
   $('hudCash').textContent = fmtMoney(s.MONEY);
   $('hudWorth').textContent = fmtMoney(netWorth(STATE));
 
-  // 底部指标条：8 项人生指标 + 压力
+  // 底部指标条：人生指标 + 心情 + 道德 + 压力
   const strip = [
-    ['HP', '健康'], ['CUR', '好奇'], ['LOVE', '关爱'], ['SEC', '安全'],
-    ['FAME', '声望'], ['AUTO', '自主'], ['NET', '人际'], ['GROW', '成长'], ['STRESS', '压力']
+    ['HP', '健康'], ['MOOD', '心情'], ['CUR', '好奇'], ['LOVE', '关爱'],
+    ['SEC', '安全'], ['ETH', '道德'], ['FAME', '声望'], ['AUTO', '自主'],
+    ['NET', '人际'], ['GROW', '成长'], ['STRESS', '压力']
   ];
   $('metricStrip').innerHTML = strip.map(([k, label]) => {
-    const v = Math.round(s[k] || 0);
-    const low = (k === 'STRESS') ? v > 60 : (k === 'HP' ? v < 30 : false);
+    const v = Math.round(s[k] === undefined ? 60 : s[k]);
+    const low = (k === 'STRESS') ? v > 60 : (k === 'HP' ? v < 30 : (k === 'MOOD' || k === 'ETH' ? v < 35 : false));
     const high = (k === 'STRESS') ? false : v >= 70;
     return `<span class="m"><i>${label}</i><b class="${low ? 'low' : (high ? 'high' : '')}">${v}</b></span>`;
   }).join('');
 
   const tags = [];
-  if (STATE.flags.past_life) tags.push('전생의 기억');
-  if (STATE.flags.ambition) tags.push('불타는 야망');
-  if (STATE.flags.bigco_staff) tags.push('大企業 职员');
-  if (STATE.flags.bigco_inner) tags.push('기업 핵심');
-  if (STATE.flags.gangnam_owner) tags.push('江南业主');
-  if (STATE.flags.took_over) tags.push('기업의 주인');
-  if (STATE.flags.exposed) tags.push('날카로운 칼날');
-  if (STATE.flags.dating) tags.push('연애중');
-  if (STATE.flags.married) tags.push('기혼 已婚');
-  if (!STATE.flags.parents_alive) tags.push('상가 丧亲');
-  if (STATE.childCount) tags.push('자녀 ' + STATE.childCount + '명');
-  if (STATE.grandCount) tags.push('손주 ' + STATE.grandCount + '명');
-  if (STATE.age < 18) tags.push('미성년 未成年（家庭负担）');
-  if (!STATE.flags.orphan && (STATE.family && STATE.family.debt > 0)) tags.push('가계부채 家庭负债');
-  if (STATE.pet && STATE.pet.alive) tags.push(STATE.pet.type === 'cat' ? '반려묘 宠物猫' : '반려견 宠物狗');
+  const edu = STATE.edu || {};
+  if (edu.uni && edu.uni !== 'u_fail') {
+    const u = UNIVERSITIES.find(x => x.id === edu.uni);
+    if (u) tags.push('🎓 ' + u.name + (edu.major ? ' · ' + edu.major : ''));
+  } else if (edu.hs) {
+    const h = HIGH_SCHOOLS.find(x => x.id === edu.hs);
+    if (h) tags.push('🏫 ' + h.name);
+  }
+  if (edu.mid != null) tags.push('中考 ' + edu.mid + '分');
+  if (edu.gao != null) tags.push('高考 ' + edu.gao + '分');
+  if (STATE.career) tags.push('💼 ' + STATE.job);
+  if (STATE.flags.past_life) tags.push('前世记忆');
+  if (STATE.flags.ambition) tags.push('燃烧的野心');
+  if (STATE.flags.gangnam_owner) tags.push('有房业主');
+  if (STATE.flags.dating) tags.push('恋爱中');
+  if (STATE.flags.married) tags.push('已婚');
+  if (STATE.flags.widowed) tags.push('丧偶');
+  if (!STATE.flags.parents_alive) tags.push('丧亲');
+  if (STATE.childCount) tags.push('子女 ' + STATE.childCount + ' 人');
+  if (STATE.grandCount) tags.push('孙辈 ' + STATE.grandCount + ' 人');
+  if (STATE.age < 18) tags.push('未成年（家庭负担）');
+  if (!STATE.flags.orphan && (STATE.family && STATE.family.debt > 0)) tags.push('家庭负债');
+  if (loanTotal(STATE) > 0) tags.push('欠款中');
+  if (STATE.credit != null && STATE.credit < 60) tags.push('征信不良');
+  if (STATE.grief) tags.push('悲伤中：' + STATE.grief.reason);
+  if (STATE.pet && STATE.pet.alive) tags.push(STATE.pet.type === 'cat' ? '宠物猫' : '宠物狗');
   $('tagList').innerHTML = tags.map(t => `<span class="tag">${esc(t)}</span>`).join('');
 }
 
@@ -306,143 +318,402 @@ function showGameView(v) {
   if (v === 'rel') { $('dockRel').classList.add('active'); renderRelView(); }
 }
 
-/* ---------- 工作视图 ---------- */
+/* ---------- 工作视图：职业与晋升 / 求职 / 贷款 / 相亲 ---------- */
 function renderJobView() {
   const s = STATE.stats;
+  const edu = STATE.edu || {};
+  const c = STATE.career ? careerById(STATE.career.id) : null;
+  const m = marketMigrate(STATE);
   const j = JOBS[STATE.job] || { salary: 0, cost: 12000000 };
-  const isRetired = STATE.job === '退休';
-  const income = isRetired ? j.salary
-    : Math.round(j.salary * (1 + Math.max(0, STATE.age - 23) * 0.06) * (1 + s.INT / 400) * (1 + s.NET / 800));
+  const income = STATE.career ? careerIncome(STATE) : Math.round(j.salary * (1 + s.INT / 400) * (1 + s.NET / 800));
   let cost = j.cost;
   if (STATE.flags.gangnam_owner) cost += 15000000;
   if (STATE.flags.married) cost += 12000000;
-  const m = marketMigrate(STATE);
-  const invHtml = STATE.investments.length
-    ? STATE.investments.map(i => `<div class="job-cell"><i>持有投资（剩 ${i.yearsLeft} 年）</i><b>${esc(i.name.split('·')[0].trim())} ${fmtMoney(i.amount)}</b></div>`).join('')
-    : '';
+  if (STATE.childCount) cost += STATE.childCount * 6000000;
+
+  // 当前职业卡
+  let curHtml = '';
+  if (c) {
+    const lv = STATE.career.level;
+    curHtml = c.ladder.map((l, i) => {
+      const on = i === lv;
+      const up = i < lv;
+      return `<span class="step ${on ? 'on' : (up ? 'up' : '')}">${esc(l.title)}</span>`;
+    }).join('<span class="arrow">›</span>');
+  }
+  const eduTxt = EDU_LEVELS[edu.eduLevel || 0];
+  const promoTxt = c
+    ? `在职 ${STATE.career.years} 年 · ${STATE.career.years >= CAREER_META.promoMinYears ? '今年可参与晋升评定' : `再干 ${CAREER_META.promoMinYears - STATE.career.years} 年才能评职级`}`
+    : (STATE.age < 16 ? '还没到工作的年纪' : '目前没有正式职业');
+
   const talHtml = (STATE.talents || []).map(id => {
     const t = talentById(id);
     return t ? `<span class="tag">${esc(t.name)}</span>` : '';
   }).join('');
+
+  // 求职列表
+  let offerHtml = '';
+  if (STATE.age >= CAREER_META.minWorkAge) {
+    const offers = jobOffers(STATE);
+    offers.sort((a, b) => (b.okEdu && b.okStat && b.okFlag ? 1 : 0) - (a.okEdu && a.okStat && a.okFlag ? 1 : 0));
+    offerHtml = `<div class="job-sec">求职 · 按学历与能力筛选（学历：${esc(eduTxt)}）</div>
+      <div class="offer-list">` + offers.map(o => {
+      const ok = o.okEdu && o.okStat && o.okFlag;
+      const reason = !o.okEdu ? `需 ${EDU_LEVELS[o.career.edu]}` : (!o.okStat ? o.miss : (!o.okFlag ? '缺少入行机缘' : ''));
+      const sal0 = o.career.ladder[o.entry].sal;
+      return `<div class="offer ${ok ? '' : 'no'}">
+        <div class="of-top"><span class="of-name">${esc(o.career.name)}</span>
+          <span class="of-sal">${ok ? '起步 ' + fmtMoney(sal0) + ' / 年' : esc(reason)}</span></div>
+        <div class="of-desc">${esc(o.career.desc)}</div>
+        <div class="of-meta">${esc(o.career.cat)} · 门槛 ${EDU_LEVELS[o.career.edu]} · ${o.career.ladder.length} 级职级${o.career.risk >= 2 ? ' · 风险较高' : ''}</div>
+        ${ok ? `<button class="btn small primary" onclick="uiApplyJob('${o.career.id}')">应聘 · ${esc(o.title)}</button>` : ''}
+      </div>`;
+    }).join('') + `</div>`;
+  }
+
+  // 贷款
+  const loans = STATE.loans || [];
+  const prodHtml = loanProducts(STATE).map(x => {
+    const can = x.avail && x.max > 0;
+    return `<div class="offer ${can ? '' : 'no'}">
+      <div class="of-top"><span class="of-name">${x.p.icon} ${esc(x.p.name)}</span>
+        <span class="of-sal">${can ? '额度 ' + fmtMoney(x.max) : esc(x.why || '暂不可用')}</span></div>
+      <div class="of-desc">${esc(x.p.desc)}</div>
+      <div class="of-meta">年利率 ${(x.rate * 100).toFixed(1)}% · ${x.p.years} 年${x.p.danger >= 3 ? ' · ⚠ 高危' : ''}</div>
+      ${can ? `<div class="of-btns">
+        <button class="btn small" onclick="uiBorrow('${x.p.id}',${Math.round(x.max * 0.3)})">借 30%</button>
+        <button class="btn small" onclick="uiBorrow('${x.p.id}',${Math.round(x.max * 0.6)})">借 60%</button>
+        <button class="btn small ${x.p.danger >= 3 ? 'warn' : 'primary'}" onclick="uiBorrow('${x.p.id}',${x.max})">借满</button>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+  const myLoanHtml = loans.length
+    ? loans.map((l, i) => `<div class="offer hold">
+        <div class="of-top"><span class="of-name">${l.icon || '💰'} ${esc(l.name)}</span>
+          <span class="of-sal">-${fmtMoney(l.left)}</span></div>
+        <div class="of-meta">${l.startYear} 年借入 · 年息 ${(l.rate * 100).toFixed(1)}% · 每年约还 ${fmtMoney(annualPayment(l))}${l.overdue ? ' · ⚠ 逾期 ' + l.overdue + ' 次' : ''}</div>
+        <div class="of-btns">
+          <button class="btn small" onclick="uiRepayLoan(${i},${Math.round(l.left * 0.3)})">还 30%</button>
+          <button class="btn small primary" onclick="uiRepayLoan(${i},${l.left})">一次还清</button>
+        </div></div>`).join('')
+    : '<div class="job-sub">你名下没有贷款。</div>';
+
   const fin = STATE.family || { assets: 0, debt: 0 };
   const famDebt = Math.round(fin.debt || 0);
   const famHtml = STATE.flags.orphan
-    ? `<div class="job-sec">가계 家庭账簿</div><div class="job-sub">你在教会孤儿院长大，没有一本属于父母的账簿。</div>`
-    : `<div class="job-sec">가계 家庭账簿</div>
+    ? `<div class="job-sec">家庭账簿</div><div class="job-sub">你在福利院长大，没有一本属于父母的账簿。</div>`
+    : `<div class="job-sec">家庭账簿</div>
        <div class="job-grid">
-         <div class="job-cell"><i>가족 자산 家庭资产</i><b>${fmtMoney(fin.assets || 0)}</b></div>
-         <div class="job-cell"><i>가계부채 家庭负债</i><b style="color:${famDebt > 0 ? 'var(--red)' : 'inherit'}">${famDebt > 0 ? '-' + fmtMoney(famDebt) : '—'}</b></div>
-         <div class="job-cell"><i>부모 父母</i><b>${STATE.flags.parents_alive ? '健在' : '已离世'}</b></div>
-         <div class="job-cell"><i>상속 继承状态</i><b>${STATE.flags.inherit_full ? '全额继承' : (STATE.flags.inherit_limited ? '限定继承' : (STATE.flags.inherit_none ? '已放弃继承' : '未发生'))}</b></div>
+         <div class="job-cell"><i>家庭资产</i><b>${fmtMoney(fin.assets || 0)}</b></div>
+         <div class="job-cell"><i>家庭负债</i><b style="color:${famDebt > 0 ? 'var(--red)' : 'inherit'}">${famDebt > 0 ? '-' + fmtMoney(famDebt) : '—'}</b></div>
+         <div class="job-cell"><i>父亲 / 母亲</i><b>${parentStatus(STATE, 'father')} / ${parentStatus(STATE, 'mother')}</b></div>
+         <div class="job-cell"><i>继承状态</i><b>${STATE.flags.inherit_full ? '全额继承' : (STATE.flags.inherit_limited ? '限定继承' : (STATE.flags.inherit_none ? '已放弃继承' : '未发生'))}</b></div>
        </div>
-       ${STATE.age < 18 ? `<div class="job-sub" style="margin-top:8px">未成年：生活与教育费由父母承担，你不用操心钱，也不用背债。成年后（18세）才开始自己记账。</div>` : ''}`;
+       ${STATE.age < 18 ? `<div class="job-sub" style="margin-top:8px">未成年：生活与学费由家里承担，你不用操心钱，也不用背债。18岁起才开始自己记账。</div>` : ''}`;
+
   $('view-job').innerHTML = `
     <div class="job-card">
-      <div class="job-title">💼 ${esc(STATE.job || defaultJob(STATE.age))}</div>
-      <div class="job-sub">${fmtYear(STATE)}년 · ${STATE.age}세 · 预计年收入 ${fmtMoney(income)}，年支出 ${fmtMoney(cost)}，结余 ${fmtMoney(income - cost)}${isRetired ? '（年金）' : ''}</div>
+      <div class="job-title">💼 ${esc(STATE.job)}${c ? `　<span class="of-meta">${esc(c.cat)}</span>` : ''}</div>
+      <div class="job-sub">${fmtYear(STATE)} 年 · ${STATE.age}岁 · 学历 ${esc(eduTxt)}${edu.major ? '（' + esc(edu.major) + '）' : ''} · ${esc(promoTxt)}</div>
+      ${curHtml ? `<div class="ladder">${curHtml}</div>` : ''}
       <div class="job-grid">
-        <div class="job-cell"><i>현금 现金</i><b>${fmtMoney(s.MONEY)}</b></div>
-        <div class="job-cell"><i>순자산 净资产</i><b>${fmtMoney(netWorth(STATE))}</b></div>
-        <div class="job-cell"><i>지력/철력/의지</i><b>${Math.round(s.INT)} / ${Math.round(s.STR)} / ${Math.round(s.WILL)}</b></div>
-        <div class="job-cell"><i>职场口碑/人脉/声望</i><b>${Math.round(s.LOY)} / ${Math.round(s.NET)} / ${Math.round(s.FAME)}</b></div>
-        ${m.debt > 0 ? `<div class="job-cell"><i>대출 贷款（年息 ${(rateAt(fmtYear(STATE)) * 100).toFixed(1)}%）</i><b style="color:var(--red)">-${fmtMoney(m.debt)}</b></div>` : ''}
-        ${invHtml}
+        <div class="job-cell"><i>年收入</i><b>${fmtMoney(income)}</b></div>
+        <div class="job-cell"><i>年支出</i><b>${fmtMoney(cost)}</b></div>
+        <div class="job-cell"><i>现金</i><b>${fmtMoney(s.MONEY)}</b></div>
+        <div class="job-cell"><i>净资产</i><b>${fmtMoney(netWorth(STATE))}</b></div>
+        <div class="job-cell"><i>口碑 / 人脉 / 声望</i><b>${Math.round(s.LOY)} / ${Math.round(s.NET)} / ${Math.round(s.FAME)}</b></div>
+        <div class="job-cell"><i>征信分</i><b style="color:${STATE.credit < 60 ? 'var(--red)' : 'inherit'}">${Math.round(STATE.credit == null ? 100 : STATE.credit)}</b></div>
+        ${m.debt > 0 ? `<div class="job-cell"><i>房贷车贷（年息 ${(rateAt(fmtYear(STATE)) * 100).toFixed(1)}%）</i><b style="color:var(--red)">-${fmtMoney(m.debt)}</b></div>` : ''}
       </div>
-      ${talHtml ? `<div class="job-sec">보유 특성 持有天赋</div><div class="job-talents">${talHtml}</div>` : ''}
-      ${famHtml}
-      <div class="job-sub" style="margin-top:14px">想置业或炒股？点底部的「股票」或「花钱」。</div>
-    </div>`;
+      ${talHtml ? `<div class="job-sec">持有天赋</div><div class="job-talents">${talHtml}</div>` : ''}
+    </div>
+    ${STATE.age >= 20 && !STATE.flags.married ? `<div class="job-card">
+      <div class="job-sec">相亲</div>
+      <div class="job-sub">托人介绍一个对象，见面费 ${fmtMoney(LOVE_META.matchCost)}。介绍的质量和你的条件挂钩。</div>
+      <div class="of-btns" style="margin-top:8px"><button class="btn small primary" onclick="uiMatchmaker()">安排一次相亲</button></div>
+    </div>` : ''}
+    ${offerHtml ? `<div class="job-card">${offerHtml}</div>` : ''}
+    <div class="job-card">
+      <div class="job-sec">贷款</div>
+      <div class="job-sub">借钱容易还钱难。逾期会砸掉征信，也会砸掉名声。</div>
+      <div class="offer-list" style="margin-top:8px">${prodHtml}</div>
+      <div class="job-sec" style="margin-top:12px">我的欠款</div>
+      <div class="offer-list">${myLoanHtml}</div>
+    </div>
+    <div class="job-card">${famHtml}</div>`;
 }
 
-/* ---------- 人际关系视图 ---------- */
+function parentStatus(state, which) {
+  const p = state.parents && state.parents[which];
+  if (!p) return '—';
+  return p.alive ? `${p.name}（${p.age}岁）` : `${p.name}（已故）`;
+}
+
+/* ---------- 人际关系视图：家人 / 同学 / 朋友 / 恋人 ---------- */
 function renderRelView() {
   const touch = STATE.socialTouch || {};
   const canTouch = (key) => touch[key] !== STATE.age;
   const cards = [];
+  let extra = '';
 
   if (REL_TAB === 'family') {
     const famDebt = Math.round((STATE.family && STATE.family.debt) || 0);
     const famAsset = Math.round((STATE.family && STATE.family.assets) || 0);
-    if (STATE.flags.orphan) {
-      cards.push({ ava: '⛪', cls: 'amber', name: '教会孤儿院', sub: '你在这里长大。没有父母的账簿，只有一排编号。', dead: true });
-    } else if (STATE.flags.parents_alive) {
-      cards.push({
-        ava: '👴', cls: '', name: '父母',
-        sub: `他们还在，家就还在。家里的账簿：资产 ${fmtMoney(famAsset)}，负债 ${famDebt > 0 ? fmtMoney(famDebt) : '无'}。每年多回去看看。`,
-        key: 'parents'
-      });
+    const ps = STATE.parents;
+    if (!ps) {
+      cards.push({ ava: '🏛', cls: 'amber', name: '福利院', sub: '你在这里长大。档案袋上没有父母的名字，只有一排编号。', dead: true });
     } else {
-      cards.push({
-        ava: '🕯', cls: 'amber', name: '父母',
-        sub: STATE.flags.inherit_none ? '已离世。你放弃了继承——什么都不要，也什么都不欠。'
-          : (STATE.flags.inherit_full ? '已离世。你全额继承了他们的一切，包括债。'
-            : (STATE.flags.inherit_limited ? '已离世。你做了限定继承，只在遗产范围内还了债。'
-              : '已离世。想他们的时候，就翻翻老照片。')),
-        dead: true
-      });
+      if (ps.father) {
+        cards.push(ps.father.alive
+          ? { ava: '👨', cls: '', name: `父亲 · ${ps.father.name}`, sub: `${ps.father.age}岁 · 亲近 ${Math.round(ps.father.affinity)}%。他不爱说话，但每次你出事，第一个到的是他。`, key: 'father' }
+          : { ava: '🕯', cls: 'amber', name: `父亲 · ${ps.father.name}`, sub: `已故。走得那年 ${ps.father.age}岁。`, dead: true });
+      }
+      if (ps.mother) {
+        cards.push(ps.mother.alive
+          ? { ava: '👩', cls: '', name: `母亲 · ${ps.mother.name}`, sub: `${ps.mother.age}岁 · 亲近 ${Math.round(ps.mother.affinity)}%。家里的账簿：资产 ${fmtMoney(famAsset)}，负债 ${famDebt > 0 ? fmtMoney(famDebt) : '无'}。`, key: 'mother' }
+          : { ava: '🕯', cls: 'amber', name: `母亲 · ${ps.mother.name}`, sub: `已故。走得那年 ${ps.mother.age}岁。`, dead: true });
+      }
     }
-    if (STATE.flags.married) {
-      cards.push({ ava: STATE.gender === 'M' ? '💑' : '💏', cls: 'green', name: STATE.spouseName || '配偶', sub: '携手走过半生的人。', key: 'spouse' });
+    if (STATE.flags.married && STATE.spouse) {
+      const sp = STATE.spouse;
+      cards.push(sp.alive
+        ? { ava: '💑', cls: 'green', name: sp.name, sub: `${sp.age}岁 · 感情 ${Math.round(sp.affinity || 60)}%。携手走过半生的人。`, key: 'spouse' }
+        : { ava: '🕯', cls: 'amber', name: sp.name, sub: '先你一步走了。余生你带着两个人的份活着。', dead: true });
+    } else if (STATE.flags.married) {
+      cards.push({ ava: '💑', cls: 'green', name: STATE.spouseName || '配偶', sub: '携手走过半生的人。', key: 'spouse' });
     } else if (STATE.flags.dating) {
       cards.push({ ava: '💘', cls: 'green', name: '恋人', sub: '交往中。关系是要经营的。', key: 'spouse' });
     }
     if (STATE.childCount) {
-      cards.push({ ava: '👶', cls: '', name: `孩子 × ${STATE.childCount}`, sub: STATE.grandCount ? `他们很棒——你已经是 ${STATE.grandCount} 个孙辈的祖辈了。` : '正在长大。陪伴错过了就回不来了。', key: 'child' });
+      cards.push({
+        ava: '👶', cls: '', name: `孩子 × ${STATE.childCount}`,
+        sub: STATE.grandCount ? `他们很棒——你已经是 ${STATE.grandCount} 个孙辈的祖辈了。` : '正在长大。陪伴错过了就回不来了。',
+        key: 'child'
+      });
     }
     if (STATE.pet) {
       cards.push(STATE.pet.alive
         ? { ava: STATE.pet.type === 'cat' ? '🐱' : '🐶', cls: 'amber', name: `${STATE.pet.name}（${STATE.pet.type === 'cat' ? '猫' : '狗'}）`, sub: '已经陪伴你很多年。', key: 'pet' }
         : { ava: '🌈', cls: 'amber', name: `${STATE.pet.name}`, sub: '去了彩虹桥。谢谢你陪过它。', dead: true });
     }
+  } else if (REL_TAB === 'classmate') {
+    const list = STATE.classmates || [];
+    const stage = schoolStageOf(STATE);
+    const stageName = stage === 'mid' ? '初中' : stage === 'high' ? '高中' : stage === 'uni' ? '大学' : '';
+    extra = `<div class="rel-sub" style="padding:0 4px 8px">${stageName ? `现在是${stageName}，班上一共 ${list.length} 个人。` : '这个阶段没有同学。'}</div>`;
+    if (list.length) {
+      extra += `<div class="of-btns" style="padding:0 4px 10px">
+        <button class="btn small" onclick="uiSocialAll('classmate')">🔁 一键和全班互动</button>
+        ${STATE.age < EXAM_META.gaoAge ? `<button class="btn small primary" onclick="uiCram()">📚 熬夜刷题（学习投入 +）</button>` : ''}
+      </div>`;
+    }
+    if (stage === 'uni') {
+      extra += `<div class="job-sec" style="padding:4px">校园活动（每年每项一次）</div><div class="offer-list">` +
+        UNI_ACTIVITIES.map(a => {
+          const done = (STATE.uniTouch || {})[a.id] === STATE.age;
+          const lock = a.condMinAge && STATE.age < a.condMinAge;
+          return `<div class="offer ${done || lock ? 'no' : ''}">
+            <div class="of-top"><span class="of-name">${esc(a.name)}</span><span class="of-sal">${done ? '今年做过了' : (lock ? a.condMinAge + '岁后' : '')}</span></div>
+            <div class="of-desc">${esc(a.desc)}</div>
+            ${!done && !lock ? `<button class="btn small primary" onclick="uiUniAct('${a.id}')">就这个</button>` : ''}
+          </div>`;
+        }).join('') + `</div>`;
+    }
+    list.forEach((c, i) => {
+      const t = CLASSMATE_TYPES.find(x => x.key === c.key) || { label: '同学' };
+      cards.push({
+        ava: t.ava || '🧑', cls: '',
+        name: `${c.name} · ${t.label}${c.gender !== STATE.gender ? ' ♡' : ''}`,
+        sub: `好感 ${Math.round(c.affinity)}% · 颜值 ${c.look} · ${t.line || ''}`,
+        key: 'classmate:' + i,
+        off: c.lastTouch === STATE.age,
+        act: c.lastTouch === STATE.age ? '今年已互动' : '互动',
+        extraBtn: (c.gender !== STATE.gender && c.affinity >= 25 && !STATE.flags.married)
+          ? `<button class="btn tiny" onclick="uiCrush(${i})">追求 TA</button>` : ''
+      });
+    });
+  } else if (REL_TAB === 'love') {
+    const lv = loveInit(STATE);
+    if (STATE.flags.married && STATE.spouse) {
+      const sp = STATE.spouse;
+      cards.push(sp.alive
+        ? { ava: '💑', cls: 'green', name: sp.name, sub: `感情 ${Math.round(sp.affinity || 60)}% · ${sp.age}岁`, key: 'spouse' }
+        : { ava: '🕯', cls: 'amber', name: sp.name, sub: '已经不在了。', dead: true });
+      extra = `<div class="of-btns" style="padding:0 4px 10px">
+        <button class="btn small" onclick="uiBaby()">🍼 要一个孩子</button>
+      </div>`;
+    }
+    if (!STATE.flags.married && STATE.age >= LOVE_META.marryAge - 2) {
+      extra += `<div class="of-btns" style="padding:0 4px 10px">
+        <button class="btn small primary" onclick="uiMatchmaker()">💌 托人相亲（${fmtMoney(LOVE_META.matchCost)}）</button>
+      </div>`;
+    }
+    lv.candidates.forEach((l, i) => {
+      const can = l.lastTouch !== STATE.age;
+      cards.push({
+        ava: l.gender === 'F' ? '👩' : '👨', cls: 'green',
+        name: l.name,
+        sub: `${loverLabel(l)} · 好感 <b>${Math.round(l.affinity)}%</b>${l.pregnant ? ' · ⚠ 怀孕了' : ''}`,
+        key: null,
+        multi: can ? `
+          <button class="rel-act" onclick="uiLove(${i},'chat')">聊天</button>
+          <button class="rel-act" onclick="uiLove(${i},'date')">约会 ${fmtMoney(LOVE_META.dateCost)}</button>
+          <button class="rel-act" onclick="uiLove(${i},'gift')">送礼 ${fmtMoney(LOVE_META.giftCost)}</button>
+          ${l.affinity >= LOVE_META.touchAffinity ? `<button class="rel-act" onclick="uiIntimate(${i})">亲密</button>` : ''}
+          ${l.affinity >= LOVE_META.marryAffinity && STATE.age >= LOVE_META.marryAge ? `<button class="rel-act" onclick="uiPropose(${i})">求婚</button>` : ''}
+        ` : '<span class="rel-act dis">今年见过了</span>'
+      });
+    });
   } else {
-    (STATE.friends || []).forEach((f, i) => {
+    const list = STATE.friends || [];
+    if (list.length) {
+      extra = `<div class="of-btns" style="padding:0 4px 10px">
+        <button class="btn small" onclick="uiSocialAll('friend')">🔁 一键和所有朋友聚一次</button>
+      </div>`;
+    }
+    list.forEach((f, i) => {
       const t = FRIEND_TYPES.find(x => x.key === f.key);
       cards.push({
-        ava: t ? t.avatar : '🧑', cls: '',
+        ava: t ? t.avatar : '🧑', cls: f.alive === false ? 'amber' : '',
         name: `${f.name} · ${t ? t.label : '朋友'}`,
-        sub: `好感度 ${Math.round(f.affinity)}% · ${t ? t.line : ''}`,
-        key: 'friend:' + i
+        sub: f.alive === false ? '已经不在了。' : `好感度 ${Math.round(f.affinity)}% · ${f.age || 20}岁 · ${t ? t.line : ''}`,
+        key: f.alive === false ? null : 'friend:' + i,
+        dead: f.alive === false
       });
     });
   }
 
   $('view-rel').innerHTML = `
     <div class="rel-head">
-      <button class="rel-tab ${REL_TAB === 'family' ? 'active' : ''}" onclick="setRelTab('family')">👪 家庭</button>
+      <button class="rel-tab ${REL_TAB === 'family' ? 'active' : ''}" onclick="setRelTab('family')">👪 家人</button>
+      <button class="rel-tab ${REL_TAB === 'classmate' ? 'active' : ''}" onclick="setRelTab('classmate')">🎒 同学</button>
       <button class="rel-tab ${REL_TAB === 'friends' ? 'active' : ''}" onclick="setRelTab('friends')">🧑‍🤝‍🧑 朋友</button>
+      <button class="rel-tab ${REL_TAB === 'love' ? 'active' : ''}" onclick="setRelTab('love')">💘 恋人</button>
     </div>
+    ${extra}
     <div class="rel-list">
       ${cards.length ? cards.map(c => `
         <div class="rel-card">
           <span class="rel-ava ${c.cls}">${c.ava}</span>
           <div class="rel-info">
             <div class="rel-name">${esc(c.name)}</div>
-            <div class="rel-sub">${esc(c.sub)}</div>
+            <div class="rel-sub">${c.sub}</div>
+            ${c.extraBtn || ''}
           </div>
-          ${c.dead ? '' : `<button class="rel-act" ${canTouch(c.key) ? '' : 'disabled'} onclick="uiSocial('${c.key}')">${canTouch(c.key) ? '互动' : '今年已互动'}</button>`}
+          ${c.multi ? `<div class="rel-multi">${c.multi}</div>`
+            : (c.dead || !c.key ? '' : `<button class="rel-act" ${(canTouch(c.key) && !c.off) ? '' : 'disabled'} onclick="uiSocial('${c.key}')">${(canTouch(c.key) && !c.off) ? (c.act || '互动') : '今年已互动'}</button>`)}
         </div>`).join('')
-      : '<div class="rel-empty">这一世还很孤独。去生活里遇见一些人吧。</div>'}
+      : `<div class="rel-empty">${REL_TAB === 'love' ? '还没有在意的人。去同学里看看，或者托人相个亲。' : (REL_TAB === 'classmate' ? '这个阶段没有同学。' : '这一世还很孤独。去生活里遇见一些人吧。')}</div>`}
     </div>`;
 }
 
 function setRelTab(t) { REL_TAB = t; renderRelView(); }
 
-function uiSocial(key) {
-  const parts = key.split(':');
-  const r = socialAct(STATE, parts[0], parts.length > 1 ? Number(parts[1]) : undefined);
-  if (!r.ok) { toast(r.msg || '现在不行'); return; }
-  toast('互动成功');
+function afterAct(msg) {
+  if (msg) toast(msg);
   renderStats();
   renderStream();
   if (GAME_VIEW === 'rel') renderRelView();
   if (GAME_VIEW === 'job') renderJobView();
   autosave();
 }
+
+function uiSocial(key) {
+  const parts = key.split(':');
+  if (parts[0] === 'classmate') {
+    const r = classmateAct(STATE, Number(parts[1]));
+    if (!r.ok) { toast(r.msg || '现在不行'); return; }
+    afterAct('互动成功');
+    return;
+  }
+  const r = socialAct(STATE, parts[0], parts.length > 1 ? Number(parts[1]) : undefined);
+  if (!r.ok) { toast(r.msg || '现在不行'); return; }
+  afterAct('互动成功');
+}
+
+function uiSocialAll(kind) {
+  const r = socialActAll(STATE, kind);
+  if (!r.ok) { toast(r.n ? '' : (kind === 'friend' ? '今年都见过了' : '今年都聊过了')); return; }
+  afterAct(`和 ${r.n} 个人走了一圈`);
+}
+
+function uiCram() {
+  const r = cramSchool(STATE);
+  if (!r.ok) { toast(r.msg || '现在不行'); return; }
+  afterAct('刷题完成');
+}
+
+function uiUniAct(id) {
+  const r = doUniActivity(STATE, id);
+  if (!r.ok) { toast(r.msg || '现在不行'); return; }
+  afterAct('度过了这一年');
+}
+
+function uiCrush(i) {
+  const r = meetFromClassmate(STATE, i);
+  if (!r.ok) { toast(r.msg || '现在不行'); return; }
+  afterAct('TA 进入了你的名单');
+}
+
+function uiLove(i, kind) {
+  const r = loveAct(STATE, i, kind);
+  if (!r.ok) { toast(r.msg || '现在不行'); return; }
+  afterAct('好感 +');
+}
+
+function uiIntimate(i) {
+  const r = loveIntimate(STATE, i);
+  if (!r.ok) { toast(r.msg || '现在不行'); return; }
+  if (r.pregnant) {
+    const l = (STATE.love.candidates || [])[i];
+    STATE.queue = STATE.queue || [];
+    STATE.queue.unshift({ type: 'event', ev: makePregnantEvent(STATE, l) });
+    toast('出事了……');
+  }
+  afterAct(r.pregnant ? null : '你们走到了一起');
+}
+
+function uiPropose(i) {
+  const r = propose(STATE, i);
+  if (!r.ok) { toast(r.msg || '现在不行'); return; }
+  afterAct('结婚了！');
+}
+
+function uiMatchmaker() {
+  const r = meetByMatchmaker(STATE);
+  if (!r.ok) { toast(r.msg || '现在不行'); return; }
+  if (GAME_VIEW !== 'rel') { REL_TAB = 'love'; }
+  afterAct('安排了一次见面');
+}
+
+function uiBaby() {
+  const r = tryBaby(STATE);
+  if (!r.ok) { toast(r.msg || '现在不行'); return; }
+  afterAct(r.baby ? '孩子出生了' : '再等等吧');
+}
+
+function uiApplyJob(id) {
+  const r = applyJob(STATE, id);
+  if (!r.ok) { toast(r.msg || '现在不行'); return; }
+  afterAct('入职：' + r.title);
+}
+
+function uiBorrow(id, amount) {
+  const r = borrow(STATE, id, amount);
+  if (!r.ok) { toast(r.msg || '借不到'); return; }
+  afterAct('钱到账了');
+}
+
+function uiRepayLoan(i, amount) {
+  const r = repayLoan(STATE, i, amount);
+  if (!r.ok) { toast(r.msg || '还不上'); return; }
+  afterAct('还款成功');
+}
 function renderStream() {
   const box = $('stream');
   box.innerHTML = STATE.log.map(l => {
     const cls = 'line ' + (l.type || 'story');
-    return `<div class="${cls}"><span class="y">${l.year}년 ${l.age}세</span>${esc(l.text)}</div>`;
+    return `<div class="${cls}"><span class="y">${l.year} 年 ${l.age}岁</span>${esc(l.text)}</div>`;
   }).join('');
   box.scrollTop = box.scrollHeight;
 }
@@ -450,7 +721,7 @@ function renderStream() {
 function renderIdle() {
   $('card').innerHTML = `
     <div class="card-inner">
-      <div class="card-year">${fmtYear(STATE)}년 · ${STATE.age}세 · ${esc(STATE.job || defaultJob(STATE.age))}</div>
+      <div class="card-year">${fmtYear(STATE)} 年 · ${STATE.age}岁 · ${esc(STATE.job || defaultJob(STATE.age))}</div>
       <p class="card-text">时间还在走。准备好迎接下一年了吗？</p>
     </div>`;
   $('actions').innerHTML = `<button class="btn primary" onclick="advance()">下一年 ▸</button>`;
@@ -462,7 +733,7 @@ function renderItem(item) {
   if (item.type === 'event') {
     const ev = item.ev;
     html = `<div class="card-inner">
-      <div class="card-year">${fmtYear(STATE)}년 · ${STATE.age}세</div>
+      <div class="card-year">${fmtYear(STATE)} 年 · ${STATE.age}岁</div>
       <p class="card-text">${esc(ev.text)}</p></div>`;
     const list = eventChoices(STATE, ev) || [];
     const btns = list.map((c, i) => {
@@ -470,7 +741,7 @@ function renderItem(item) {
       let sub = '';
       if (c.gamble) {
         const g = c.gamble;
-        sub = `<span class="gamble">${Math.round(g.p * 100)}% 성공 · ${describeEffects(g.win).join(' ') || '—'} ／ 실패 ${describeEffects(g.lose).join(' ') || '—'}</span>`;
+        sub = `<span class="gamble">${Math.round(g.p * 100)}% · ${describeEffects(g.win).join(' ') || '—'} ／ ${describeEffects(g.lose).join(' ') || '—'}</span>`;
       } else {
         const d = describeEffects(c.eff);
         if (d.length) sub = `<span class="gamble">${d.join(' · ')}</span>`;
@@ -478,14 +749,26 @@ function renderItem(item) {
       return `<button class="btn choice c-risk${r}" onclick="choose(${i})">${esc(c.text)}<span class="risk r${r}">风险${riskLabel(r)}</span>${sub}</button>`;
     }).join('');
     $('actions').innerHTML = btns || `<button class="btn primary" onclick="choose(-1)">继续 ▸</button>`;
+  } else if (item.type === 'exam') {
+    const ex = item.exam;
+    html = `<div class="card-inner exam">
+      <div class="card-year">${fmtYear(STATE)} 年 · ${STATE.age}岁 · ${esc(ex.title)}</div>
+      ${ex.score != null ? `<div class="exam-score">${ex.score}<small> / ${ex.full}</small></div>` : ''}
+      <p class="card-text">${esc(ex.text).replace(/\n/g, '<br>')}</p></div>`;
+    $('actions').innerHTML = ex.options.map((o, i) => {
+      const meta = o.minScore != null ? `录取线 ${o.minScore}` : '';
+      return `<button class="btn choice" onclick="chooseExam(${i})">${esc(o.name)}
+        <span class="gamble">${esc(o.desc)}</span>
+        ${meta ? `<span class="risk r2">${meta}</span>` : ''}</button>`;
+    }).join('') || `<button class="btn primary" onclick="chooseExam(0)">确认 ▸</button>`;
   } else if (item.type === 'invest') {
     html = `<div class="card-inner invest">
-      <div class="card-year">투자 投资 · ${fmtYear(STATE)}년</div>
+      <div class="card-year">投资机会 · ${fmtYear(STATE)} 年</div>
       <p class="card-text">${esc(item.text).replace(/\n/g, '<br>')}</p></div>`;
     $('actions').innerHTML = item.choices.map((c, i) =>
       `<button class="btn choice ${c.disabled ? 'dis' : ''}" ${c.disabled ? 'disabled' : ''} onclick="investChoice(${i})">${esc(c.text)}</button>`).join('');
   } else {
-    html = `<div class="card-inner"><div class="card-year">${item.year}년</div><p class="card-text">新的一年开始了。</p></div>`;
+    html = `<div class="card-inner"><div class="card-year">${item.year} 年</div><p class="card-text">新的一年开始了。</p></div>`;
     $('actions').innerHTML = `<button class="btn primary" onclick="advance()">继续 ▸</button>`;
   }
   $('card').innerHTML = html;
@@ -500,11 +783,22 @@ function advance() {
   // 跳过纯年份头，直接进入内容
   let guard = 0;
   while (item && item.type === 'year' && guard++ < 5) {
-    pushLog(STATE, `── ${item.year}년 · ${item.age}세 ──`, 'year');
+    pushLog(STATE, `── ${item.year} 年 · ${item.age}岁 ──`, 'year');
     item = step(STATE);
   }
   if (!item || item.type === 'end') { finishGame(); return; }
   renderItem(item);
+}
+
+function chooseExam(i) {
+  const item = STATE.pending;
+  if (!item || item.type !== 'exam') return;
+  resolveExam(STATE, i);
+  renderStats();
+  renderStream();
+  autosave();
+  if (STATE.queue && STATE.queue.length) renderItem(STATE.queue.shift());
+  else renderIdle();
 }
 
 function choose(i) {
@@ -552,19 +846,24 @@ function renderEnd() {
   $('endText').textContent = e.text;
   $('endScore').textContent = score + ' / 100';
   const s = STATE.stats;
+  const edu = STATE.edu || {};
+  const uniName = edu.uni && edu.uni !== 'u_fail' ? (UNIVERSITIES.find(x => x.id === edu.uni) || {}).name : '';
   $('endStats').innerHTML = `
-    <div><span>순자산 净资产</span><b>${fmtMoney(worthOf(STATE))}</b></div>
-    <div><span>현금 现金</span><b>${fmtMoney(s.MONEY)}</b></div>
+    <div><span>净资产</span><b>${fmtMoney(worthOf(STATE))}</b></div>
+    <div><span>现金</span><b>${fmtMoney(s.MONEY)}</b></div>
     <div><span>巅峰净资产</span><b>${fmtMoney(STATE.peak.NET || STATE.peak.MONEY)}</b></div>
-    <div><span>보유자산 资产</span><b>${fmtMoney(propValue(STATE))}</b></div>
-    <div><span>주식 持股</span><b>${fmtMoney(stockValue(STATE))}</b></div>
-    <div><span>대출 贷款</span><b>${(STATE.market && STATE.market.debt) ? '-' + fmtMoney(STATE.market.debt) : '—'}</b></div>
-    <div><span>声望</span><b>${Math.round(s.FAME)}</b></div>
-    <div><span>人脉</span><b>${Math.round(s.NET)}</b></div>
+    <div><span>不动产</span><b>${fmtMoney(propValue(STATE))}</b></div>
+    <div><span>持股</span><b>${fmtMoney(stockValue(STATE))}</b></div>
+    <div><span>房贷车贷</span><b>${(STATE.market && STATE.market.debt) ? '-' + fmtMoney(STATE.market.debt) : '—'}</b></div>
+    <div><span>个人贷款</span><b>${loanTotal(STATE) > 0 ? '-' + fmtMoney(loanTotal(STATE)) : '—'}</b></div>
+    <div><span>学历</span><b>${esc(EDU_LEVELS[edu.eduLevel || 0])}${uniName ? ' · ' + esc(uniName) : ''}</b></div>
+    <div><span>最终职业</span><b>${esc(STATE.job || '—')}</b></div>
+    <div><span>声望 / 人脉</span><b>${Math.round(s.FAME)} / ${Math.round(s.NET)}</b></div>
     <div><span>智力 / 意志</span><b>${Math.round(s.INT)} / ${Math.round(s.WILL)}</b></div>
-    <div><span>享年</span><b>${STATE.age}세 · ${fmtYear(STATE)}년</b></div>`;
+    <div><span>道德 / 心情</span><b>${Math.round(s.ETH || 0)} / ${Math.round(s.MOOD || 0)}</b></div>
+    <div><span>享年</span><b>${STATE.age}岁 · ${fmtYear(STATE)} 年</b></div>`;
   const hl = STATE.log.filter(l => l.type === 'story' || l.type === 'money').slice(-40);
-  $('endReview').innerHTML = hl.map(l => `<div class="line ${l.type}"><span class="y">${l.year}년</span>${esc(l.text)}</div>`).join('');
+  $('endReview').innerHTML = hl.map(l => `<div class="line ${l.type}"><span class="y">${l.year} 年</span>${esc(l.text)}</div>`).join('');
 }
 
 /* ---------- 存档管理 ---------- */
@@ -576,7 +875,7 @@ function renderSaveManager() {
       <div class="slot-t">存档槽 ${i + 1} <span class="sub">空</span></div>
       <div class="slot-b"><button class="btn small" onclick="saveToSlot(${i})">存入当前进度</button></div></div>`;
     return `<div class="slot">
-      <div class="slot-t">存档槽 ${i + 1} <span class="sub">${s.name} · ${(s.startYear || START_YEAR) + s.age}년 · ${s.age}세 · ${fmtMoney(s.stats.MONEY)}</span></div>
+      <div class="slot-t">存档槽 ${i + 1} <span class="sub">${s.name} · ${(s.startYear || START_YEAR) + s.age} 年 · ${s.age}岁 · ${fmtMoney(s.stats.MONEY)}</span></div>
       <div class="slot-b">
         <button class="btn small" onclick="loadSlot(${i})">读取</button>
         <button class="btn small" onclick="saveToSlot(${i})">覆盖</button>
@@ -591,7 +890,7 @@ let MARKET_TAB = 'house';
 function openMarket() {
   if (!STATE) { toast('先开始一段人生'); return; }
   if (!marketOpen(STATE)) {
-    toast(STATE.age < MARKET_META.minAge ? `${MARKET_META.minAge}세 之后才能进入市场` : '人生已经结束');
+    toast(STATE.age < MARKET_META.minAge ? `${MARKET_META.minAge}岁 之后才能进入市场` : '人生已经结束');
     return;
   }
   showScreen('screen-market');
@@ -613,14 +912,14 @@ function openMarketTab(tab) {
 function renderMarket() {
   const m = marketMigrate(STATE);
   const y = fmtYear(STATE);
-  $('marketYear').textContent = `${y}년 · ${STATE.age}세 · 基准利率 ${(rateAt(y) * 100).toFixed(1)}%`;
+  $('marketYear').textContent = `${y} 年 · ${STATE.age}岁 · 基准利率 ${(rateAt(y) * 100).toFixed(1)}%`;
   const sum = marketSummary(STATE);
   $('marketWallet').innerHTML = `
-    <div><span>현금 现金</span><b>${fmtMoney(sum.cash)}</b></div>
-    <div><span>순자산 净资产</span><b>${fmtMoney(sum.net)}</b></div>
-    <div><span>보유자산 资产</span><b>${fmtMoney(sum.props)}</b></div>
-    <div><span>주식 持股</span><b>${fmtMoney(sum.stocks)}</b></div>
-    <div class="${sum.debt > 0 ? 'debt' : ''}"><span>대출 贷款</span><b>${sum.debt > 0 ? '-' + fmtMoney(sum.debt) : '—'}</b></div>`;
+    <div><span>现金</span><b>${fmtMoney(sum.cash)}</b></div>
+    <div><span>净资产</span><b>${fmtMoney(sum.net)}</b></div>
+    <div><span>不动产</span><b>${fmtMoney(sum.props)}</b></div>
+    <div><span>持股</span><b>${fmtMoney(sum.stocks)}</b></div>
+    <div class="${sum.debt > 0 ? 'debt' : ''}"><span>贷款</span><b>${sum.debt > 0 ? '-' + fmtMoney(sum.debt) : '—'}</b></div>`;
   document.querySelectorAll('.mtab').forEach(b => b.classList.toggle('active', b.dataset.tab === MARKET_TAB));
   const body = $('marketBody');
   if (MARKET_TAB === 'house') body.innerHTML = renderHouseTab();
@@ -639,12 +938,12 @@ function renderHouseTab() {
     const unit = housePrice(STATE, h);
     const ratio = (h.base > 0) ? ((unit / h.base)) : 1;
     const up = Math.round((ratio - 1) * 100);
-    const meta = `较 1985년 ${up >= 0 ? '+' : ''}${up}% · 年化 ${(h.growth * 100).toFixed(1)}%` +
+    const meta = `较 1985 年 ${up >= 0 ? '+' : ''}${up}% · 年化 ${(h.growth * 100).toFixed(1)}%` +
       (h.rent ? ` · 租金 ${(h.rent * 100).toFixed(1)}%/年` : '') +
       (h.upkeep ? ` · 维护 ${(h.upkeep * 100).toFixed(1)}%/年` : ' · 无维护费') +
       (h.cha ? ` · 魅力 ${h.cha > 0 ? '+' : ''}${h.cha}` : '') +
       (h.net ? ` · 人脉 +${h.net}` : '') +
-      ` · ${h.jeonse ? '전세 押金制（退租返还）' : '可贷款'}`;
+      ` · ${h.jeonse ? '租房（押一付三）' : '可贷款'}`;
     const buttons = h.jeonse
       ? `<button class="btn small" onclick="uiBuyHouse('${h.id}',1)">签约入住</button>`
       : `<button class="btn small" onclick="uiBuyHouse('${h.id}',0.3)">首付 30% · ${fmtMoney(unit * 0.3)}</button>
@@ -718,7 +1017,7 @@ function renderStockTab() {
   const shock = STOCK_SHOCKS[y];
   let html = '';
   if (shock) {
-    html += `<div class="mk-alert ${shock.k >= 0 ? 'up' : 'down'}">${y}년 ${esc(shock.t)} — ${esc(shock.d)}</div>`;
+    html += `<div class="mk-alert ${shock.k >= 0 ? 'up' : 'down'}">${y} 年 ${esc(shock.t)} — ${esc(shock.d)}</div>`;
   }
   html += `<div class="mk-note">买股票前先看一眼年份。1997、2000、2008、2020 都有名字，也有尸体。</div>`;
   STOCKS.forEach(s => {
@@ -736,11 +1035,11 @@ function renderStockTab() {
       <div class="mk-desc">${esc(s.desc)}</div>
       <div class="mk-meta">${esc(s.sector)} · 年化 ${(s.growth * 100).toFixed(1)}% · 波动 ${(s.vol * 100).toFixed(0)}%` +
       (s.div ? ` · 分红 ${(s.div * 100).toFixed(1)}%` : '') +
-      (pos ? ` · 持有 ${pos.shares}주（市值 ${fmtMoney(pos.shares * p)}）` : '') + `</div>
+      (pos ? ` · 持有 ${pos.shares}股（市值 ${fmtMoney(pos.shares * p)}）` : '') + `</div>
       ${sparkline(m.hist[s.id])}
       <div class="mk-btns">
-        <button class="btn small" onclick="uiBuyStock('${s.id}',10)">买 10주 · ${fmtMoney(p * 10)}</button>
-        <button class="btn small" onclick="uiBuyStock('${s.id}',100)">买 100주 · ${fmtMoney(p * 100)}</button>
+        <button class="btn small" onclick="uiBuyStock('${s.id}',10)">买 10股 · ${fmtMoney(p * 10)}</button>
+        <button class="btn small" onclick="uiBuyStock('${s.id}',100)">买 100股 · ${fmtMoney(p * 100)}</button>
         <button class="btn small" onclick="uiBuyStock('${s.id}',0)">全押买入</button>
         ${pos ? `<button class="btn small" onclick="uiSellStock('${s.id}',0.5)">卖一半</button>
                   <button class="btn small warn" onclick="uiSellStock('${s.id}',1)">清仓</button>` : ''}
@@ -762,7 +1061,7 @@ function renderHoldTab() {
     html += `<div class="mk-item hold">
       <div class="mk-top"><span class="mk-name">${esc(p.name)}${p.qty > 1 ? ' ×' + p.qty : ''}</span>
         <span class="mk-price ${cls}">${fmtMoney(p.value)} <small>${gain >= 0 ? '+' : ''}${(gain * 100).toFixed(0)}%</small></span></div>
-      <div class="mk-meta">${p.buyYear}년 买入 · 成本 ${fmtMoney(p.buyPrice)}` +
+      <div class="mk-meta">${p.buyYear} 年 买入 · 成本 ${fmtMoney(p.buyPrice)}` +
       (p.loan > 0 ? ` · 剩余贷款 ${fmtMoney(p.loan)}` : '') +
       (ref && ref.rent ? ` · 年租金 ${fmtMoney(p.value * ref.rent)}` : '') +
       (ref && ref.upkeep ? ` · 年维护 ${fmtMoney(p.value * ref.upkeep)}` : '') + `</div>
@@ -779,7 +1078,7 @@ function renderHoldTab() {
     html += `<div class="mk-item hold">
       <div class="mk-top"><span class="mk-name">${esc(s.name)}</span>
         <span class="mk-price ${cls}">${fmtMoney(val)} <small>${gain >= 0 ? '+' : ''}${(gain * 100).toFixed(0)}%</small></span></div>
-      <div class="mk-meta">${pos.shares}주 · 成本 ${fmtMoney(pos.cost)} · 现价 ${fmtMoney(p)}</div>
+      <div class="mk-meta">${pos.shares}股 · 成本 ${fmtMoney(pos.cost)} · 现价 ${fmtMoney(p)}</div>
       <div class="mk-btns">
         <button class="btn small" onclick="uiSellStock('${pos.id}',0.5)">卖一半</button>
         <button class="btn small warn" onclick="uiSellStock('${pos.id}',1)">清仓</button>
@@ -787,7 +1086,7 @@ function renderHoldTab() {
   });
   if (m.debt > 0) {
     html += `<div class="mk-item debt-box">
-      <div class="mk-top"><span class="mk-name">대출 贷款总额</span><span class="mk-price">-${fmtMoney(m.debt)}</span></div>
+      <div class="mk-top"><span class="mk-name">贷款总额</span><span class="mk-price">-${fmtMoney(m.debt)}</span></div>
       <div class="mk-meta">年利率 ${(rateAt(fmtYear(STATE)) * 100).toFixed(1)}% · 每年利息 ${fmtMoney(m.debt * rateAt(fmtYear(STATE)))}</div>
       <div class="mk-btns">
         <button class="btn small" onclick="uiRepay(0.25)">还 25%</button>

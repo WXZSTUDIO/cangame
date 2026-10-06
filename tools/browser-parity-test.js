@@ -28,7 +28,8 @@ const w = dom.window;
 w.addEventListener('error', e => errors.push('window.error: ' + e.message));
 
 // 与线上一致：按顺序插入 4 个独立 <script>
-['assets/data.js', 'assets/market.js', 'assets/engine.js', 'assets/ui.js'].forEach(f => {
+['assets/data.js', 'assets/market.js', 'assets/engine.js',
+ 'assets/school.js', 'assets/career.js', 'assets/love.js', 'assets/loan.js', 'assets/ui.js'].forEach(f => {
   const el = w.document.createElement('script');
   el.textContent = fs.readFileSync(path.join(root, f), 'utf8');
   w.document.body.appendChild(el);
@@ -83,7 +84,7 @@ while (activeScreen() === 'screen-game' && steps++ < 200) {
     ok(w.document.querySelectorAll('#view-rel .rel-card').length > 0, '人际卡片有内容');
     click(w.document.getElementById('dockJob'));
     ok(w.document.getElementById('view-job').style.display !== 'none', '工作视图可打开');
-    ok(txt('view-job').indexOf('가계') >= 0, '工作视图展示家庭账簿（资产/负债）');
+    ok(txt('view-job').indexOf('家庭账簿') >= 0, '工作视图展示家庭账簿（资产/负债）');
     click(w.document.getElementById('dockNext'));
   }
 }

@@ -5,7 +5,7 @@ const vm = require('vm');
 const root = path.join(__dirname, '..');
 const ctx = { console, Math, JSON, Date, isNaN, parseInt, Number };
 vm.createContext(ctx);
-['assets/data.js', 'assets/engine.js', 'assets/market.js'].forEach(f =>
+['assets/data.js', 'assets/engine.js', 'assets/market.js', 'assets/school.js', 'assets/career.js', 'assets/love.js', 'assets/loan.js' ].forEach(f =>
   vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }));
 // const 声明不会挂到 vm context 上，需要显式导出
 vm.runInContext('this.__EVENTS = EVENTS; this.__LIFE_METRICS = LIFE_METRICS; this.__PRIORITIES = PRIORITIES; this.__GAME_META = GAME_META;', ctx);
@@ -25,14 +25,14 @@ function ok(cond, label, extra) {
 console.log('== 随机投胎 ==');
 const years = [];
 for (let i = 0; i < 200; i++) {
-  const s = createGame({ name: '테스트', gender: 'M', familyId: 'banjiha' });
+  const s = createGame({ name: '테스트', gender: 'M', familyId: 'chengzhongcun' });
   years.push(s.startYear);
 }
 const minY = Math.min.apply(null, years), maxY = Math.max.apply(null, years);
 const uniq = Array.from(new Set(years)).length;
 ok(minY >= 1955 && maxY <= 2005, '出生年份落在 1955–2005', `min=${minY} max=${maxY}`);
 ok(uniq > 30, '年份随机（去重数）', uniq + ' 种');
-const s1 = createGame({ name: '테스트', gender: 'M', familyId: 'banjiha' });
+const s1 = createGame({ name: '테스트', gender: 'M', familyId: 'chengzhongcun' });
 ok(fmtYear(s1) === s1.startYear, 'fmtYear 跟随随机年份', fmtYear(s1) + '년');
 
 /* 2. 8 项人生指标存在且有自然成长 */
@@ -47,7 +47,7 @@ ok((PRIORITIES || []).length === 4, 'PRIORITIES 共 4 个方向');
 
 // 跑到成年，指标应上升
 {
-  const st = createGame({ name: '테스트', gender: 'M', familyId: 'banjiha' });
+  const st = createGame({ name: '테스트', gender: 'M', familyId: 'chengzhongcun' });
   const before = Object.assign({}, st.stats);
   for (let i = 0; i < 20; i++) { st.age++; yearBase(st); }
   ok(st.stats.GROW > before.GROW, 'GROW 随年龄增长', before.GROW + ' → ' + Math.round(st.stats.GROW));
@@ -57,7 +57,7 @@ ok((PRIORITIES || []).length === 4, 'PRIORITIES 共 4 个方向');
 /* 3. 宠物系统 */
 console.log('== 宠物 ==');
 {
-  const st = createGame({ name: '테스트', gender: 'M', familyId: 'banjiha' });
+  const st = createGame({ name: '테스트', gender: 'M', familyId: 'chengzhongcun' });
   const pet1 = EVENTS.find(e => e.id === 'f2_pet1');
   st.age = 12;
   const list = eventChoices(st, pet1);
@@ -68,7 +68,7 @@ console.log('== 宠物 ==');
   st.age++; yearBase(st);
   ok(st.stats.LOVE > loveBefore, '宠物带来关爱增长', Math.round(loveBefore) + ' → ' + Math.round(st.stats.LOVE));
   // 猫咪也行
-  const st2 = createGame({ name: '테스트', gender: 'F', familyId: 'single' });
+  const st2 = createGame({ name: '테스트', gender: 'F', familyId: 'danqin' });
   st2.age = 12;
   resolveEvent(st2, pet1, 1);
   ok(st2.pet && st2.pet.type === 'cat', '领养猫成功', st2.pet && st2.pet.name);
@@ -78,7 +78,7 @@ console.log('== 宠物 ==');
   ok(matchEvent(st, pet3), '有宠物时「宠物离世」事件可抽到');
   resolveEvent(st, pet3, 1);
   ok(st.pet && st.pet.alive === false, '宠物离世生效');
-  const st3 = createGame({ name: 'x', gender: 'M', familyId: 'orphan' });
+  const st3 = createGame({ name: 'x', gender: 'M', familyId: 'fuli' });
   st3.age = 60;
   ok(!matchEvent(st3, pet3), '没养宠物时不会出现该事件');
 }
@@ -89,7 +89,7 @@ console.log('== 擅长领域 ==');
   function meanOf(prio, key, n) {
     let sum = 0;
     for (let i = 0; i < n; i++) {
-      const st = createGame({ name: '테스트', gender: 'M', familyId: 'banjiha', priority: prio });
+      const st = createGame({ name: '테스트', gender: 'M', familyId: 'chengzhongcun', priority: prio });
       for (let y = 0; y < 40; y++) { st.age++; yearBase(st); }
       sum += st.stats[key];
     }
@@ -98,14 +98,14 @@ console.log('== 擅长领域 ==');
   const loveR = meanOf('relation', 'LOVE', 20);
   const loveB = meanOf('balance', 'LOVE', 20);
   ok(loveR > loveB, 'relation 倾向的关爱高于 balance', Math.round(loveR) + ' vs ' + Math.round(loveB));
-  const s1b = createGame({ name: '테스트', gender: 'M', familyId: 'banjiha', priority: 'career' });
+  const s1b = createGame({ name: '테스트', gender: 'M', familyId: 'chengzhongcun', priority: 'career' });
   ok(s1b.priority === 'career', 'createGame 存入 priority', s1b.priority);
 }
 
 /* 5. 孙辈：孩子结婚 → 孙辈出生 → 含孙条件的事件可抽到 */
 console.log('== 家庭：孩子结婚 → 孙辈 ==');
 {
-  const st = createGame({ name: '테스트', gender: 'M', familyId: 'banjiha' });
+  const st = createGame({ name: '테스트', gender: 'M', familyId: 'chengzhongcun' });
   st.flags.married = true; st.spouseName = '김서연'; st.childCount = 1;
   const ch5 = EVENTS.find(e => e.id === 'f2_ch5');
   st.age = 50;
@@ -126,7 +126,7 @@ console.log('== 寿命：0 → 100+ ==');
   console.log('  endAge =', END_AGE);
   let maxAge = 0, reached100 = 0, retired = 0, deaths = {};
   for (let run = 0; run < 40; run++) {
-    const st = createGame({ name: '테스트', gender: 'M', familyId: 'prof', priority: 'balance' });
+    const st = createGame({ name: '테스트', gender: 'M', familyId: 'jiaoshi', priority: 'balance' });
     let guard = 0;
     while (!st.finished && guard++ < 2000) {
       const it = step(st);
