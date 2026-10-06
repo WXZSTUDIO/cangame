@@ -1,5 +1,5 @@
 /* =========================================================
- *  CANGAME · 样式 v5.1 · 高饱和卡通（Quiz App 风）
+ *  CANGAME · 样式 v5.2 · 高饱和卡通（Quiz App 风）
  *  色板：Fantasy #F5F4ED / Light Gold #FFDA57 / Smoky Black #100F06
  *        Malibu #7DCAF6 / Bright Lavender #A293FF / Teal #00917A
  *        Blossom Pink #FFBBF4 / Light Coral #F47575
@@ -313,6 +313,20 @@ body[data-screen="screen-game"] .topbar{display:none}
 .slot-b{display:flex;gap:8px;flex-wrap:wrap}
 #exportBox{width:100%;height:90px;background:var(--paper);border:2px solid var(--ink);color:var(--ink);border-radius:14px;padding:10px;font-size:12px;resize:vertical}
 .modal-btns{display:flex;gap:10px;margin-top:12px}
+.modal-body{font-size:14px;line-height:1.85;color:var(--dim);font-weight:600}
+.modal-body b{color:var(--ink)}
+
+/* 天赋工具栏 */
+.talent-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px}
+.talent-bar input{
+  flex:1;min-width:180px;background:var(--card);border:2px solid var(--ink);border-radius:999px;
+  padding:9px 16px;font-size:13px;font-weight:700;color:var(--ink);font-family:inherit;
+}
+.talent-bar input:focus{outline:none;box-shadow:0 0 0 3px var(--gold)}
+.t-tag{display:inline-block;font-style:normal;font-size:10px;font-weight:900;color:var(--ink);
+  background:var(--gold);border:1.5px solid var(--ink);border-radius:999px;padding:1px 7px;margin-right:6px;vertical-align:1px}
+.rel-name.tap{cursor:pointer;text-decoration:underline dotted;text-decoration-thickness:2px;text-underline-offset:3px}
+.rel-name.tap:active{opacity:.6}
 
 /* toast */
 #toast{

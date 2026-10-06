@@ -17,7 +17,7 @@ const EXAM_META = {
 /* ---------------- 高中（中考录取） ---------------- */
 const HIGH_SCHOOLS = [
   {
-    id: 'hs_key', name: '市重点高中', tier: 3, minScore: 78, years: 3,
+    id: 'hs_key', name: '市重点高中', tier: 3, minScore: 74, years: 3,
     desc: '全市掐尖的那两所。走廊里贴着去年的红榜，晚自习到十点半。',
     eff: { INT: 6, WILL: 4, FAME: 5, STRESS: 8, NET: 4 },
     flags: ['hs_key'], gaoBonus: 12
@@ -45,25 +45,25 @@ const HIGH_SCHOOLS = [
 /* ---------------- 大学（高考录取） ---------------- */
 const UNIVERSITIES = [
   {
-    id: 'u_985', name: '985 重点大学', edu: 5, minScore: 92, years: 4, tier: 5,
+    id: 'u_985', name: '985 重点大学', edu: 5, minScore: 88, years: 4, tier: 5,
     major: ['计算机', '金融', '临床医学', '法学', '电子信息'],
     desc: '录取通知书是红色的。村里或小区门口，会贴一张大红榜。',
     eff: { INT: 8, NET: 10, FAME: 10, CHA: 3, WILL: 4 },
-    flags: ['uni_985'], salaryK: 1.55
+    flags: ['uni_985'], salaryK: 1.42
   },
   {
-    id: 'u_211', name: '211 大学', edu: 4, minScore: 80, years: 4, tier: 4,
+    id: 'u_211', name: '211 大学', edu: 4, minScore: 78, years: 4, tier: 4,
     major: ['软件工程', '会计', '新闻传播', '机械', '师范'],
     desc: '也是好学校。校招的时候，简历能过第一道机器筛选。',
     eff: { INT: 6, NET: 8, FAME: 7, CHA: 2, WILL: 3 },
-    flags: ['uni_211'], salaryK: 1.28
+    flags: ['uni_211'], salaryK: 1.20
   },
   {
     id: 'u_yiben', name: '普通一本', edu: 4, minScore: 68, years: 4, tier: 3.5,
     major: ['工商管理', '土木工程', '英语', '市场营销', '设计'],
     desc: '省里的好学校。能不能出头，看这四年你怎么过。',
     eff: { INT: 5, NET: 6, FAME: 4, CHA: 2, WILL: 2 },
-    flags: ['uni_bk'], salaryK: 1.1
+    flags: ['uni_bk'], salaryK: 1.04
   },
   {
     id: 'u_erben', name: '二本 / 民办本科', edu: 3, minScore: 56, years: 4, tier: 3,
@@ -147,19 +147,41 @@ function makeClassmates(state, stage) {
   return out;
 }
 
+/* 同学阶段名 */
+const STAGE_CN = { mid: '初中', high: '高中', uni: '大学' };
+const CLASSMATE_CAP = 14;
+
+function stageCn(s) { return STAGE_CN[s] || '老同学'; }
+
+/* 升学只「加人」，不「换人」——毕业了不等于失联 */
 function refreshClassmates(state) {
   const st = schoolStageOf(state);
-  if (!st) { state.classmates = []; return; }
+  if (!st) return;                      // 不在校：保留已有同学，不再刷新
   if (state.classStage === st) return;
   state.classStage = st;
-  state.classmates = makeClassmates(state, st);
+  const fresh = makeClassmates(state, st);
+  const old = state.classmates || [];
+  state.classmates = old.concat(fresh);
+  // 上限：超过时先请走「旧阶段里走动最少」的人
+  let over = state.classmates.length - CLASSMATE_CAP;
+  while (over > 0) {
+    const cand = state.classmates
+      .filter(c => c.stage !== st)
+      .sort((a, b) => (a.affinity || 0) - (b.affinity || 0))[0];
+    if (!cand) break;
+    state.classmates = state.classmates.filter(c => c !== cand);
+    over--;
+  }
   pushLog(state, st === 'mid' ? '【开学】初中。新的教室，新的同学，新的排名。'
     : st === 'high' ? '【开学】高中。分班榜前挤满了家长，你在名单上找到了自己。'
       : '【开学】大学报到。宿舍四人间，上铺的同学来自一个你没听过的城市。', 'muted');
 }
 
+/* 当前在校阶段（用于 UI 区分在校 / 校友） */
+function currentStage(state) { return schoolStageOf(state); }
+
 function schoolStageOf(state) {
-  if (!state.edu) return null;
+  if (!state.edu || state.edu.stopped) return null;
   const e = state.edu;
   if (e.uni && e.uni !== 'u_fail' && state.age >= EXAM_META.gaoAge && state.age <= (e.gradAge || 22)) return 'uni';
   if (state.age >= 13 && state.age < EXAM_META.midAge) return 'mid';
@@ -229,11 +251,25 @@ function quizPick() {
   return out;
 }
 
+/* 卷面构成：满分 中考 400 / 高考 700
+   常识题 5 道（占 25%）+ 平时分折算（占 75%）。
+   平时分以「优秀线」为满分基准归一：原始分达到 ceil 就拿满该部分，
+   因此天才 + 五题全对 = 真正的满分（不会出现全答对也差一口气的情况）。 */
 function examParts(kind) {
   const full = kind === 'mid' ? 400 : 700;
-  const academicPart = Math.round(full * 0.85);   // 340 / 595
-  const perQ = Math.round((full - academicPart) / 5); // 12 / 21
-  return { full, academicPart, perQ };
+  const perQ = kind === 'mid' ? 16 : 28;      // 每题：中考 16 分 / 高考 28 分
+  const quizFull = perQ * 5;                  // 80 / 140 —— 正好 20%
+  const academicPart = full - quizFull;       // 320 / 560 —— 正好 80%
+  const ceil = kind === 'mid' ? 92 : 100;     // 平时分「顶格线」
+  return { full, perQ, quizFull, academicPart, ceil };
+}
+
+/* 平时分折算：开方曲线是标定过的结果——
+   线性映射会让普通资质的人被压到职高/专科（平时分中位只有 46 与 32），
+   开方后「平庸」仍在普高/二本区间，「真学霸」又能稳稳拿满这部分，
+   于是「天资 + 五题全对 = 满分」成立，而不是全靠常识题定生死。 */
+function academicBase(rawScore, P) {
+  return Math.round(Math.sqrt(clamp(rawScore / P.ceil, 0, 1)) * P.academicPart);
 }
 
 function makeExamEvent(state, kind) {
@@ -241,7 +277,7 @@ function makeExamEvent(state, kind) {
   const year = fmtYear(state);
   const P = examParts(kind);
   if (kind === 'mid') {
-    const score = midExamScore(state);
+    const raw = midExamScore(state);
     return {
       type: 'exam',
       exam: {
@@ -249,10 +285,13 @@ function makeExamEvent(state, kind) {
         title: '中考 · 常识统考',
         score: null,
         full: P.full,
-        base: Math.round(score / 100 * P.academicPart),
+        base: academicBase(raw, P),
         perQ: P.perQ,
-        text: `${year} 夏天，中考来了。第一场是常识统考——五道题，每道 ${P.perQ} 分。\n` +
-          `智力 ${Math.round(state.stats.INT)} · 意志 ${Math.round(state.stats.WILL)} · 学习投入 ${Math.round(e.study || 0)}。认真作答。`,
+        quizFull: P.quizFull,
+        academicFull: P.academicPart,
+        text: `${year} 夏天，中考来了。第一场是常识统考——五道题，每道 ${P.perQ} 分，共 ${P.quizFull} 分；` +
+          `剩下的 ${P.academicPart} 分是你三年的平时成绩（智力 ${Math.round(state.stats.INT)} · 意志 ${Math.round(state.stats.WILL)} · 学习投入 ${Math.round(e.study || 0)}）。\n` +
+          `满分 ${P.full}。认真作答。`,
         options: null,
         quiz: { qs: quizPick(), i: 0, correct: 0, done: false }
       }
@@ -272,7 +311,7 @@ function makeExamEvent(state, kind) {
       }
     };
   }
-  const score = gaoExamScore(state);
+  const raw = gaoExamScore(state);
   const hs = HIGH_SCHOOLS.find(h => h.id === e.hs);
   return {
     type: 'exam',
@@ -281,10 +320,12 @@ function makeExamEvent(state, kind) {
       title: '高考 · 常识统考',
       score: null,
       full: P.full,
-      base: Math.round(score / 100 * P.academicPart),
+      base: academicBase(raw, P),
       perQ: P.perQ,
+      quizFull: P.quizFull,
+      academicFull: P.academicPart,
       text: `${year} 六月，高考。${hs ? hs.name : '高中'} 出身，智力 ${Math.round(state.stats.INT)}，学习投入 ${Math.round(e.study || 0)}。\n` +
-        `五道常识题，每道 ${P.perQ} 分——每一道都可能改写去向。`,
+        `五道常识题，每道 ${P.perQ} 分（共 ${P.quizFull} 分），加上 ${P.academicPart} 分的平时成绩，满分 ${P.full}。`,
       options: null,
       quiz: { qs: quizPick(), i: 0, correct: 0, done: false }
     }
@@ -305,15 +346,19 @@ function answerExamQ(state, optIdx) {
   qz.i += 1;
   if (qz.i >= qz.qs.length) {
     // 放榜
-    const total = clamp(ex.base + qz.correct * ex.perQ, 0, ex.full);
+    const quizScore = qz.correct * ex.perQ;
+    const total = clamp(ex.base + quizScore, 0, ex.full);
     ex.score = total;
+    ex.quizScore = quizScore;
     qz.done = true;
     if (ex.kind === 'mid') state.edu.mid = total; else state.edu.gao = total;
     const pool = ex.kind === 'mid' ? HIGH_SCHOOLS : UNIVERSITIES;
     ex.options = pool.filter(u => total >= Math.round(u.minScore / 100 * ex.full));
-    ex.text = `放榜了。常识题答对 ${qz.correct} / 5 道，加上平时分，总分 ${total} / ${ex.full}。\n` +
+    ex.text =
+      `放榜了。平时分 ${ex.base} / ${ex.academicFull}，常识题答对 ${qz.correct} / 5 道得 ${quizScore} / ${ex.quizFull} 分，` +
+      `总分 ${total} / ${ex.full}${total >= ex.full ? '——满分。' : '。'}\n` +
       (ex.options.length > 1 ? `分数就摆在这里。你想去哪儿？` : `路只有一条。`);
-    pushLog(state, `【放榜】${ex.kind === 'mid' ? '中考' : '高考'} ${total} 分（满分 ${ex.full}）。`, 'money');
+    pushLog(state, `【放榜】${ex.kind === 'mid' ? '中考' : '高考'} ${total} 分（满分 ${ex.full}${total >= ex.full ? '，满分' : ''}）。`, 'money');
   }
   return { ok: true, correct: correct, done: qz.done };
 }
@@ -399,11 +444,13 @@ function cramSchool(state) {
 function classmateAct(state, idx) {
   const c = (state.classmates || [])[idx];
   if (!c) return { ok: false, msg: '没有这位同学' };
-  if (c.lastTouch === state.age) return { ok: false, msg: '今年已经互动过了' };
+  if (c.lastTouch === state.age) return { ok: false, msg: '今年已经见过了' };
   c.lastTouch = state.age;
-  const gain = randInt(4, 8) + Math.round(state.stats.CHA / 22);
+  const alum = c.stage !== schoolStageOf(state);
+  const gain = Math.max(1, Math.round((randInt(4, 8) + Math.round(state.stats.CHA / 22)) * (alum ? 0.6 : 1)));
   c.affinity = clamp(c.affinity + gain, 0, 100);
-  applyEffects(state, { NET: 2, LOVE: 2, CHA: 1, STRESS: -2 });
-  pushLog(state, `【同学】你${c.stage === 'uni' ? '和' : '课间和'} ${c.name}（${(CLASSMATE_TYPES.find(t => t.key === c.key) || {}).label || '同学'}）聊了很久。好感 ${Math.round(c.affinity)}%。`, 'muted');
+  applyEffects(state, { NET: alum ? 1 : 2, LOVE: alum ? 1 : 2, CHA: 1, STRESS: -2 });
+  const t = CLASSMATE_TYPES.find(x => x.key === c.key) || { label: '同学' };
+  pushLog(state, `【${alum ? '旧友' : '同学'}】你${alum ? '约了' : '课间和'} ${c.name}（${stageCn(c.stage)}同学 · ${t.label}）${alum ? '吃了顿饭，翻来覆去还是那几年的事' : '聊了很久'}。好感 ${Math.round(c.affinity)}%。`, 'muted');
   return { ok: true, gain };
 }

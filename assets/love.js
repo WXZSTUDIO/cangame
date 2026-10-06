@@ -5,12 +5,13 @@
 
 const LOVE_META = {
   marryAge: 22,
-  marryAffinity: 80,
-  touchAffinity: 70, // 好感到此才可能发生亲密关系
+  marryAffinity: 70,   // 求婚门槛
+  touchAffinity: 58,   // 到此才可能发生亲密关系
+  touchesPerYear: 3,   // 同一个人一年最多见 3 次（原来一年只有一次，关系根本推不动）
   pregnantBase: 0.16,
-  dateCost: 800000,
-  giftCost: 2500000,
-  matchCost: 6000000
+  dateCost: 600000,
+  giftCost: 1800000,
+  matchCost: 4000000
 };
 
 const TEMPERAMENTS = [
@@ -46,9 +47,10 @@ function makeLover(state, src) {
     look: look,
     charm: clamp(Math.round(rand(30, 90)), 5, 100),
     tp: tp.key, bg: bg.key, src: src || '偶遇',
-    affinity: src === '同学' ? randInt(10, 30) : randInt(6, 22),
+    affinity: src === '同学' ? randInt(18, 34) : randInt(12, 28),
     alive: true,
     lastTouch: -1,
+    touches: 0,
     met: state.age,
     pregnant: false
   };
@@ -64,8 +66,8 @@ function loverLabel(l) {
 function meetByChance(state) {
   if (state.age < 16 || state.flags.married) return null;
   const lv = loveInit(state);
-  if (lv.candidates.length >= 4) return null;
-  if (!chance(0.35)) return null;
+  if (lv.candidates.length >= 5) return null;
+  if (!chance(0.5)) return null;
   const l = makeLover(state, '偶遇');
   lv.candidates.push(l);
   pushLog(state, `【偶遇】${l.srcText || ''}你遇见了 ${l.name}。${l.age}，${(TEMPERAMENTS.find(t => t.key === l.tp) || {}).label}。这世界很大，但有些人只擦肩一次。`, 'story');
@@ -84,8 +86,9 @@ function meetFromClassmate(state, idx) {
   const bg = MATCH_BACKGROUNDS[randInt(0, MATCH_BACKGROUNDS.length - 1)];
   const l = {
     name: c.name, gender: gender, age: state.age + randInt(-2, 2),
-    look: c.charm, charm: c.charm, tp: tp.key, bg: bg.key, src: '同学',
-    affinity: c.affinity, alive: true, lastTouch: -1, met: state.age, pregnant: false
+    look: c.charm, charm: c.charm, tp: tp.key, bg: bg.key, src: '同学', stage: c.stage,
+    affinity: clamp(c.affinity + randInt(2, 8), 5, 100),
+    alive: true, lastTouch: -1, touches: 0, met: state.age, pregnant: false
   };
   lv.candidates.push(l);
   pushLog(state, `【心动】你开始在意 ${l.name} 了。早恋这件事，老师和家长都反对，但你控制不了自己。`, 'story');
@@ -104,7 +107,7 @@ function meetByMatchmaker(state) {
   const q = clamp(Math.round((state.stats.CHA * 0.4 + state.stats.FAME * 0.3 + Math.sqrt(Math.max(0, worth) / 1e8) * 6 + state.stats.ETH * 0.2) / 2), 10, 95);
   l.look = clamp(Math.round((l.look + q) / 2), 10, 98);
   l.charm = clamp(Math.round((l.charm + q) / 2), 10, 98);
-  l.affinity = randInt(18, 34);
+  l.affinity = randInt(26, 42);
   lv.candidates.push(l);
   pushLog(state, `【相亲】媒人安排了一次见面：${loverLabel(l)}。你付了介绍费 ${fmtMoney(LOVE_META.matchCost)}。`, 'story');
   return { ok: true, lover: l };
@@ -121,38 +124,41 @@ function ensureLover(state, src) {
   return l;
 }
 
+/* 每年跟同一个人见过几次了 */
+function touchLeft(state, l) {
+  if (l.lastTouch !== state.age) { l.lastTouch = state.age; l.touches = 0; }
+  return LOVE_META.touchesPerYear - (l.touches || 0);
+}
+
 /* ---------- 互动 ---------- */
 function loveAct(state, idx, kind) {
   const lv = loveInit(state);
   const l = lv.candidates[idx];
   if (!l) return { ok: false, msg: '没有这个人' };
   if (!l.alive) return { ok: false, msg: 'TA 已经不在了' };
-  if (l.lastTouch === state.age) return { ok: false, msg: '今年已经见过面了' };
+  const left = touchLeft(state, l);
+  if (left <= 0) return { ok: false, msg: `今年跟 ${l.name} 已经见过 ${LOVE_META.touchesPerYear} 次了` };
   const s = state.stats;
+  let gain = 0, spend = 0, label = '聊天';
   if (kind === 'date') {
     if (s.MONEY < LOVE_META.dateCost) return { ok: false, msg: '钱不够约会' };
-    s.MONEY -= LOVE_META.dateCost;
-    l.lastTouch = state.age;
-    const g = randInt(5, 9) + Math.round(s.CHA / 18);
-    l.affinity = clamp(l.affinity + g, 0, 100);
-    applyEffects(state, { LOVE: 3, STRESS: -4, CHA: 1 });
-    pushLog(state, `【约会】你和 ${l.name} 吃了一顿饭，看了场电影。好感 ${Math.round(l.affinity)}%。`, 'muted');
+    s.MONEY -= LOVE_META.dateCost; spend = LOVE_META.dateCost; label = '约会';
+    gain = randInt(8, 13) + Math.round(s.CHA / 16);
+    applyEffects(state, { LOVE: 3, STRESS: -5, CHA: 1 });
   } else if (kind === 'gift') {
     if (s.MONEY < LOVE_META.giftCost) return { ok: false, msg: '钱不够买礼物' };
-    s.MONEY -= LOVE_META.giftCost;
-    l.lastTouch = state.age;
-    const g = randInt(8, 14) + Math.round(s.CHA / 20);
-    l.affinity = clamp(l.affinity + g, 0, 100);
+    s.MONEY -= LOVE_META.giftCost; spend = LOVE_META.giftCost; label = '送礼';
+    gain = randInt(11, 16) + Math.round(s.CHA / 14);
     applyEffects(state, { LOVE: 2, CHA: 1 });
-    pushLog(state, `【送礼】你给 ${l.name} 挑了一份礼物。好感 ${Math.round(l.affinity)}%。`, 'muted');
   } else {
-    l.lastTouch = state.age;
-    const g = randInt(3, 6) + Math.round(s.CHA / 30);
-    l.affinity = clamp(l.affinity + g, 0, 100);
-    applyEffects(state, { LOVE: 1, NET: 1 });
-    pushLog(state, `【聊天】你和 ${l.name} 聊到很晚。好感 ${Math.round(l.affinity)}%。`, 'muted');
+    gain = randInt(4, 8) + Math.round(s.CHA / 20);
+    applyEffects(state, { LOVE: 1, NET: 1, STRESS: -1 });
   }
-  return { ok: true, affinity: l.affinity };
+  l.touches = (l.touches || 0) + 1;
+  l.affinity = clamp(l.affinity + gain, 0, 100);
+  const n = LOVE_META.touchesPerYear - l.touches;
+  pushLog(state, `【${label}】你和 ${l.name} ${kind === 'date' ? '吃了一顿饭，看了场电影' : kind === 'gift' ? '挑了一份礼物，TA 收下了' : '聊到很晚'}。好感 ${Math.round(l.affinity)}%${spend ? `（花了 ${fmtMoney(spend)}）` : ''}。今年还能再约 ${n} 次。`, 'muted');
+  return { ok: true, affinity: l.affinity, left: n };
 }
 
 /* ---------- 亲密关系与怀孕 ---------- */
@@ -217,13 +223,13 @@ function propose(state, idx) {
   if (l.affinity < LOVE_META.marryAffinity) return { ok: false, msg: `好感不够（需 ${LOVE_META.marryAffinity}%）` };
   const bg = MATCH_BACKGROUNDS.find(x => x.key === l.bg) || MATCH_BACKGROUNDS[0];
   const worth = (typeof netWorth === 'function') ? netWorth(state) : state.stats.MONEY;
-  const need = bg.need * (1 + l.look / 160);
-  let p = 0.5 + (l.affinity - LOVE_META.marryAffinity) / 60 + state.stats.CHA / 400
-    + (worth >= need ? 0.28 : -0.22) + state.stats.ETH / 600
+  const need = bg.need * (1 + l.look / 220);
+  let p = 0.62 + (l.affinity - LOVE_META.marryAffinity) / 50 + state.stats.CHA / 320
+    + (worth >= need ? 0.26 : -0.14) + state.stats.ETH / 500
     + (state.flags.own_house ? 0.12 : 0);
-  p = clamp(p, 0.05, 0.95);
+  p = clamp(p, 0.12, 0.96);
   if (!chance(p)) {
-    l.affinity = clamp(l.affinity - 12, 0, 100);
+    l.affinity = clamp(l.affinity - 8, 0, 100);
     applyEffects(state, { LOVE: -5, STRESS: 8, WILL: -2 });
     pushLog(state, `【求婚被拒】${l.name} 摇了摇头。${worth < need ? 'TA 家里要的东西，你现在给不起。' : 'TA 说：我们再想想。'}`, 'warn');
     return { ok: false, msg: '被拒绝了', p };
@@ -293,7 +299,8 @@ function loveTick(state) {
   }
   // 候选人冷却：长期不联系，好感自然流失
   lv.candidates.forEach(l => {
-    if (l.lastTouch !== state.age) l.affinity = clamp(l.affinity - randInt(2, 5), 0, 100);
+    l.touches = 0;
+    if (l.lastTouch !== state.age) l.affinity = clamp(l.affinity - randInt(1, 4), 0, 100);
   });
   // 偶遇
   if (!state.flags.married && state.age >= 17) meetByChance(state);

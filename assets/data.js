@@ -1,10 +1,10 @@
 /* =========================================================
- * CANGAME · 江南逆袭 ()
+ * CANGAME · 人生模拟（中国 · 1955-2005）
  * 数据层：天赋 / 出身 / 事件库 / 投资 / 结局
  * ========================================================= */
 
 const GAME_META = {
-  title: '江南逆袭',
+  title: '人生模拟',
   subtitle: '从城中村到江景大平层',
   version: '5.1.0',
   startYear: 1985,
@@ -61,7 +61,21 @@ const BIRTH_BY_FAMILY = {
   chaiqian: ['拆迁协议签下来的那天，家里第一次有人谈论「几百万」这个词。'],
   shangren: ['父亲常年在外跑生意。你从小听着外面的故事长大，总觉得世界比这条巷子大得多。'],
   danqin: ['母亲一个人打三份工。你最早的记忆，是她趴在餐桌上睡着的背影。'],
-  fuli: ['福利院的编号比名字来得更早。你学会了不期待，也不失望。']
+  fuli: ['福利院的编号比名字来得更早。你学会了不期待，也不失望。'],
+  kuangqu: ['矿区广播每天六点放《运动员进行曲》。你学会的第一件事，是辨认父亲的矿灯是不是还亮着。'],
+  junshu: ['大院门口的哨兵换了一茬又一茬，你从他手里接过第一颗糖。'],
+  tielu: ['父亲跑车回来的那天，行李箱里总有一包别的地方才有的吃的。'],
+  linqu: ['林场的冬天，窗户上结着厚厚的霜。你用手指在上面画了一棵树。'],
+  yumin: ['潮水退去的滩涂上，你捡到了第一只还能动的小螃蟹。'],
+  keyan: ['研究所的走廊很长，深夜还亮着灯。你踮着脚也从窗子里看不见里面在做什么。'],
+  yiliao: ['你出生在医院家属院。第一个抱你的人不是母亲，是值夜班的护士。'],
+  wenyi: ['后台的镜子前挤满了人。你在角落里学着一板一眼地唱，谁也没发现。'],
+  qiaojuan: ['南洋来的汇款单上写着你看不懂的字，母亲把它压在枕头下面。'],
+  xiagang: ['厂区的广播停播那天，比过年还安静。父亲蹲在门口抽了一整包烟。'],
+  chuzu: ['你的摇篮曲是计价器的滴答声和电台里的老歌。'],
+  liushou: ['父母走的那天你没哭。奶奶说：等你长大了就懂了。'],
+  dibao: ['街道主任来家里的次数，比亲戚还多。你记住了那个红色封面。'],
+  shuxiang: ['书店打烊之后，父亲会把新到的书先给你留一本。']
 };
 
 /* ---------------- 数值定义 ---------------- */
@@ -128,7 +142,124 @@ const TALENTS = [
   { id: 'ugly', name: '外貌自卑', cost: -2, desc: '你习惯了被忽略，也因此更懂得观察。', eff: { CHA: -4, INT: 4 } },
   { id: 'sick', name: '病弱', cost: -2, desc: '医院的走廊你比教室还熟。', eff: { HP: -9, INT: 3 } },
   { id: 'country', name: '乡下出身', cost: -2, desc: '老家的稻田，和这座城的霓虹隔着一整个时代。', eff: { CHA: -2, STR: 4, WILL: 2 } },
-  { id: 'temper', name: '暴脾气', cost: -2, desc: '拳头总比脑子先动。', eff: { STR: 5, CHA: -3, WILL: 2 } }
+  { id: 'temper', name: '暴脾气', cost: -2, desc: '拳头总比脑子先动。', eff: { STR: 5, CHA: -3, WILL: 2 } },
+
+  /* ===== 以下 100 种为 v5.2 扩充天赋 ===== */
+  /* 脑力 */
+  { id: 't_seed', name: '读书种子', cost: 1, tag: '脑力', desc: '字认得比话还早，三岁能背半本《唐诗》。', eff: { INT: 5, GROW: 2 } },
+  { id: 't_speedread', name: '一目十行', cost: 2, tag: '脑力', desc: '别人翻一页的时间，你已经看完了三页，还能复述。', eff: { INT: 6, CUR: 3 } },
+  { id: 't_mental', name: '心算如飞', cost: 2, tag: '脑力', desc: '菜市场阿姨还没报完价，你已经算出找零。', eff: { INT: 5, LOY: 2 } },
+  { id: 't_memory2', name: '过目不忘', cost: 3, tag: '脑力', desc: '看过的题号、走过的路、欠过的人情，你都记得。', eff: { INT: 7, WILL: 1 } },
+  { id: 't_smallgenius', name: '小学霸', cost: 1, tag: '脑力', desc: '班里的第一名。代价是别人在玩的时候，你在写卷子。', eff: { INT: 4, STRESS: 3 } },
+  { id: 't_why', name: '爱问为什么', cost: 1, tag: '脑力', desc: '你从小把大人问烦，长大后把上司问烦。', eff: { CUR: 8, INT: 2 } },
+  { id: 't_chess', name: '棋类天赋', cost: 1, tag: '脑力', desc: '巷口下棋的老头输给你之后，再也不肯跟你下。', eff: { INT: 4, WILL: 2 } },
+  { id: 't_olympiad', name: '竞赛苗子', cost: 2, tag: '脑力', desc: '奥数班、物理竞赛、作文比赛，名单上总有你。', eff: { INT: 6, FAME: 3 } },
+  { id: 't_ear', name: '外语耳朵', cost: 2, tag: '脑力', desc: '你听两遍就能模仿口音，外语老师视你为得意门生。', eff: { INT: 3, CHA: 3 } },
+  { id: 't_pen', name: '写作的手', cost: 2, tag: '脑力', desc: '你写的作文总被当范文念，长大后写方案也一样顺。', eff: { INT: 3, FAME: 4, CUR: 3 } },
+  { id: 't_logic-clean', name: '逻辑洁癖', cost: 2, tag: '脑力', desc: '你受不了含糊的表达，也受不了糊涂的人。', eff: { INT: 5, CHA: -2 } },
+  { id: 't_takeapart', name: '拆东西的人', cost: 1, tag: '脑力', desc: '家里的闹钟、收音机、自行车，都被你拆过一遍。', eff: { INT: 3, CUR: 4, STR: 1 } },
+
+  /* 体魄 */
+  { id: 't_athlete', name: '运动神经', cost: 2, tag: '体魄', desc: '体育课永远是第一个被选走的那个人。', eff: { STR: 8, HP: 5 } },
+  { id: 't_runner', name: '跑得快', cost: 1, tag: '体魄', desc: '短跑第一，也是跑腿最快的人。出了事你第一个到。', eff: { STR: 5, HP: 3 } },
+  { id: 't_ironstomach', name: '铁胃', cost: 1, tag: '体魄', desc: '路边摊吃十年没闹过肚子。', eff: { HP: 6, STR: 2 } },
+  { id: 't_nosick', name: '不生病体质', cost: 3, tag: '体魄', desc: '别人流感你照常上班，医院的门你一年也进不了一次。', eff: { HP: 14 } },
+  { id: 't_tall', name: '长得高', cost: 2, tag: '体魄', desc: '你永远坐教室最后一排，也永远被推去搬东西。', eff: { STR: 5, CHA: 4 } },
+  { id: 't_handy', name: '手上功夫', cost: 1, tag: '体魄', desc: '什么东西到了你手里都会修好。', eff: { STR: 4, GROW: 2 } },
+  { id: 't_lefthand', name: '左撇子', cost: 1, tag: '体魄', desc: '被纠正了六年也没改过来，反倒让你脑子转得快一点。', eff: { INT: 3, CHA: 1 } },
+  { id: 't_nightowl', name: '夜里不困', cost: 1, tag: '体魄', desc: '凌晨两点的效率，比你上午十点高一倍。', eff: { INT: 2, STRESS: -6, HP: -2 } },
+  { id: 't_lung', name: '好肺活量', cost: 2, tag: '体魄', desc: '爬六楼不带喘，唱歌不跑调也不缺氧。', eff: { STR: 6, HP: 4 } },
+  { id: 't_heal', name: '康复奇快', cost: 2, tag: '体魄', desc: '别人躺一周的伤，你三天就能下地。', eff: { HP: 8, WILL: 2 } },
+
+  /* 心性 */
+  { id: 't_thick', name: '钝感力', cost: 2, tag: '心性', desc: '别人的冷眼落到你身上，像雨点打在雨衣上。', eff: { STRESS: -12, MOOD: 6 } },
+  { id: 't_aq', name: '逆商', cost: 3, tag: '心性', desc: '跌得越狠，反弹得越高。你享受那种「又被我看对了」的感觉。', eff: { WILL: 8, SEC: 3 } },
+  { id: 't_slowwarm', name: '慢热', cost: 1, tag: '心性', desc: '刚开始话很少，熟了之后能把桌子掀了。', eff: { WILL: 4, CHA: -1 } },
+  { id: 't_unyielding', name: '不服输', cost: 2, tag: '心性', desc: '你宁愿输得难看，也不肯退半步。', eff: { WILL: 6, STRESS: 5, STR: 2 } },
+  { id: 't_bluntknife', name: '钝刀', cost: 2, tag: '心性', desc: '不快，但磨一整天也不会崩口。', eff: { WILL: 5, SEC: 3, LOVE: -2 } },
+  { id: 't_alone', name: '习惯独处', cost: 1, tag: '心性', desc: '一个人吃饭、一个人看电影，你并不觉得别扭。', eff: { GROW: 4, SEC: 4, CHA: -2 } },
+  { id: 't_bigheart', name: '心很大', cost: 1, tag: '心性', desc: '天塌下来先睡一觉再说。', eff: { MOOD: 7, STRESS: -5 } },
+  { id: 't_account', name: '记账的人', cost: 2, tag: '心性', desc: '每一笔支出你都记得日子，钱包比谁都清楚。', eff: { SEC: 5, INT: 2, MONEY: 500000 } },
+  { id: 't_earlybird', name: '起得早', cost: 2, tag: '心性', desc: '五点半的天你看过很多年，那时候城市还没醒。', eff: { WILL: 4, HP: 3, STRESS: -3 } },
+  { id: 't_endure', name: '能忍', cost: 2, tag: '心性', desc: '咽下去的东西，最后都变成了你的底盘。', eff: { STRESS: -10, WILL: 3, ETH: 2 } },
+  { id: 't_sunny', name: '天生乐观', cost: 2, tag: '心性', desc: '「会好起来的」是你的口头禅，居然常常被你说中。', eff: { MOOD: 8, LOVE: 3 } },
+  { id: 't_noway', name: '不服管', cost: 2, tag: '心性', desc: '有人指使你的时候，你的第一反应是反问一句：凭什么。', eff: { AUTO: 6, WILL: 3, LOY: -4 } },
+  { id: 't_superstition', name: '有点迷信', cost: 1, tag: '心性', desc: '出门先看黄历，重要决定要挑日子。信了心里就踏实。', eff: { MOOD: 4, CUR: 2 } },
+
+  /* 人际 */
+  { id: 't_outgoing', name: '自来熟', cost: 2, tag: '人际', desc: '火车上坐三站，你就能跟隔壁聊聊他家的事。', eff: { CHA: 7, NET: 5 } },
+  { id: 't_sweet', name: '嘴甜', cost: 1, tag: '人际', desc: '一句「阿姨您今天气色真好」，能换来一个橘子。', eff: { CHA: 5 } },
+  { id: 't_smooth', name: '会来事', cost: 2, tag: '人际', desc: '什么时候该说话、什么时候该闭嘴，你比谁都清楚。', eff: { CHA: 4, LOY: 6, NET: 3 } },
+  { id: 't_read', name: '察言观色', cost: 2, tag: '人际', desc: '你总能在话没说完之前就知道对方要什么。', eff: { INT: 3, CHA: 3, SEC: 2 } },
+  { id: 't_popular', name: '有人缘', cost: 2, tag: '人际', desc: '你搬家那天，来帮忙的人比搬家公司还多。', eff: { NET: 9, LOVE: 3 } },
+  { id: 't_monitor', name: '班干部体质', cost: 1, tag: '人际', desc: '从小组长到团支书，一路戴着两道杠长大。', eff: { NET: 6, FAME: 3, WILL: 2 } },
+  { id: 't_worldly', name: '见过世面', cost: 2, tag: '人际', desc: '你小学就去过省城，谈吐里有一种不慌张的底气。', eff: { CHA: 5, NET: 4, CUR: 3 } },
+  { id: 't_loud', name: '嗓门大', cost: 1, tag: '人际', desc: '操场上喊一声，半个学校回头。', eff: { CHA: 3, STR: 3, NET: 2 } },
+  { id: 't_laugh', name: '笑点低', cost: 1, tag: '人际', desc: '别人还没讲完你已经在笑，气氛因此松了下来。', eff: { LOVE: 5, MOOD: 4, CHA: 2 } },
+  { id: 't_cook', name: '会做饭', cost: 1, tag: '人际', desc: '十岁就站在板凳上炒蛋，朋友都惦记你这一口。', eff: { LOVE: 5, HP: 3, CHA: 1 } },
+  { id: 't_loyal', name: '讲义气', cost: 2, tag: '人际', desc: '朋友出事，你半夜也会去。谁都说你傻，谁都有事找你。', eff: { NET: 6, ETH: 4, LOVE: 2 } },
+  { id: 't_shameless', name: '厚脸皮', cost: 2, tag: '人际', desc: '被拒绝三次还能笑着敲门——第四次的门往往是开的。', eff: { CHA: 4, FAME: 3, ETH: -3, STRESS: -5 } },
+  { id: 't_comfort', name: '会安慰人', cost: 1, tag: '人际', desc: '别人哭的时候，你正好有一句合适的话。', eff: { LOVE: 6, NET: 2 } },
+
+  /* 财运 */
+  { id: 't_business', name: '生意头脑', cost: 3, tag: '财运', desc: '你一眼能看出这条街上哪门生意在赔本赚吆喝。', eff: { INT: 4, NET: 4, CHA: 2 }, flags: ['business'] },
+  { id: 't_bargain', name: '会砍价', cost: 1, tag: '财运', desc: '老板说三十，你说五块——最后十块成交。', eff: { MONEY: 1500000, INT: 1, CHA: 1 } },
+  { id: 't_luckymoney', name: '压岁钱存下来了', cost: 1, tag: '财运', desc: '别人早就花光了，你那本存折还留着。', eff: { MONEY: 3000000 } },
+  { id: 't_oldhouse', name: '老屋一间', cost: 3, tag: '财运', desc: '乡下还有一间祖屋，钥匙在你手里。', eff: { SEC: 10, MONEY: 2000000 } },
+  { id: 't_lottery', name: '彩票体质', cost: 2, tag: '财运', desc: '刮刮乐总能刮出五块十块——大钱说不定也在路上。', eff: { MOOD: 2 }, flags: ['lucky'] },
+  { id: 't_number', name: '数字敏感', cost: 2, tag: '财运', desc: '报表里的一个错数，你扫一眼就能揪出来。', eff: { INT: 4, MONEY: 2000000 } },
+  { id: 't_thrift', name: '节俭成癖', cost: 1, tag: '财运', desc: '灯泡要随手关，剩菜要打包，钱是一分一分攒出来的。', eff: { SEC: 5, MONEY: 1000000, CHA: -2 } },
+  { id: 't_hoard', name: '会囤东西', cost: 2, tag: '财运', desc: '邮票、旧币、限量款——你囤的那些东西后来都涨了。', eff: { MONEY: 4000000, WILL: 2 } },
+  { id: 't_investnose', name: '投资嗅觉', cost: 3, tag: '财运', desc: '别人追涨，你在没人看的时候默默买。', eff: { INT: 4 }, flags: ['stock_buff'] },
+  { id: 't_houseeye', name: '看房眼光', cost: 3, tag: '财运', desc: '你走进一间房子就知道它三年后值多少。', eff: { MONEY: 3000000 }, flags: ['estate_buff'] },
+  { id: 't_craft', name: '手艺人', cost: 2, tag: '财运', desc: '理发、修表、贴瓷砖——有手艺的人永远饿不着。', eff: { STR: 4, LOY: 6, MONEY: 1000000 } },
+  { id: 't_sidejob', name: '闲不住', cost: 1, tag: '财运', desc: '假期从来不闲着，总给自己找点能挣钱的活。', eff: { MONEY: 1200000, WILL: 2, STRESS: 3 } },
+
+  /* 才华与兴趣 */
+  { id: 't_draw', name: '会画画', cost: 2, tag: '才华', desc: '板报、海报、涂鸦墙，都出自你这只手。', eff: { CHA: 4, CUR: 4, FAME: 2 } },
+  { id: 't_sing', name: '一副好嗓子', cost: 2, tag: '才华', desc: 'KTV 里你一开口，服务员都在门口停下来听。', eff: { CHA: 5, LOVE: 2 }, flags: ['music'] },
+  { id: 't_instrument', name: '会乐器', cost: 2, tag: '才华', desc: '二胡、吉他或钢琴，总有一件你拿得出手。', eff: { CHA: 4, WILL: 2 }, flags: ['music'] },
+  { id: 't_dance', name: '会跳舞', cost: 2, tag: '才华', desc: '迪厅、广场、舞台，你从不怯场。', eff: { CHA: 5, STR: 3 } },
+  { id: 't_game', name: '游戏高手', cost: 2, tag: '才华', desc: '街机厅里没人打得过你，后来你靠直播吃饭。', eff: { INT: 3, CHA: 2, MOOD: 3 } },
+  { id: 't_sports', name: '球类专长', cost: 2, tag: '才华', desc: '乒乓、篮球或羽毛球，你总有一项是全场最好的。', eff: { STR: 6, NET: 3, CHA: 2 } },
+  { id: 't_write2', name: '网文笔力', cost: 1, tag: '才华', desc: '你在论坛连载的故事，追更的人比想象中多。', eff: { INT: 2, FAME: 3, MOOD: 3 } },
+  { id: 't_camera', name: '镜头感', cost: 2, tag: '才华', desc: '同样的场景，你拍出来就是好看。', eff: { CHA: 3, FAME: 4, CUR: 3 } },
+  { id: 't_code2', name: '自学过代码', cost: 2, tag: '才华', desc: '照着杂志上的 BASIC 抄了半年，忽然就懂了。', eff: { INT: 5 }, flags: ['coder'] },
+  { id: 't_diy', name: '爱折腾', cost: 1, tag: '才华', desc: '改装、越狱、刷机，你从不怕把东西搞坏。', eff: { CUR: 6, GROW: 3, INT: 2 } },
+  { id: 't_talk2', name: '演讲的天赋', cost: 2, tag: '才华', desc: '一上台你就不紧张，台下的人也比你安静。', eff: { CHA: 5, FAME: 4, NET: 2 } },
+  { id: 't_style', name: '穿得好看', cost: 1, tag: '才华', desc: '同样几十块的衣服，你穿出来就是不一样。', eff: { CHA: 4, LOVE: 2 } },
+
+  /* 时代与背景 */
+  { id: 't_grandpa', name: '爷爷的故事', cost: 1, tag: '背景', desc: '老人讲的旧事，让你比同龄人更早懂得什么叫「熬过来」。', eff: { WILL: 3, SEC: 3, GROW: 2 } },
+  { id: 't_hukou2', name: '城镇户口', cost: 2, tag: '背景', desc: '粮本和户口本上的那一行，决定了你能进哪所学校。', eff: { SEC: 6, CHA: 2, NET: 3 } },
+  { id: 't_canteen', name: '食堂长大的孩子', cost: 1, tag: '背景', desc: '厂区食堂的饭票是你童年的硬通货。', eff: { NET: 4, STR: 2 } },
+  { id: 't_bicycle', name: '一辆二八大杠', cost: 1, tag: '背景', desc: '从学会骑那天起，你的活动半径翻了十倍。', eff: { STR: 3, CUR: 4, MOOD: 3 } },
+  { id: 't_letter', name: '笔友很多', cost: 1, tag: '背景', desc: '你抽屉里有一沓各地寄来的信，字迹各不相同。', eff: { NET: 5, CUR: 3, LOVE: 2 } },
+  { id: 't_homeschool', name: '家里有人教你', cost: 2, tag: '背景', desc: '不用去补习班，饭桌上就是课堂。', eff: { INT: 5, WILL: 2 }, flags: ['prof'] },
+  { id: 't_connections', name: '舅舅在单位', cost: 3, tag: '背景', desc: '很多事对你来说，只是一句话的距离。', eff: { NET: 12, LOY: 4, SEC: 4 }, flags: ['tizhinei'] },
+  { id: 't_diploma', name: '家里的书箱', cost: 2, tag: '背景', desc: '一箱旧书，比一柜新衣服更能决定你去哪儿。', eff: { INT: 4, CUR: 5 } },
+  { id: 't_south', name: '南下过的父母', cost: 2, tag: '背景', desc: '他们在南方的厂里待过，邮回来的汇款单撑起了整个童年。', eff: { WILL: 4, SEC: 3, MONEY: 1500000 } },
+  { id: 't_military_family', name: '军属大院', cost: 2, tag: '背景', desc: '哨声、操场、整齐晾着的衣服，你的童年有纪律的形状。', eff: { STR: 4, WILL: 5, ETH: 3 } },
+
+  /* 负面：返还点数 */
+  { id: 'n_short', name: '个子矮', cost: -1, tag: '负面', desc: '永远排队伍最前排，也永远够不到最高的那一格。', eff: { STR: -3, CHA: -2, INT: 2 } },
+  { id: 'n_stutter', name: '口吃', cost: -2, tag: '负面', desc: '每次开口都是一场战斗，你学会了少说话、多听。', eff: { CHA: -6, INT: 3, WILL: 3 } },
+  { id: 'n_shy', name: '极度内向', cost: -2, tag: '负面', desc: '被点名回答问题的时候，你的耳朵是烫的。', eff: { CHA: -5, NET: -5, INT: 4 } },
+  { id: 'n_lazy', name: '懒', cost: -2, tag: '负面', desc: '能躺着就不坐着，能明天就不今天。', eff: { WILL: -5, STR: -3, MOOD: 4 } },
+  { id: 'n_proud', name: '死要面子', cost: -2, tag: '负面', desc: '宁可借钱也不开口求助，为此吃过不少暗亏。', eff: { ETH: 3, LOVE: -4, SEC: -4, NET: 3 } },
+  { id: 'n_gamble', name: '赌性', cost: -3, tag: '负面', desc: '输了想翻本，赢了想再来一把。', eff: { MOOD: 3, WILL: 4, SEC: -8, ETH: -4 } },
+  { id: 'n_smoke', name: '很早就学会抽烟', cost: -2, tag: '负面', desc: '十五岁那年的烟，抽掉了你后来的一部分肺。', eff: { HP: -8, STRESS: -4, NET: 4 } },
+  { id: 'n_drink', name: '酒量很差', cost: -1, tag: '负面', desc: '一杯就倒，应酬的场合你总是先失守。', eff: { HP: -3, CHA: -2, LOY: -3 } },
+  { id: 'n_poorhealth', name: '底子薄', cost: -2, tag: '负面', desc: '冬天一到就咳嗽，体育课永远在请假。', eff: { HP: -10, STR: -4 } },
+  { id: 'n_debt2', name: '家里欠着钱', cost: -3, tag: '负面', desc: '催债的人来过家里，母亲把他们送到楼下再回来。', eff: { MONEY: -3000000, WILL: 4, SEC: -6 } },
+  { id: 'n_quarrel', name: '家里天天吵架', cost: -2, tag: '负面', desc: '摔碗的声音比电视声还响，你学会了躲进自己心里。', eff: { SEC: -8, LOVE: -5, WILL: 4 } },
+  { id: 'n_loss', name: '早逝的至亲', cost: -2, tag: '负面', desc: '很小的时候你就知道了殡仪馆是什么样子。', eff: { LOVE: -6, WILL: 5, GROW: 4, MOOD: -4 } },
+  { id: 'n_leftbehind', name: '留守过', cost: -2, tag: '负面', desc: '父母在外打工，你跟着老人长大，一年见两次。', eff: { NET: -4, LOVE: -4, WILL: 6, SEC: -4 } },
+  { id: 'n_bully', name: '被欺负过', cost: -2, tag: '负面', desc: '走廊上的嘲笑，让你很早就学会了察言观色。', eff: { CHA: -3, STR: 3, INT: 4, SEC: -5 } },
+  { id: 'n_slow', name: '反应慢半拍', cost: -2, tag: '负面', desc: '别人抢答完你才反应过来——但你答的往往更准。', eff: { INT: -4, WILL: 4, GROW: 3 } },
+  { id: 'n_ugly2', name: '长得着急', cost: -1, tag: '负面', desc: '十八岁就被叫大叔，你索性不再解释。', eff: { CHA: -3, INT: 2, WILL: 3 } },
+  { id: 'n_distract', name: '注意力涣散', cost: -2, tag: '负面', desc: '一节课里有半节在窗外。但窗外的东西你也记住了。', eff: { INT: -3, CUR: 6, GROW: 3 } },
+  { id: 'n_poor2', name: '穷习惯了', cost: -2, tag: '负面', desc: '哪怕后来有钱了，你还是会把塑料袋收好叠起来。', eff: { SEC: -6, STR: 4, WILL: 3 } }
 ];
 
 /* ---------------- 出身（中国国情） ---------------- */
@@ -152,7 +283,37 @@ const FAMILIES = [
   { id: 'danqin', name: '单亲 母亲带大', desc: '母亲一个人打三份工，把你拉扯大。她从不说累，只是睡得越来越早。',
     eff: { MONEY: 500000, WILL: 8, INT: 3, CHA: 1 }, flags: ['poor', 'single'] },
   { id: 'fuli', name: '福利院 孤儿', desc: '你的档案袋上没有一个亲属的名字，只有一排编号。',
-    eff: { MONEY: 200000, WILL: 9, INT: 5, CHA: -2 }, flags: ['poor', 'orphan'] }
+    eff: { MONEY: 200000, WILL: 9, INT: 5, CHA: -2 }, flags: ['poor', 'orphan'] },
+
+  /* ===== v5.2 追加出身 ===== */
+  { id: 'kuangqu', name: '矿区 矿工家庭', desc: '父亲每天六点下井，升井时只有眼白是白的。矿区的天总是灰的，澡堂的水总是黑的。',
+    eff: { MONEY: 1200000, STR: 9, WILL: 7, HP: -3, CHA: -1 }, flags: ['poor', 'town'] },
+  { id: 'junshu', name: '部队大院 军属', desc: '哨声准时响，晾衣绳上的衣服永远一样齐。你从小就知道什么叫纪律，也知道什么叫服从。',
+    eff: { MONEY: 2200000, STR: 5, WILL: 7, SEC: 8, ETH: 3 }, flags: ['stable'] },
+  { id: 'tielu', name: '铁路职工 家庭', desc: '父亲跑车一走就是三天。你听着铁轨的节奏长大，也早就知道远方是有票才能去的地方。',
+    eff: { MONEY: 1800000, WILL: 5, NET: 6, CUR: 4 }, flags: ['town', 'stable'] },
+  { id: 'linqu', name: '林场 林业工人家庭', desc: '冬天的雪能没过膝盖，夏天的蚊虫能咬穿衣服。伐木车辆下山时，整条路都在震。',
+    eff: { MONEY: 900000, STR: 8, HP: 4, WILL: 4, CHA: -1 }, flags: ['poor', 'rural'] },
+  { id: 'yumin', name: '渔村 渔民家庭', desc: '潮水决定你家的作息。台风来的那几天，全村人都不说话，只盯着海面。',
+    eff: { MONEY: 1100000, STR: 7, WILL: 6, SEC: -3, MOOD: 2 }, flags: ['poor', 'rural'] },
+  { id: 'keyan', name: '科研院所 家庭', desc: '父母在研究所上班，家里的茶几上堆着印着内部字样的资料。他们说：做学问要坐得住冷板凳。',
+    eff: { MONEY: 3500000, INT: 11, CUR: 6, CHA: -1 }, flags: ['prof'] },
+  { id: 'yiliao', name: '医生世家', desc: '医院的后院就是你童年的游乐场，消毒水的味道比糖果更熟悉。',
+    eff: { MONEY: 4200000, INT: 8, HP: 8, NET: 7, SEC: 5 }, flags: ['prof', 'stable'] },
+  { id: 'wenyi', name: '文工团 艺人家庭', desc: '母亲在县文工团唱戏，后台的脂粉味混着旧木箱的霉味。你三岁就敢站到灯底下。',
+    eff: { MONEY: 1600000, CHA: 9, FAME: 5, CUR: 4 }, flags: ['town'] },
+  { id: 'qiaojuan', name: '侨眷 侨乡家庭', desc: '南洋寄来的汇款单撑起了这栋三层小楼。家里人说：要走就得走得出去。',
+    eff: { MONEY: 6000000, CHA: 4, NET: 7, SEC: 6, CUR: 4 }, flags: ['business'] },
+  { id: 'xiagang', name: '下岗职工 家庭', desc: '1998 年，厂门口贴了名单。父亲在上面，那天家里很安静，只有电视开着。',
+    eff: { MONEY: 400000, WILL: 9, STR: 4, SEC: -6, MOOD: -3 }, flags: ['poor', 'town'] },
+  { id: 'chuzu', name: '出租车司机 家庭', desc: '父亲的车就是家里的饭碗。你坐在后座的塑料垫上，听他讲一整天遇到的形形色色。',
+    eff: { MONEY: 1900000, NET: 7, INT: 3, WILL: 4, CHA: 2 }, flags: ['city'] },
+  { id: 'liushou', name: '留守儿童 · 爷爷奶奶带大', desc: '父母在外打工，汇款单一年回来两次。你跟着老人长大，学会了自己做饭、自己签家长名。',
+    eff: { MONEY: 500000, WILL: 9, INT: 4, SEC: -5, LOVE: -4 }, flags: ['poor', 'rural'] },
+  { id: 'dibao', name: '低保 · 困难家庭', desc: '街道干部认识你家。每个月那个红本本，是一家人一个月不敢出错的理由。',
+    eff: { MONEY: 300000, WILL: 6, SEC: -7, MOOD: -3, STR: 3 }, flags: ['poor', 'city'] },
+  { id: 'shuxiang', name: '书店老板 家庭', desc: '临街一间旧书店，纸墨味比饭菜味更重。你小时候没玩具，但有整整两面墙的书。',
+    eff: { MONEY: 2400000, INT: 7, CUR: 7, NET: 4, CHA: 2 }, flags: ['town', 'shop'] }
 ];
 
 /* ---------------- 家庭财务（出生时父母的资产 / 负债，1985 年 基准，按年代缩放） ----------------
@@ -169,7 +330,22 @@ const FAMILY_FIN = {
   chaiqian: { assets: 350000000, debt: 120000000 },
   shangren: { assets: 150000000, debt: 40000000 },
   danqin: { assets: 15000000, debt: 38000000 },
-  fuli: { assets: 5000000, debt: 0 }
+  fuli: { assets: 5000000, debt: 0 },
+  /* v5.2 追加出身 */
+  kuangqu: { assets: 28000000, debt: 35000000 },
+  junshu: { assets: 160000000, debt: 30000000 },
+  tielu: { assets: 90000000, debt: 25000000 },
+  linqu: { assets: 22000000, debt: 18000000 },
+  yumin: { assets: 35000000, debt: 30000000 },
+  keyan: { assets: 200000000, debt: 55000000 },
+  yiliao: { assets: 210000000, debt: 45000000 },
+  wenyi: { assets: 70000000, debt: 20000000 },
+  qiaojuan: { assets: 280000000, debt: 60000000 },
+  xiagang: { assets: 12000000, debt: 50000000 },
+  chuzu: { assets: 75000000, debt: 40000000 },
+  liushou: { assets: 14000000, debt: 26000000 },
+  dibao: { assets: 8000000, debt: 22000000 },
+  shuxiang: { assets: 95000000, debt: 35000000 }
 };
 
 /* 年代金额缩放：1955 年 的 1 块钱比 2005 年 值钱得多 */

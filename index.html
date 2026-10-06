@@ -3,19 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>江南逆袭 | 人生模拟 · 从城中村到江景房</title>
-<meta name="description" content="文字版人生模拟游戏：随机投胎、中考高考、职业晋升、恋爱婚姻、贷款与投资，从 0 岁活到 100 岁以上。">
-<link rel="stylesheet" href="assets/style.css?v=5.1.0">
+<title>人生模拟 · 中国人生重开模拟器</title>
+<meta name="description" content="文字版人生模拟：随机投胎出身、中考高考、职业晋升、恋爱婚姻、贷款与投资，从 0 岁活到 100 岁以上。">
+<link rel="stylesheet" href="assets/style.css?v=5.2.0">
 </head>
 <body>
 
 <div id="toast"></div>
 <div id="crash" class="crash"></div>
 
+<!-- 二次确认弹窗（退学 / 辞职这类不可逆选择） -->
+<div id="confirmBox" class="modal">
+  <div class="modal-box">
+    <div class="modal-head"><h3 id="confirmTitle">确认</h3></div>
+    <div class="modal-body" id="confirmBody"></div>
+    <div class="modal-btns">
+      <button class="btn ghost" id="confirmNo" onclick="uiConfirmNo()">再想想</button>
+      <button class="btn primary" id="confirmOk" onclick="uiConfirmOk()">确定</button>
+    </div>
+  </div>
+</div>
+
 <header class="topbar">
   <div class="brand">
-    <span class="kr">江南逆袭</span>
-    <span class="cn">人生模拟</span>
+    <span class="kr">人生模拟</span>
+    <span class="cn">中国 · 1955–2005</span>
   </div>
   <div class="top-actions">
     <button id="btnSavesTop" class="btn tiny">存档</button>
@@ -25,8 +37,8 @@
 <!-- ===== 标题页 ===== -->
 <section id="screen-title" class="screen active">
   <div class="title-wrap">
-    <h1 class="big-title">江南逆袭</h1>
-    <p class="big-sub">从城中村到江景大平层</p>
+    <h1 class="big-title">人生模拟</h1>
+    <p class="big-sub">从城中村到江景大平层 · 也可能从写字楼到外卖站</p>
     <p class="lead">每一次「出生」，你都会被随机投胎到某个中国家庭、某个年代——<br>
       1958 年出生的人童年在粮票与厂房里，1998 年出生的人童年在网吧与手机里。<br>
       中考、高考、找工作、谈恋爱、买房、贷款、炒股、养一只狗。<br>
@@ -39,12 +51,14 @@
     </div>
     <div id="howBox" class="how">
       <ul>
-        <li><b>随机投胎</b>：出生年份（1955–2005）、家庭、天赋、姓名每局都随机。出身从城中村、县城双职工、农村、拆迁户、教师家庭、体制内到福利院孤儿，共 10 种。年份决定你这一世会亲身经历哪些年代大事——物价闯关、下岗潮、入世、股改、6124 点、股灾、疫情。</li>
-        <li><b>升学</b>：15 岁<b>中考</b>（满分 400）、18 岁<b>高考</b>（满分 700）——先考 5 道常识题，再和平时分一起放榜，分档进高中 / 大学。分数由智力、意志、<b>学习投入</b>、常识发挥共同决定——可以「熬夜刷题」，也可以早恋（会扣分）。</li>
+        <li><b>随机投胎</b>：出生年份（1955–2005）、家庭、天赋、姓名每局都随机。出身共 24 种——城中村、县城双职工、农村、渔村、矿区、部队大院、铁路子弟、林场、个体户、拆迁户、教师家庭、科研院所、医生世家、文工团、体制内、侨眷、下岗职工、出租车司机、低保户、留守儿童、单亲、侨乡，一直到福利院孤儿。年份决定你这一世会亲身经历哪些年代大事——物价闯关、下岗潮、入世、股改、6124 点、股灾、疫情。</li>
+        <li><b>升学</b>：15 岁<b>中考</b>（满分 400）、18 岁<b>高考</b>（满分 700）——先考 5 道常识题，再和平时分一起放榜，分档进高中 / 大学。卷面 = 常识题 25% + 三年平时成绩 75%，<b>天资足够 + 五题全对 = 真正的满分</b>。分数由智力、意志、<b>学习投入</b>、常识发挥共同决定——可以「熬夜刷题」，也可以早恋（会扣分）。</li>
         <li><b>大学与专业</b>：录取后要<b>填志愿选专业</b>，不同大学专业不同；专业决定你能进哪一行——学医才能穿白大褂，学计算机才能写代码。毕业时要选：<b>直接找工作 / 考研 / 休整一年</b>。考研有成功率，可能落榜。</li>
         <li><b>职业与晋升</b>：毕业后在「工作」页找活干。24 种职业（程序员、产品经理、idol、主播、外卖骑手、群演、公务员、医生、律师、黑客、创业者……），每种都有 4–6 级职级阶梯。学历越高起步职级越高，绩效好会升职，混日子会降职甚至被裁。</li>
-        <li><b>恋爱与婚姻</b>：同学里可以早恋，成年后能偶遇，也可以花钱托人相亲。聊天 / 约会 / 送礼涨好感，好够 80 且年满 22 岁可以求婚——对方家境越好，对你的存款要求越高。<b>未婚怀孕</b>会重挫道德与声望，你要在「生下来 / 奉子成婚 / 打掉」之间做选择。</li>
-        <li><b>同学与校园</b>：初中、高中、大学各有自己的一班同学，可以逐个互动，也能「一键和全班互动」。大学期间每年还能选一项校园活动：泡图书馆、聚餐喝酒、社团、实习、兼职、通宵打游戏、考研、校园创业、谈恋爱、健身。</li>
+        <li><b>恋爱与婚姻</b>：同学里可以早恋，成年后能偶遇（一年可能遇上好几个人），也可以花钱托人相亲。<b>同一个对象一年最多见 3 次</b>，聊天 / 约会 / 送礼都能涨好感，点名字就是聊天；好感够 70 且年满 22 岁可以求婚——对方家境越好，对你的存款要求越高。<b>未婚怀孕</b>会重挫道德与声望，你要在「生下来 / 奉子成婚 / 打掉」之间做选择。</li>
+        <li><b>同学不会失联</b>：初中、高中、大学的每一班同学都会一直留在通讯录里，标着<b>是哪一阶段的</b>（毕业的就挂着一个 🎓）。老同学还能约饭、还能追——只是涨得慢一些。「一键叙旧」会把在联系的人都走一遍。</li>
+        <li><b>上学和工作二选一</b>：还在念书就去应聘，会先弹窗告诉你这意味着<b>退学</b>（之后再没有中考高考）；已经在工作却要去上大学 / 考研，同样要先<b>辞职</b>。两条路不可同时占着。</li>
+        <li><b>同学与校园</b>：大学期间每年还能选一项校园活动：泡图书馆、聚餐喝酒、社团、实习、兼职、通宵打游戏、考研、校园创业、谈恋爱、健身。</li>
         <li><b>父母分开互动</b>：父亲和母亲是两个人，各自有名有姓、各自老去、各自离开。任何一位（或朋友、宠物、配偶）离世都会让你陷入<b>悲伤</b>，压住心情与健康。</li>
         <li><b>寿命有限</b>：没有人能一直活着。健康、心情和年纪共同决定你能走多远，105 岁是这条路的尽头。</li>
         <li><b>三选一</b>：13 岁后的每个事件都有 3 个选项，文案会跟着事件内容变化（学习的事就给你学习的选项）。风险越高，收益与后果同时放大，还带概率赌注。</li>
@@ -52,12 +66,12 @@
         <li><b>未成年不用愁钱</b>：18 岁之前，生活与学费由家里承担，你不会背债。父母的家底（资产 / 负债）在「工作」页和「人际 → 家人」里随时可查。</li>
         <li><b>遗产继承</b>：父母离世时三选一——<b>全额继承</b>／<b>限定继承</b>／<b>放弃继承</b>。</li>
         <li><b>市场</b>：20 岁后可买房（可贷款）、买车、买金条土地商铺比特币，还能炒股——12 只股票随年代涨跌，遇互联网泡沫、6124 点、股灾、疫情会剧烈波动。</li>
-        <li><b>天赋</b>：开局抽 10 张天赋，用 10 点自由搭配。负面天赋会返还点数。<b>前世记忆</b>能看到投资机会的未来提示。</li>
+        <li><b>天赋</b>：共 <b>124 种</b>天赋。开局随机抽 12 张，用 10 点自由搭配；也可以点「浏览全部」看完所有天赋并按关键词搜索。负面天赋会返还点数。<b>前世记忆</b>能看到投资机会的未来提示。</li>
         <li><b>存档</b>：每步自动缓存到本机，另有 3 个手动槽，可导出 / 导入存档码跨设备继续。</li>
         <li><b>结局</b>：没有唯一的终点——亿万富豪、收租的房东、股神、家族绵延、平凡的程序员……16 种以上结局，看你这一世怎么过。</li>
       </ul>
     </div>
-    <p class="foot">本作人物、公司、事件均为虚构。 · v5.1.0 · 常识统考 · 专业与考研 · 一键互动</p>
+    <p class="foot">本作人物、公司、事件均为虚构。 · v5.2.0 · 满分可达 · 23 出身 · 120 天赋 · 同学常驻 · 学工互斥</p>
   </div>
 </section>
 
@@ -78,6 +92,12 @@
     <div id="familyList" class="fam-list"></div>
 
     <h3 class="sec">天赋 <span class="hint">剩余点数 <b id="points">10</b> · 点击选择/取消</span></h3>
+    <div class="talent-bar">
+      <input id="talentSearch" type="text" placeholder="🔍 搜天赋：输名字或关键词，比如「记忆」「钱」「读书」" maxlength="12">
+      <button id="btnTalentAll" class="btn tiny" type="button">📖 浏览全部</button>
+      <button id="btnTalentRoll" class="btn tiny" type="button">🎲 换一批</button>
+    </div>
+    <div id="talentHint" class="rel-sub" style="padding:2px 4px 6px"></div>
     <div id="talentList" class="talent-list"></div>
 
     <h3 class="sec">擅长领域 <span class="hint">（你最想押注的人生方向，会塑造这一世的倾向）</span></h3>
@@ -198,13 +218,13 @@
   </div>
 </div>
 
-<script src="assets/data.js?v=5.1.0"></script>
-<script src="assets/market.js?v=5.1.0"></script>
-<script src="assets/engine.js?v=5.1.0"></script>
-<script src="assets/school.js?v=5.1.0"></script>
-<script src="assets/career.js?v=5.1.0"></script>
-<script src="assets/love.js?v=5.1.0"></script>
-<script src="assets/loan.js?v=5.1.0"></script>
-<script src="assets/ui.js?v=5.1.0"></script>
+<script src="assets/data.js?v=5.2.0"></script>
+<script src="assets/market.js?v=5.2.0"></script>
+<script src="assets/engine.js?v=5.2.0"></script>
+<script src="assets/school.js?v=5.2.0"></script>
+<script src="assets/career.js?v=5.2.0"></script>
+<script src="assets/love.js?v=5.2.0"></script>
+<script src="assets/loan.js?v=5.2.0"></script>
+<script src="assets/ui.js?v=5.2.0"></script>
 </body>
 </html>

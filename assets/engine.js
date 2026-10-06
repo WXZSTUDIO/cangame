@@ -43,6 +43,51 @@ function randomPetName(type) {
 /* 出生时一个朋友都没有——朋友是活出来的，不是生下来就配好的 */
 function makeFriends() { return []; }
 
+/* ---------- 求学 与 工作 互斥 ---------- */
+const STUDENT_JOBS = { '小学生': 1, '初中生': 1, '高中生': 1, '大学生': 1, '研究生': 1 };
+
+/* 是否还在学制里（中考/高考/毕业都还没走完） */
+function isEnrolled(state) {
+  const e = state.edu;
+  if (!e || e.stopped) return false;
+  if (STUDENT_JOBS[state.job]) return true;
+  if (state.age < EXAM_META.midAge) return true;
+  if (e.hs && e.hs !== 'hs_none' && !e.uni && state.age < EXAM_META.gaoAge) return true;
+  if (e.uni && e.uni !== 'u_fail' && e.gradAge && state.age < e.gradAge) return true;
+  return false;
+}
+
+/* 在读状态的人话描述 */
+function enrolledText(state) {
+  if (STUDENT_JOBS[state.job]) return state.job;
+  if (state.edu && state.edu.uni && state.edu.uni !== 'u_fail') return '在读大学';
+  if (state.edu && state.edu.hs && state.edu.hs !== 'hs_none') return '在读高中';
+  return '还在念书';
+}
+
+/* 退学去上班：之后不会再有中考 / 高考 */
+function dropOut(state, jobName) {
+  const e = state.edu || (state.edu = {});
+  e.stopped = true;
+  e.gradAge = null;
+  if (!e.hs) e.hs = 'hs_none';
+  if (!e.uni) e.uni = 'u_fail';
+  state.flags.dropout = true;
+  applyEffects(state, { WILL: 4, STRESS: 8, SEC: -4, CHA: 1 });
+  pushLog(state, `【退学】你办了离校手续，不再是学生了。往后的日子里不会再有中考或高考——${jobName ? '你成了' + jobName + '。' : '你得自己找出路了。'}`, 'warn');
+}
+
+/* 辞掉工作去读书 */
+function quitForSchool(state, schoolName) {
+  if (state.career) {
+    const c = careerById(state.career.id);
+    if (c) pushLog(state, `【离职】你在 ${c.name} 的工牌交了回去。${schoolName ? '为了去' + schoolName + '报到。' : ''}`, 'warn');
+  }
+  state.career = null;
+  state.job = '待业';
+  applyEffects(state, { LOY: -6, STRESS: 5, MOOD: 3 });
+}
+
 /* 每年按人生阶段认识新朋友：类型必须匹配年龄与身份 */
 function friendGrowth(state) {
   if (!state.friends) state.friends = [];
@@ -152,7 +197,7 @@ function socialActAll(state, kind) {
       if (c.lastTouch === state.age) return;
       if (classmateAct(state, i).ok) n++;
     });
-    if (n) pushLog(state, `【课间】你和班上的同学都聊了一遍（${n} 位）。`, 'muted');
+    if (n) pushLog(state, `【走动】你和同学（连同还在联系的老同学）都聊了一遍（${n} 位）。`, 'muted');
     return { ok: n > 0, n };
   }
   if (kind === 'family') {
@@ -166,8 +211,9 @@ function socialActAll(state, kind) {
   if (kind === 'lover') {
     let n = 0;
     (loveInit(state).candidates || []).forEach((l, i) => {
-      if (l.lastTouch === state.age || !l.alive) return;
-      if (loveAct(state, i, 'chat').ok) n++;
+      if (!l.alive) return;
+      const r = loveAct(state, i, 'chat');   // 一键走一轮聊天（每人每年有 3 次额度）
+      if (r.ok) n++;
     });
     if (n) pushLog(state, `【问候】这一年你把在意的人都问候了一遍（${n} 位）。`, 'muted');
     return { ok: n > 0, n };
@@ -248,7 +294,7 @@ function defaultJob(age) {
 function rollTalents(n) {
   const pool = TALENTS.slice();
   const out = [];
-  n = n || 10;
+  n = n || 12;
   while (out.length < n && pool.length) {
     out.push(pool.splice(randInt(0, pool.length - 1), 1)[0]);
   }
@@ -821,9 +867,9 @@ function yearBase(state) {
   if (state.edu && state.edu.gradAge && state.age >= state.edu.gradAge && state.job === '大学生') {
     const u = UNIVERSITIES.find(x => x.id === state.edu.uni);
     state.job = '待业';
-    state.classmates = [];
-    state.classStage = null;
-    pushLog(state, `【毕业】${u ? u.name : '大学'} · ${state.edu.major || ''} 专业。你搬出了宿舍，把学士服叠进了箱底。`, 'money');
+    state.classStage = null;   // 毕业了：同学不再是同班，但人还在人脉里
+    const mates = (state.classmates || []).filter(c => c.stage === 'uni').length;
+    pushLog(state, `【毕业】${u ? u.name : '大学'} · ${state.edu.major || ''} 专业。你搬出了宿舍，把学士服叠进了箱底。${mates ? `这一班的 ${mates} 个人散到各地，以后要见只能约。` : ''}`, 'money');
     if (state.edu.eduLevel < 5) state.edu.eduLevel = Math.max(state.edu.eduLevel, u ? u.edu : 3);
     // 毕业去哪条路：考研不是稳的，找工作也不是只有一个选项
     state.extraQueue = state.extraQueue || [];
@@ -923,8 +969,10 @@ function step(state) {
 
   // 升学：15岁中考 / 18岁高考
   const ed = state.edu || (state.edu = { mid: null, gao: null, hs: null, uni: null, eduLevel: 0, study: 0, gradAge: null, major: null, salaryK: 1 });
-  if (state.age === EXAM_META.midAge && !ed.hs) items.push(makeExamEvent(state, 'mid'));
-  else if (state.age === EXAM_META.gaoAge && !ed.uni) items.push(makeExamEvent(state, 'gao'));
+  if (!ed.stopped) {
+    if (state.age === EXAM_META.midAge && !ed.hs) items.push(makeExamEvent(state, 'mid'));
+    else if (state.age === EXAM_META.gaoAge && !ed.uni) items.push(makeExamEvent(state, 'gao'));
+  }
 
   refreshClassmates(state);
   careerTick(state);
@@ -1004,7 +1052,7 @@ function makeGradEvent(state) {
       },
       {
         text: `考研：给自己再搏一次学历（成功率 ${Math.round(p * 100)}%）`,
-        risk: 3, flags: ['kaoyan_try'], eff: { STRESS: 6 }
+        risk: 3, flags: ['kaoyan_try'], eff: { STRESS: 6 }, study: true
       },
       {
         text: '休整一年：先去看看这个世界再说话',

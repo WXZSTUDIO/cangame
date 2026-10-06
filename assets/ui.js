@@ -12,6 +12,30 @@ let STATE = null;
 let TALENT_POOL = [];
 let SELECTED = [];
 let CREATE_POINTS = 10;
+let CONFIRM_CB = null;
+let TALENT_ALL = false;   // 天赋面板：是否浏览全部
+
+/* ---------- 通用确认弹窗（求学 vs 工作这类互斥选择用） ---------- */
+function uiConfirm(title, body, okText, cb) {
+  CONFIRM_CB = cb;
+  const box = $('confirmBox');
+  if (!box) { if (cb) cb(); return; }
+  $('confirmTitle').textContent = title;
+  $('confirmBody').innerHTML = body;
+  $('confirmOk').textContent = okText || '确定';
+  box.classList.add('open');
+}
+function uiConfirmOk() {
+  const box = $('confirmBox');
+  if (box) box.classList.remove('open');
+  const cb = CONFIRM_CB; CONFIRM_CB = null;
+  if (cb) cb();
+}
+function uiConfirmNo() {
+  const box = $('confirmBox');
+  if (box) box.classList.remove('open');
+  CONFIRM_CB = null;
+}
 
 /* ---------- 存档 ---------- */
 function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
@@ -128,9 +152,12 @@ function renderTitle() {
 
 /* ---------- 创建角色 ---------- */
 function startCreate() {
-  TALENT_POOL = rollTalents(10);
+  TALENT_POOL = rollTalents(12);
   SELECTED = [];
   CREATE_POINTS = 10;
+  TALENT_ALL = false;
+  const ta = $('btnTalentAll'); if (ta) ta.textContent = '📖 浏览全部';
+  const tq = $('talentSearch'); if (tq) tq.value = '';
   const pref = lsGet(LS.pref) || {};
   $('inputName').value = pref.name || randomName(pref.gender || 'M');
   document.querySelectorAll('[name=gender]').forEach(r => r.checked = (r.value === (pref.gender || 'M')));
@@ -185,13 +212,33 @@ function renderPriorities() {
 function renderTalents() {
   const wrap = $('talentList');
   wrap.innerHTML = '';
-  TALENT_POOL.forEach(t => {
+  const q = (($('talentSearch') || {}).value || '').trim();
+  let list;
+  if (TALENT_ALL) {
+    list = TALENTS.slice();
+    if (q) {
+      list = list.filter(t => (t.name || '').indexOf(q) >= 0 || (t.desc || '').indexOf(q) >= 0 || (t.tag || '').indexOf(q) >= 0);
+    } else {
+      // 没搜索词时按标签分组排一遍，看起来整齐
+      const order = ['核心', '脑力', '体魄', '心性', '人际', '财运', '才华', '背景', '负面'];
+      list = list.slice().sort((a, b) => (order.indexOf(a.tag || '') + 1 || 99) - (order.indexOf(b.tag || '') + 1 || 99));
+    }
+  } else {
+    list = TALENT_POOL.filter(t => !q || (t.name || '').indexOf(q) >= 0 || (t.desc || '').indexOf(q) >= 0 || (t.tag || '').indexOf(q) >= 0);
+  }
+  const hint = $('talentHint');
+  if (hint) {
+    hint.innerHTML = TALENT_ALL
+      ? `全部 ${TALENTS.length} 种天赋${q ? ` · 匹配「${esc(q)}」${list.length} 种` : ' · 按类别排序，可用搜索框过滤'}`
+      : `随机抽出 ${TALENT_POOL.length} 种（共 ${TALENTS.length} 种可选）${q ? ` · 匹配「${esc(q)}」${list.length} 种` : ''}`;
+  }
+  list.forEach(t => {
     const d = document.createElement('div');
     const sel = SELECTED.indexOf(t.id) >= 0;
     const afford = sel || (CREATE_POINTS - t.cost) >= 0;
     d.className = 'talent' + (sel ? ' sel' : '') + (afford ? '' : ' no');
     const costTxt = t.cost > 0 ? `消耗 ${t.cost} 点` : (t.cost < 0 ? `返还 ${-t.cost} 点` : '免费');
-    d.innerHTML = `<div class="t-head"><span class="t-name">${esc(t.name)}</span><span class="t-cost">${costTxt}</span></div>` +
+    d.innerHTML = `<div class="t-head"><span class="t-name">${t.tag ? `<i class="t-tag">${esc(t.tag)}</i>` : ''}${esc(t.name)}</span><span class="t-cost">${costTxt}</span></div>` +
       `<div class="t-desc">${esc(t.desc)}</div>` +
       `<div class="t-eff">${describeEffects(t.eff).join(' · ') || ''}</div>`;
     d.onclick = () => {
@@ -204,11 +251,12 @@ function renderTalents() {
     };
     wrap.appendChild(d);
   });
+  if (!list.length) wrap.innerHTML = `<div class="rel-empty">没有匹配「${esc(q)}」的天赋。</div>`;
   $('points').textContent = CREATE_POINTS;
 }
 
 function rerollTalents() {
-  TALENT_POOL = rollTalents(10);
+  TALENT_POOL = rollTalents(12);
   SELECTED = [];
   CREATE_POINTS = 10;
   renderTalents();
@@ -500,14 +548,18 @@ function renderRelView() {
         : { ava: '🌈', cls: 'amber', name: `${STATE.pet.name}`, sub: '去了彩虹桥。谢谢你陪过它。', dead: true });
     }
   } else if (REL_TAB === 'classmate') {
-    const list = STATE.classmates || [];
+    const all = STATE.classmates || [];
     const stage = schoolStageOf(STATE);
-    const stageName = stage === 'mid' ? '初中' : stage === 'high' ? '高中' : stage === 'uni' ? '大学' : '';
-    extra = `<div class="rel-sub" style="padding:0 4px 8px">${stageName ? `现在是${stageName}，班上一共 ${list.length} 个人。` : '这个阶段没有同学。'}</div>`;
-    if (list.length) {
+    const stageName = stageCn(stage);
+    const mates = all.filter(c => c.stage === stage);
+    const alumni = all.filter(c => c.stage !== stage);
+    extra = `<div class="rel-sub" style="padding:0 4px 8px">${
+      all.length ? `通讯录里一共 ${all.length} 位同学。${stage ? `现在念${stageName}，同班 ${mates.length} 人。` : '你已经离开学校了，这些人现在是「老同学」。'}`
+        : '还没有认识的同学。上初中会自动分班。'}</div>`;
+    if (all.length) {
       extra += `<div class="of-btns" style="padding:0 4px 10px">
-        <button class="btn small" onclick="uiSocialAll('classmate')">🔁 一键和全班互动</button>
-        ${STATE.age < EXAM_META.gaoAge ? `<button class="btn small primary" onclick="uiCram()">📚 熬夜刷题（学习投入 +）</button>` : ''}
+        <button class="btn small" onclick="uiSocialAll('classmate')">🔁 一键和所有人叙一遍</button>
+        ${STATE.age < EXAM_META.gaoAge && !((STATE.edu || {}).stopped) ? `<button class="btn small primary" onclick="uiCram()">📚 熬夜刷题（学习投入 +）</button>` : ''}
       </div>`;
     }
     if (stage === 'uni') {
@@ -522,16 +574,23 @@ function renderRelView() {
           </div>`;
         }).join('') + `</div>`;
     }
-    list.forEach((c, i) => {
-      const t = CLASSMATE_TYPES.find(x => x.key === c.key) || { label: '同学' };
+    if (alumni.length) {
+      extra += `<div class="job-sec" style="padding:4px">老同学（毕业后还留着联系方式的 ${alumni.length} 人）</div>`;
+    }
+    // 在校的排前面，老同学按阶段排后面
+    const order = mates.concat(alumni);
+    order.forEach((c) => {
+      const i = all.indexOf(c);
+      const t = CLASSMATE_TYPES.find(x => x.key === c.key) || { label: '同学', ava: '🧑' };
+      const gone = c.stage !== stage;
       cards.push({
-        ava: t.ava || '🧑', cls: '',
+        ava: gone ? '🎓' : (t.ava || '🧑'), cls: gone ? 'amber' : '',
         name: `${c.name} · ${t.label}${c.gender !== STATE.gender ? ' ♡' : ''}`,
-        sub: `好感 ${Math.round(c.affinity)}% · 颜值 ${c.look} · ${t.line || ''}`,
+        sub: `${stageCn(c.stage)}同学${gone ? ' · 已毕业' : ' · 同班'} · 好感 ${Math.round(c.affinity)}% · 颜值 ${c.charm} · ${t.line || ''}`,
         key: 'classmate:' + i,
         off: c.lastTouch === STATE.age,
-        act: c.lastTouch === STATE.age ? '今年已互动' : '互动',
-        extraBtn: (c.gender !== STATE.gender && c.affinity >= 25 && !STATE.flags.married)
+        act: c.lastTouch === STATE.age ? '今年见过了' : (gone ? '约一次' : '互动'),
+        extraBtn: (c.gender !== STATE.gender && c.affinity >= 12 && !STATE.flags.married)
           ? `<button class="btn tiny" onclick="uiCrush(${i})">追求 TA</button>` : ''
       });
     });
@@ -556,20 +615,25 @@ function renderRelView() {
         <button class="btn small primary" onclick="uiMatchmaker()">💌 托人相亲（${fmtMoney(LOVE_META.matchCost)}）</button>
       </div>`;
     }
+    if (lv.candidates.length) {
+      extra += `<div class="rel-sub" style="padding:0 4px 8px">同一个对象一年最多见 ${LOVE_META.touchesPerYear} 次：<b>点名字就能聊天</b>，约会和送礼要花钱但涨得更多。</div>`;
+    }
     lv.candidates.forEach((l, i) => {
-      const can = l.lastTouch !== STATE.age;
+      const left = (l.lastTouch !== STATE.age) ? LOVE_META.touchesPerYear : Math.max(0, LOVE_META.touchesPerYear - (l.touches || 0));
+      const can = left > 0 && l.alive !== false;
       cards.push({
         ava: l.gender === 'F' ? '👩' : '👨', cls: 'green',
         name: l.name,
-        sub: `${loverLabel(l)} · 好感 <b>${Math.round(l.affinity)}%</b>${l.pregnant ? ' · ⚠ 怀孕了' : ''}`,
+        sub: `${loverLabel(l)} · 好感 <b>${Math.round(l.affinity)}%</b>${l.pregnant ? ' · ⚠ 怀孕了' : ''} · 今年还能约 ${left} 次`,
         key: null,
+        click: can ? `uiLove(${i},'chat')` : '',
         multi: can ? `
           <button class="rel-act" onclick="uiLove(${i},'chat')">聊天</button>
           <button class="rel-act" onclick="uiLove(${i},'date')">约会 ${fmtMoney(LOVE_META.dateCost)}</button>
           <button class="rel-act" onclick="uiLove(${i},'gift')">送礼 ${fmtMoney(LOVE_META.giftCost)}</button>
           ${l.affinity >= LOVE_META.touchAffinity ? `<button class="rel-act" onclick="uiIntimate(${i})">亲密</button>` : ''}
           ${l.affinity >= LOVE_META.marryAffinity && STATE.age >= LOVE_META.marryAge ? `<button class="rel-act" onclick="uiPropose(${i})">求婚</button>` : ''}
-        ` : '<span class="rel-act dis">今年见过了</span>'
+        ` : '<span class="rel-act dis">今年的次数用完了</span>'
       });
     });
   } else {
@@ -604,7 +668,7 @@ function renderRelView() {
         <div class="rel-card">
           <span class="rel-ava ${c.cls}">${c.ava}</span>
           <div class="rel-info">
-            <div class="rel-name">${esc(c.name)}</div>
+            <div class="rel-name ${c.click ? 'tap' : ''}" ${c.click ? `onclick="${c.click}"` : ''}>${esc(c.name)}</div>
             <div class="rel-sub">${c.sub}</div>
             ${c.extraBtn || ''}
           </div>
@@ -701,6 +765,22 @@ function uiBaby() {
 }
 
 function uiApplyJob(id) {
+  // 还在上学却要去上班：必须明确「退学」的代价
+  if (typeof isEnrolled === 'function' && isEnrolled(STATE)) {
+    const offer = jobOffers(STATE).find(o => o.career.id === id);
+    const jobName = offer ? offer.title : '';
+    uiConfirm('这样就不能继续升学了',
+      `你现在还是<b>${esc(enrolledText(STATE))}</b>。签下 ${esc(jobName || '这份工作')}，就意味着<b>退学</b>——<br>` +
+      `之后不会再有中考、高考，也没法再回学校拿学历。这一步是不可逆的。`,
+      '退学去上班', () => {
+        dropOut(STATE, jobName);
+        const r = applyJob(STATE, id);
+        if (!r.ok) { toast(r.msg || '现在不行'); renderStats(); renderStream(); return; }
+        afterAct('入职：' + r.title);
+        if (GAME_VIEW === 'job') renderJobView();
+      });
+    return;
+  }
   const r = applyJob(STATE, id);
   if (!r.ok) { toast(r.msg || '现在不行'); return; }
   afterAct('入职：' + r.title);
@@ -829,6 +909,24 @@ function chooseExam(i) {
   if (!item || item.type !== 'exam') return;
   // 还在答题阶段时，把点击当答案处理
   if (item.exam.quiz && !item.exam.quiz.done) { answerExam(i); return; }
+  const opt = item.exam.options && item.exam.options[i];
+  // 工作的人跑去上学：得先把工作辞了
+  if (opt && (opt.years || 0) > 0 && STATE.career) {
+    const c = careerById(STATE.career.id);
+    uiConfirm('去念书就得放下工作',
+      `你已经在<b>${esc(c ? c.name : '这家公司')}</b>站稳了脚（${esc(STATE.job)}）。<br>` +
+      `去 <b>${esc(opt.name)}</b> 报到意味着<b>辞职</b>——职级清零，这行的人脉与口碑也会留下缺口。<br>` +
+      `读完再出来，靠的是新学历从头起步。`,
+      '辞职去报到', () => {
+        quitForSchool(STATE, opt.name);
+        doChooseExam(i);
+      });
+    return;
+  }
+  doChooseExam(i);
+}
+
+function doChooseExam(i) {
   resolveExam(STATE, i);
   renderStats();
   renderStream();
@@ -838,6 +936,33 @@ function chooseExam(i) {
 }
 
 function choose(i) {
+  const item = STATE.pending;
+  if (!item || item.type !== 'event') return;
+  // 已经在工作，却选了「考研」这类要回学校的路：先把工作辞掉
+  if (choiceNeedsQuit(item.ev, i) && STATE.career) {
+    const c = careerById(STATE.career.id);
+    const ev = item.ev;
+    uiConfirm('考研就得辞掉工作',
+      `你现在是 <b>${esc(STATE.job)}</b>${c ? `（${esc(c.name)}）` : ''}。<br>` +
+      `全日制读研意味着<b>辞职</b>：这三年没有收入，职场人脉与口碑也会慢慢凉下来。<br>` +
+      `换来的是一个更高的学历起点。`,
+      '辞职去考研', () => { quitForSchool(STATE, '研究生'); doChoose(i); });
+    return;
+  }
+  doChoose(i);
+}
+
+/* 判断某个选项是否「要回学校读书」（从而必须辞职） */
+function choiceNeedsQuit(ev, i) {
+  const ch = (ev.choices || [])[i];
+  if (!ch) return false;
+  if (ch.study) return true;
+  const fl = ch.flags || [];
+  if (fl.indexOf('kaoyan_try') >= 0 || fl.indexOf('kaoyan_ok') >= 0) return true;
+  return false;
+}
+
+function doChoose(i) {
   const item = STATE.pending;
   if (!item || item.type !== 'event') return;
   resolveEvent(STATE, item.ev, i);
@@ -1172,7 +1297,19 @@ function init() {
   bind('btnSavesTop', openModal);
   bind('btnHow', () => { $('howBox').classList.toggle('open'); });
   bind('btnBackTitle', () => { renderTitle(); showScreen('screen-title'); });
+  // 「浏览全部」模式：列出所有天赋，配合搜索框筛选
+  bind('btnTalentAll', () => {
+    TALENT_ALL = !TALENT_ALL;
+    const b = $('btnTalentAll');
+    if (b) b.textContent = TALENT_ALL ? '📖 全部（再点收回）' : '📖 浏览全部';
+    renderTalents();
+    toast(TALENT_ALL ? `已展开全部 ${TALENTS.length} 种天赋` : '已收回随机推荐');
+  });
+  bind('btnTalentRoll', () => { TALENT_ALL = false; const b = $('btnTalentAll'); if (b) b.textContent = '📖 浏览全部'; rerollTalents(); });
   bind('btnReroll', rerollTalents);
+  // 输关键词时自动切到「全部」，否则搜到的很可能不在当前这一批里
+  const tq = $('talentSearch');
+  if (tq) tq.oninput = () => { if ((tq.value || '').trim()) TALENT_ALL = true; renderTalents(); };
   bind('btnRerollName', rerollName);
   bind('btnStart', confirmCreate);
   bind('btnBackFromCreate', () => { renderTitle(); showScreen('screen-title'); });
