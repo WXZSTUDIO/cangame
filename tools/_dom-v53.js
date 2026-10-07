@@ -143,7 +143,7 @@ console.log('== 5. 成就墙 + 彩票 ==');
   ok(!!lot, '彩票按钮可点');
   const before = S().stats.MONEY;
   click(lot);
-  ok(S().stats.MONEY < before, '买彩票扣钱', `${Math.round(before)} → ${Math.round(S().stats.MONEY)}`);
+  ok(S().stats.MONEY !== before, '买彩票会动账（扣票钱，或中奖了）', `${Math.round(before)} → ${Math.round(S().stats.MONEY)}`);
   ok(S().lotteryYear === S().age, '记录本年已买');
   call('showGameView', ['job']);
   const lot2 = Array.from(w.document.querySelectorAll('#view-job button')).find(b => /今年买过了/.test(b.textContent));

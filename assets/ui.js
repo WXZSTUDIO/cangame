@@ -368,6 +368,102 @@ function renderStats() {
   $('tagList').innerHTML = tags.map(t => `<span class="tag">${esc(t)}</span>`).join('');
 }
 
+/* =========================================================
+ * 韩式证件照头像：同一个人一辈子是同一张脸，但会随着年龄变化
+ * seed 由名字推导，所以不需要改存档
+ * ========================================================= */
+function hashStr(s) {
+  let h = 2166136261;
+  s = String(s || '?');
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0);
+}
+
+function portraitSVG(name, gender, age, opt) {
+  opt = opt || {};
+  const h = hashStr(name + '|' + (gender || 'X'));
+  const age0 = typeof age === 'number' ? age : 20;
+  const SKIN = ['#FADFC8', '#F5CFAE', '#EDBC95', '#DDA87C', '#C9905F', '#F2D6B8'];
+  const HAIR = ['#241C16', '#3A2A1E', '#5B3A21', '#7A4A22', '#171412', '#8E5A2A', '#4A3B2E'];
+  const CLOTH = ['#7DCAF6', '#A293FF', '#FFBBF4', '#00917A', '#F47575', '#FFDA57', '#2B3A55', '#E8E2D4'];
+  const BG = ['#FFE9C7', '#DDF1FF', '#F4E4FF', '#FFE1F5', '#E4F5EC', '#FFE0E0', '#FFF6D6'];
+  const skin = SKIN[h % SKIN.length];
+  const hair = (age0 >= 58) ? '#CFCBC4' : HAIR[(h >> 3) % HAIR.length];
+  const hair2 = (age0 >= 58) ? '#B9B5AE' : hair;
+  const cloth = CLOTH[(h >> 6) % CLOTH.length];
+  const bg = BG[(h >> 9) % BG.length];
+  const hairStyle = (opt.forceStyle != null) ? opt.forceStyle : (h % 5);
+  const isF = String(gender).toUpperCase() === 'F';
+  const kid = age0 < 13;
+  const old = age0 >= 58;
+  const elder = age0 >= 72;
+  const glasses = ((h >> 5) % 6 === 0) || old;
+  const blush = kid || age0 < 20;
+
+  // 头身比：小孩头大，成年人正常
+  const rx = kid ? 27 : 25;
+  const ry = kid ? 30 : 29;
+  const cy = kid ? 50 : 48;
+  const cx = 50;
+
+  let hairShape = '';
+  if (hairStyle === 0) {           // 短发
+    hairShape = `<path d="M${cx - rx - 1},${cy - 2} a${rx + 1},${ry} 0 0 1 ${(rx + 1) * 2},0 l0,-4 a${rx + 1},${ry + 3} 0 0 0 -${(rx + 1) * 2},0 z" fill="${hair}"/>` +
+      `<path d="M${cx - rx},${cy - 10} q${rx},-26 ${rx * 2},0 q-${rx},-14 -${rx * 2},0 z" fill="${hair}"/>`;
+  } else if (hairStyle === 1) {    // 长发
+    hairShape = `<ellipse cx="${cx}" cy="${cy + 6}" rx="${rx + 5}" ry="${ry + 8}" fill="${hair2}"/>` +
+      `<path d="M${cx - rx},${cy - 8} q${rx},-28 ${rx * 2},0 q-${rx},-16 -${rx * 2},0 z" fill="${hair}"/>`;
+  } else if (hairStyle === 2) {    // 丸子头
+    hairShape = `<circle cx="${cx}" cy="${cy - ry - 5}" r="8" fill="${hair2}"/>` +
+      `<path d="M${cx - rx},${cy - 8} q${rx},-28 ${rx * 2},0 q-${rx},-16 -${rx * 2},0 z" fill="${hair}"/>`;
+  } else if (hairStyle === 3) {    // 齐刘海
+    hairShape = `<path d="M${cx - rx - 1},${cy - 6} q0,-30 ${rx + 1},-30 q${rx + 1},0 ${rx + 1},30 q-${rx + 4},-8 -${rx * 2 - 4},4 z" fill="${hair}"/>` +
+      `<rect x="${cx - rx - 1}" y="${cy - 26}" width="${(rx + 1) * 2}" height="12" rx="6" fill="${hair}"/>`;
+  } else {                          // 寸头 / 背头
+    hairShape = `<path d="M${cx - rx - 1},${cy - 4} q0,-32 ${rx + 1},-32 q${rx + 1},0 ${rx + 1},32 q-${rx},-12 -${rx * 2},0 z" fill="${hair}"/>`;
+  }
+
+  // 眉眼：年纪越大，眉越垂、眼越细
+  const eyeY = cy + 2;
+  const eyeDx = 10;
+  const eyeR = old ? 1.7 : 2.4;
+  const browY = cy - 8;
+  const eyes = `<circle cx="${cx - eyeDx}" cy="${eyeY}" r="${eyeR}" fill="#20190F"/>
+    <circle cx="${cx + eyeDx}" cy="${eyeY}" r="${eyeR}" fill="#20190F"/>`;
+  const brows = `<path d="M${cx - eyeDx - 5},${browY} q5,${old ? 3 : -2} 10,0" stroke="${hair2}" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M${cx + eyeDx - 5},${browY} q5,${old ? 3 : -2} 10,0" stroke="${hair2}" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+  const mouth = old
+    ? `<path d="M${cx - 7},${cy + 17} q7,-3 14,0" stroke="#A9785F" stroke-width="2" fill="none" stroke-linecap="round"/>`
+    : `<path d="M${cx - 7},${cy + 15} q7,5 14,0" stroke="#B4634F" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
+  const blushS = blush ? `<ellipse cx="${cx - 17}" cy="${cy + 9}" rx="5" ry="3" fill="#F79BA6" opacity=".45"/>
+    <ellipse cx="${cx + 17}" cy="${cy + 9}" rx="5" ry="3" fill="#F79BA6" opacity=".45"/>` : '';
+  const glass = glasses ? `<g stroke="#2B2B2B" stroke-width="1.6" fill="rgba(255,255,255,.28)">
+      <circle cx="${cx - eyeDx}" cy="${eyeY}" r="7"/><circle cx="${cx + eyeDx}" cy="${eyeY}" r="7"/>
+      <path d="M${cx - eyeDx + 7},${eyeY} h${(eyeDx - 7) * 2}" fill="none"/></g>` : '';
+  const wrinkle = old ? `<g stroke="#B08C74" stroke-width="1.1" fill="none" opacity=".7">
+      <path d="M${cx - 22},${eyeY - 1} q-3,-3 -6,-1"/><path d="M${cx + 22},${eyeY - 1} q3,-3 6,-1"/>
+      <path d="M${cx - 12},${cy + 24} q12,3 24,0"/></g>` : '';
+  const forehead = elder ? `<g stroke="#B08C74" stroke-width="1" fill="none" opacity=".55">
+      <path d="M${cx - 14},${cy - 16} q14,-3 28,0"/></g>` : '';
+  const earring = (isF && !kid && (h >> 7) % 3 === 0)
+    ? `<circle cx="${cx - rx - 1}" cy="${cy + 12}" r="2.2" fill="#F2C744"/><circle cx="${cx + rx + 1}" cy="${cy + 12}" r="2.2" fill="#F2C744"/>` : '';
+
+  return `<svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" aria-label="${esc(name || '')}">
+    <rect width="100" height="100" fill="${bg}"/>
+    <path d="M18,100 q0,-26 32,-26 q32,0 32,26 z" fill="${cloth}"/>
+    <path d="M42,74 h16 v10 h-16 z" fill="${skin}"/>
+    ${isF && !kid ? `<path d="M${cx - rx - 2},${cy - 6} q0,34 8,42 q-16,-4 -18,-42 z" fill="${hair2}"/><path d="M${cx + rx + 2},${cy - 6} q0,34 -8,42 q16,-4 18,-42 z" fill="${hair2}"/>` : ''}
+    <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${skin}"/>
+    ${hairShape}
+    ${brows}${eyes}${glass}${blushS}${mouth}${wrinkle}${forehead}${earring}
+  </svg>`;
+}
+
+/* 包装成可放进 rel-ava 的方块 */
+function personAvatar(name, gender, age, cls, opt) {
+  return `<span class="rel-ava pic ${cls || ''}">${portraitSVG(name, gender, age, opt)}</span>`;
+}
+
 /* ---------- 视图切换 ---------- */
 function showGameView(v) {
   GAME_VIEW = v;
@@ -377,6 +473,19 @@ function showGameView(v) {
   document.querySelectorAll('.dock-btn').forEach(b => b.classList.remove('active'));
   if (v === 'job') { $('dockJob').classList.add('active'); renderJobView(); }
   if (v === 'rel') { $('dockRel').classList.add('active'); renderRelView(); }
+  syncDockBtn();
+}
+
+/* 中间那颗大钮：在人生界面是「下一年」，在别的界面是「返回人生」 */
+function syncDockBtn() {
+  const b = $('dockNext');
+  if (!b) return;
+  const home = (GAME_VIEW === 'main');
+  const ic = b.querySelector('.d-ic');
+  const tx = b.querySelector('.d-tx');
+  if (ic) ic.textContent = home ? '▶' : '↩';
+  if (tx) tx.textContent = home ? '下一年' : '返回人生';
+  b.classList.toggle('back', !home);
 }
 
 /* ---------- 工作视图：职业与晋升 / 求职 / 贷款 / 相亲 ---------- */
@@ -610,28 +719,38 @@ function renderRelView() {
     } else {
       if (ps.father) {
         cards.push(ps.father.alive
-          ? { ava: '👨', cls: '', name: `父亲 · ${ps.father.name}`, sub: `${ps.father.age}岁 · ${ps.father.job || '工人'} · ${hpText(ps.father.hp)} · 亲近 ${Math.round(ps.father.affinity)}%。他不爱说话，但每次你出事，第一个到的是他。`, key: 'father' }
-          : { ava: '🕯', cls: 'amber', name: `父亲 · ${ps.father.name}`, sub: `已故。走得那年 ${ps.father.age}岁。`, dead: true });
+          ? { avaSvg: personAvatar(ps.father.name, 'M', ps.father.age, ''), name: `父亲 · ${ps.father.name}`, sub: `${ps.father.age}岁 · ${ps.father.job || '工人'} · ${hpText(ps.father.hp)} · 亲近 ${Math.round(ps.father.affinity)}%。他不爱说话，但每次你出事，第一个到的是他。`, key: 'father' }
+          : { avaSvg: personAvatar(ps.father.name, 'M', ps.father.age, 'amber'), name: `父亲 · ${ps.father.name}`, sub: `已故。走得那年 ${ps.father.age}岁。`, dead: true });
       }
       if (ps.mother) {
         cards.push(ps.mother.alive
-          ? { ava: '👩', cls: '', name: `母亲 · ${ps.mother.name}`, sub: `${ps.mother.age}岁 · ${ps.mother.job || '工人'} · ${hpText(ps.mother.hp)} · 亲近 ${Math.round(ps.mother.affinity)}%。她记得你所有的口味。`, key: 'mother' }
-          : { ava: '🕯', cls: 'amber', name: `母亲 · ${ps.mother.name}`, sub: `已故。走得那年 ${ps.mother.age}岁。`, dead: true });
+          ? { avaSvg: personAvatar(ps.mother.name, 'F', ps.mother.age, ''), name: `母亲 · ${ps.mother.name}`, sub: `${ps.mother.age}岁 · ${ps.mother.job || '工人'} · ${hpText(ps.mother.hp)} · 亲近 ${Math.round(ps.mother.affinity)}%。她记得你所有的口味。`, key: 'mother' }
+          : { avaSvg: personAvatar(ps.mother.name, 'F', ps.mother.age, 'amber'), name: `母亲 · ${ps.mother.name}`, sub: `已故。走得那年 ${ps.mother.age}岁。`, dead: true });
       }
     }
+    const oppG = STATE.gender === 'M' ? 'F' : 'M';
     if (STATE.ex) {
-      cards.push({ ava: '💔', cls: 'amber', name: `前任 · ${STATE.ex.name}`,
-        sub: `${STATE.ex.at}岁那年离的${STATE.ex.reason ? '（' + esc(STATE.ex.reason) + '）' : ''}。${STATE.childCount ? '孩子的事，你们还得见面。' : '从此你们只在别人的婚礼上遇见。'}`, dead: true });
+      cards.push({
+        avaSvg: personAvatar(STATE.ex.name, oppG, (STATE.ex.age || STATE.age), 'amber'),
+        name: `前任 · ${STATE.ex.name}`,
+        sub: `${STATE.ex.at}岁那年离的${STATE.ex.reason ? '（' + esc(STATE.ex.reason) + '）' : ''}。${STATE.childCount ? '孩子的事，你们还得见面。' : '从此你们只在别人的婚礼上遇见。'}`, dead: true
+      });
     }
     if (STATE.flags.married && STATE.spouse) {
       const sp = STATE.spouse;
       cards.push(sp.alive
-        ? { ava: '💑', cls: 'green', name: sp.name, sub: `${sp.age}岁 · 感情 ${Math.round(sp.affinity || 60)}%。携手走过半生的人。`, key: 'spouse' }
-        : { ava: '🕯', cls: 'amber', name: sp.name, sub: '先你一步走了。余生你带着两个人的份活着。', dead: true });
+        ? {
+          avaSvg: personAvatar(sp.name, oppG, sp.age, 'green'), name: sp.name,
+          sub: `${sp.age}岁 · 感情 ${Math.round(sp.affinity || 60)}%。携手走过半生的人。`, key: 'spouse',
+          multi: `<button class="rel-act" onclick="uiSpouse(0)">陪伴</button>
+            <button class="rel-act" onclick="uiSpouse(1)">约会 ${fmtMoney(Math.round(LOVE_META.dateCost * 0.7))}</button>
+            <button class="rel-act" onclick="uiSpouse(2)">送礼 ${fmtMoney(Math.round(LOVE_META.giftCost * 0.6))}</button>`
+        }
+        : { avaSvg: personAvatar(sp.name, oppG, sp.age, 'amber'), name: sp.name, sub: '先你一步走了。余生你带着两个人的份活着。', dead: true });
     } else if (STATE.flags.married) {
-      cards.push({ ava: '💑', cls: 'green', name: STATE.spouseName || '配偶', sub: '携手走过半生的人。', key: 'spouse' });
+      cards.push({ avaSvg: personAvatar(STATE.spouseName || '配偶', oppG, STATE.age, 'green'), name: STATE.spouseName || '配偶', sub: '携手走过半生的人。', key: 'spouse' });
     } else if (STATE.flags.dating) {
-      cards.push({ ava: '💘', cls: 'green', name: '恋人', sub: '交往中。关系是要经营的。', key: 'spouse' });
+      cards.push({ avaSvg: personAvatar('恋人', oppG, STATE.age, 'green'), name: '恋人', sub: '交往中。关系是要经营的。', key: 'spouse' });
     }
     if (STATE.childCount) {
       cards.push({
@@ -682,7 +801,7 @@ function renderRelView() {
       const t = CLASSMATE_TYPES.find(x => x.key === c.key) || { label: '同学', ava: '🧑' };
       const gone = c.stage !== stage;
       cards.push({
-        ava: gone ? '🎓' : (t.ava || '🧑'), cls: gone ? 'amber' : '',
+        avaSvg: personAvatar(c.name, c.gender, c.age || STATE.age, gone ? 'amber' : ''),
         name: `${c.name} · ${t.label}${c.gender !== STATE.gender ? ' ♡' : ''}`,
         sub: `${stageCn(c.stage)}同学${gone ? ' · 已毕业' : ' · 同班'} · ${c.age || STATE.age}岁 · 好感 ${Math.round(c.affinity)}% · 颜值 ${c.charm} · ${t.line || ''}`,
         key: 'classmate:' + i,
@@ -702,8 +821,14 @@ function renderRelView() {
     if (STATE.flags.married && STATE.spouse) {
       const sp = STATE.spouse;
       cards.push(sp.alive
-        ? { ava: '💑', cls: 'green', name: sp.name, sub: `感情 ${Math.round(sp.affinity || 60)}% · ${sp.age}岁 · ${sp.job || ''}`, key: 'spouse' }
-        : { ava: '🕯', cls: 'amber', name: sp.name, sub: '已经不在了。', dead: true });
+        ? {
+          avaSvg: personAvatar(sp.name, STATE.gender === 'M' ? 'F' : 'M', sp.age, 'green'), name: sp.name,
+          sub: `感情 ${Math.round(sp.affinity || 60)}% · ${sp.age}岁 · ${sp.job || ''}`, key: 'spouse',
+          multi: `<button class="rel-act" onclick="uiSpouse(0)">陪伴</button>
+            <button class="rel-act" onclick="uiSpouse(1)">约会 ${fmtMoney(Math.round(LOVE_META.dateCost * 0.7))}</button>
+            <button class="rel-act" onclick="uiSpouse(2)">送礼 ${fmtMoney(Math.round(LOVE_META.giftCost * 0.6))}</button>`
+        }
+        : { avaSvg: personAvatar(sp.name, STATE.gender === 'M' ? 'F' : 'M', sp.age, 'amber'), name: sp.name, sub: '已经不在了。', dead: true });
       if (sp.alive) {
         extra += `<div class="of-btns" style="padding:0 4px 10px">
           <button class="btn small" onclick="uiBaby()">🍼 要一个孩子</button>
@@ -714,6 +839,11 @@ function renderRelView() {
     if (!STATE.flags.married && STATE.age >= LOVE_META.marryAge - 2) {
       extra += `<div class="of-btns" style="padding:0 4px 10px">
         <button class="btn small primary" onclick="uiMatchmaker()">💌 托人相亲（${fmtMoney(LOVE_META.matchCost)}）</button>
+      </div>`;
+    }
+    if (STATE.age >= 18) {
+      extra += `<div class="of-btns" style="padding:0 4px 10px">
+        <button class="btn small ${STATE.flags.married ? 'danger' : ''}" onclick="uiMeetOutside()">🌙 ${STATE.flags.married ? '在外面认识一个人（外遇）' : '主动去认识一个人'}</button>
       </div>`;
     }
     if (lv.candidates.length) {
@@ -727,11 +857,17 @@ function renderRelView() {
         ? `<button class="rel-act" onclick="uiIntimate(${i},0)">${married ? '越界' : '亲密'}</button>
            <button class="rel-act safe" onclick="uiIntimate(${i},1)">${married ? '越界' : '亲密'} · 做好措施 ${fmtMoney(LOVE_META.safeCost)}</button>`
         : '';
+      const taken = married || !!STATE.flags.dating;
+      const affairBtns = (taken && l.affinity >= LOVE_META.touchAffinity)
+        ? (l.secret
+          ? `<button class="rel-act" onclick="uiEndAffair(${i})">🛑 收手</button>`
+          : `<button class="rel-act" onclick="uiStartAffair(${i})">🌙 偷情（长期）</button>`)
+        : '';
       cards.push({
-        ava: l.gender === 'F' ? '👩' : '👨', cls: married ? 'amber' : 'green',
+        avaSvg: personAvatar(l.name, l.gender, l.age, married ? 'amber' : 'green'),
         name: l.name,
         sub: `${loverLabel(l)} · ${l.age}岁 · 好感 <b>${Math.round(l.affinity)}%</b>${l.pregnant ? ' · ⚠ 怀孕了' : ''}` +
-          `${married ? ' · <b style="color:var(--red)">婚外</b>' : ''} · 今年还能约 ${left} 次`,
+          `${married ? ' · <b style="color:var(--red)">婚外</b>' : ''}${l.secret ? ' · <b style="color:var(--red)">偷情中 · 随时可能被发现</b>' : ''} · 今年还能约 ${left} 次`,
         key: null,
         click: can ? `uiLove(${i},'chat')` : '',
         multi: can ? `
@@ -739,8 +875,29 @@ function renderRelView() {
           <button class="rel-act" onclick="uiLove(${i},'date')">约会 ${fmtMoney(LOVE_META.dateCost)}</button>
           <button class="rel-act" onclick="uiLove(${i},'gift')">送礼 ${fmtMoney(LOVE_META.giftCost)}</button>
           ${intimateBtns}
+          ${affairBtns}
           ${!married && l.affinity >= LOVE_META.marryAffinity && STATE.age >= LOVE_META.marryAge ? `<button class="rel-act" onclick="uiPropose(${i})">求婚</button>` : ''}
         ` : '<span class="rel-act dis">今年的次数用完了</span>'
+      });
+    });
+  } else if (REL_TAB === 'good') {
+    const eth = Math.round(STATE.stats.ETH || 50);
+    extra = `<div class="rel-sub" style="padding:0 4px 8px">道德 ${eth}。它不是只能往下掉——<b>每一件善事今年只能做一次</b>。` +
+      `${eth < 40 ? '你现在已经站在不太好看的那一边了，做点什么还来得及。' : ''}</div>`;
+    const tp = STATE.goodTouch || {};
+    GOOD_DEEDS.forEach(d => {
+      const done = tp[d.id] === STATE.age;
+      const young = STATE.age < (d.minAge || 0);
+      const poor = (d.cost || 0) > (STATE.stats.MONEY || 0);
+      const off = done || young || poor;
+      cards.push({
+        avaSvg: `<span class="rel-ava ${done ? 'amber' : ''}" style="font-size:24px">${d.icon}</span>`,
+        name: d.name,
+        sub: `${esc(d.desc)}　→ 道德 +${d.eff.ETH}${d.cost ? ` · 花费 ${fmtMoney(d.cost)}` : ' · 不花钱'}` +
+          (young ? ` · ${d.minAge} 岁以后` : (poor ? ' · 钱不够' : (done ? ' · 今年做过了' : ''))),
+        key: null,
+        multi: off ? '<span class="rel-act dis">今年做不了</span>'
+          : `<button class="rel-act" onclick="uiGoodDeed('${d.id}')">就做这个</button>`
       });
     });
   } else {
@@ -753,7 +910,7 @@ function renderRelView() {
     list.forEach((f, i) => {
       const t = FRIEND_TYPES.find(x => x.key === f.key);
       cards.push({
-        ava: t ? t.avatar : '🧑', cls: f.alive === false ? 'amber' : '',
+        avaSvg: personAvatar(f.name, f.gender || (hashStr(f.name) % 2 ? 'F' : 'M'), f.age, f.alive === false ? 'amber' : ''),
         name: `${f.name} · ${t ? t.label : '朋友'}`,
         sub: f.alive === false ? '已经不在了。' : `好感度 ${Math.round(f.affinity)}% · ${f.age || 20}岁 · ${t ? t.line : ''}`,
         key: f.alive === false ? null : 'friend:' + i,
@@ -768,12 +925,13 @@ function renderRelView() {
       <button class="rel-tab ${REL_TAB === 'classmate' ? 'active' : ''}" onclick="setRelTab('classmate')">🎒 同学</button>
       <button class="rel-tab ${REL_TAB === 'friends' ? 'active' : ''}" onclick="setRelTab('friends')">🧑‍🤝‍🧑 朋友</button>
       <button class="rel-tab ${REL_TAB === 'love' ? 'active' : ''}" onclick="setRelTab('love')">💘 恋人</button>
+      <button class="rel-tab ${REL_TAB === 'good' ? 'active' : ''}" onclick="setRelTab('good')">🙏 向善</button>
     </div>
     ${extra}
     <div class="rel-list">
       ${cards.length ? cards.map(c => `
         <div class="rel-card">
-          <span class="rel-ava ${c.cls}">${c.ava}</span>
+          ${c.avaSvg || `<span class="rel-ava ${c.cls}">${c.ava}</span>`}
           <div class="rel-info">
             <div class="rel-name ${c.click ? 'tap' : ''}" ${c.click ? `onclick="${c.click}"` : ''}>${esc(c.name)}</div>
             <div class="rel-sub">${c.sub}</div>
@@ -808,6 +966,40 @@ function uiSocial(key) {
   const r = socialAct(STATE, parts[0], parts.length > 1 ? Number(parts[1]) : undefined);
   if (!r.ok) { toast(r.msg || '现在不行'); return; }
   afterAct('互动成功');
+}
+
+/* 配偶 / 恋人：陪伴 / 约会 / 送礼（真的会涨感情） */
+function uiSpouse(mode) {
+  const r = socialAct(STATE, 'spouse', mode || 0);
+  if (!r.ok) { toast(r.msg || '现在不行'); return; }
+  afterAct('感情 +');
+}
+
+/* 外遇 / 邂逅：主动去外面认识一个人 */
+function uiMeetOutside() {
+  const r = meetOutside(STATE);
+  if (!r.ok) { toast(r.msg || '现在不行'); return; }
+  afterAct(STATE.flags.married ? '你认识了一个不该认识的人' : '新的邂逅');
+}
+
+/* 偷情 / 长期外遇 */
+function uiStartAffair(i) {
+  const r = startAffair(STATE, i);
+  if (!r.ok) { toast(r.msg || '现在不行'); return; }
+  afterAct('你们开始了见不得光的那部分');
+}
+
+function uiEndAffair(i) {
+  const r = endAffair(STATE, i);
+  if (!r.ok) { toast(r.msg || '现在不行'); return; }
+  afterAct('你收手了');
+}
+
+/* 做件好事：道德是可以主动攒的 */
+function uiGoodDeed(id) {
+  const r = doGoodDeed(STATE, id);
+  if (!r.ok) { toast(r.msg || '现在不行'); return; }
+  afterAct('道德 +');
 }
 
 function uiSocialAll(kind) {
@@ -1003,10 +1195,15 @@ function renderItem(item) {
       <p class="card-text">${esc(ex.text).replace(/\n/g, '<br>')}</p></div>`;
     $('actions').innerHTML = (ex.options || []).map((o, i) => {
       const meta = o.minScore != null ? `录取线 ${Math.round(o.minScore / 100 * (ex.full || 100))}` : '';
+      if (o.locked) {
+        return `<button class="btn choice dis" disabled>${esc(o.name)}
+          <span class="gamble">${esc(o.desc)}</span>
+          <span class="risk r3">进不去 · ${esc(o.lockReason || '条件不够')}</span></button>`;
+      }
       return `<button class="btn choice" onclick="chooseExam(${i})">${esc(o.name)}
         <span class="gamble">${esc(o.desc)}</span>
         ${meta ? `<span class="risk r2">${meta}</span>` : ''}</button>`;
-    }).join('') || `<button class="btn primary" onclick="chooseExam(0)">确认 ▸</button>`;
+    }).join('');
   } else if (item.type === 'invest') {
     html = `<div class="card-inner invest">
       <div class="card-year">投资机会 · ${fmtYear(STATE)} 年</div>
@@ -1482,7 +1679,8 @@ function init() {
   bind('dockShop', () => openMarketTab('house'));
   bind('dockNext', () => {
     if (!STATE || STATE.finished) return;
-    showGameView('main');
+    // 不在人生界面时，这颗钮是「返回人生」——未成年点开人际也能回来
+    if (GAME_VIEW !== 'main') { showGameView('main'); return; }
     advance();
   });
   bind('modalClose', closeModal);

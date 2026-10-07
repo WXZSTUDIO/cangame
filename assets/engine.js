@@ -109,16 +109,21 @@ function friendGrowth(state) {
   // 朋友不是每年都交得到的
   if (!chance(state.age <= 6 ? 0.25 : 0.35)) return;
   const t = candidates[randInt(0, candidates.length - 1)];
+  // 年龄差按关系类型来：恩师永远比你大一辈，同事则上下浮动
+  const gp = t.ageGap || [-1, 2];
+  const gap = randInt(gp[0], gp[1]);
+  const fg = chance(0.5) ? 'F' : 'M';
   const f = {
     key: t.key,
-    name: randomKoreanName(chance(0.5) ? 'F' : 'M'),
+    gender: fg,
+    name: randomKoreanName(fg),
     affinity: randInt(12, 30),
     lastTouch: -1,
-    age: state.age + randInt(-1, 2),
+    age: clamp(state.age + gap, 3, 92),
     since: state.age
   };
   state.friends.push(f);
-  pushLog(state, `【新朋友】你认识了 ${f.name}（${t.label}）。${t.line.replace('每年', '以后')}。`, 'muted');
+  pushLog(state, `【新朋友】你认识了 ${f.name}（${t.label}，${f.age} 岁）。${t.line.replace('每年', '以后')}。`, 'muted');
 }
 
 /* ---------- 人际互动（人际关系面板） ---------- */
@@ -151,13 +156,39 @@ function socialAct(state, kind, idx) {
     if (state.age >= 20) s.MONEY -= 500000;
     pushLog(state, '【团聚】你回家陪父母吃了一顿饭。母亲说：人回来就好，还带什么东西。', 'muted');
   } else if (kind === 'spouse') {
-    if (state.flags.married) {
-      s.LOVE += 4; s.STRESS -= 4; s.SEC += 2; s.MOOD = (s.MOOD || 60) + 3;
-      pushLog(state, `【夫妻】你和 ${state.spouseName || '爱人'} 像年轻时那样约会了一次。`, 'muted');
-    } else if (state.flags.dating) {
-      s.LOVE += 3; s.CHA += 1;
-      pushLog(state, '【约会】你们去看了一场电影。牵手的时候，谁都没有说话。', 'muted');
-    } else { delete touch[key]; return { ok: false, msg: '你现在没有恋人' }; }
+    /* 婚姻/恋爱都要经营：idx 0=陪伴 1=约会 2=送礼，好感真的会涨 */
+    const married = !!state.flags.married;
+    const lv = loveInit(state);
+    const l = married ? state.spouse : lv.partner;
+    if (married) {
+      if (!l || l.alive === false) { delete touch[key]; return { ok: false, msg: 'TA 已经不在了' }; }
+    } else if (!l) { delete touch[key]; return { ok: false, msg: '你现在没有恋人' }; }
+    const mode = idx === 1 ? 'date' : (idx === 2 ? 'gift' : 'chat');
+    let gain = 0, spend = 0;
+    if (mode === 'date') {
+      const c = Math.round(LOVE_META.dateCost * (married ? 0.7 : 1));
+      if (s.MONEY < c) { delete touch[key]; return { ok: false, msg: '钱不够约会' }; }
+      s.MONEY -= c; spend = c;
+      gain = randInt(9, 14) + Math.round(s.CHA / 16);
+      s.LOVE += 4; s.STRESS -= 6; s.MOOD = (s.MOOD || 60) + 4; s.SEC += 2;
+    } else if (mode === 'gift') {
+      const c = Math.round(LOVE_META.giftCost * (married ? 0.6 : 1));
+      if (s.MONEY < c) { delete touch[key]; return { ok: false, msg: '钱不够买礼物' }; }
+      s.MONEY -= c; spend = c;
+      gain = randInt(12, 17) + Math.round(s.CHA / 14);
+      s.LOVE += 4; s.CHA += 1; s.MOOD = (s.MOOD || 60) + 3;
+    } else {
+      gain = randInt(5, 9) + Math.round(s.CHA / 24);
+      s.LOVE += 3; s.STRESS -= 4; s.SEC += 2; s.MOOD = (s.MOOD || 60) + 3;
+    }
+    touch.spouse = state.age; // 让年度结算知道：今年你经营过这段关系
+    l.affinity = clamp((l.affinity || 60) + gain, 0, 100);
+    const nm = l.name || state.spouseName || '爱人';
+    const tail = spend ? `（花了 ${fmtMoney(spend)}）` : '';
+    pushLog(state, married
+      ? `【夫妻】你和 ${nm} ${mode === 'date' ? '出去吃了一顿饭，像谈恋爱那会儿' : mode === 'gift' ? '挑了一份礼物，TA 嘴上嫌贵，手却没松开' : '过了一个普通的晚上'}。感情 ${Math.round(l.affinity)}%${tail}。`
+      : `【约会】你和 ${nm} ${mode === 'date' ? '去看了一场电影' : mode === 'gift' ? '送了一份礼物' : '聊到很晚'}。好感 ${Math.round(l.affinity)}%${tail}。`, 'muted');
+    return { ok: true, affinity: l.affinity };
   } else if (kind === 'child') {
     if (!state.childCount) { delete touch[key]; return { ok: false }; }
     s.LOVE += 3; s.GROW += 2; s.STRESS -= 2;
@@ -549,7 +580,12 @@ function migrateState(state) {
       mother: { name: randomParentName('F'), alive: !!state.flags.parents_alive, affinity: 62, age: clamp(state.age + randInt(22, 30), 28, 68), bond: '母' }
     };
   }
+  // v5.4：专业名改过一批，老存档自动换到新名
+  if (state.edu && state.edu.major && MAJOR_LEGACY[state.edu.major]) {
+    state.edu.major = MAJOR_LEGACY[state.edu.major];
+  }
   if (!state.love) state.love = { candidates: [], partner: null, met: [] };
+  if (state.goodTouch == null) state.goodTouch = {};
   if (state.loans == null) state.loans = [];
   if (state.credit == null) state.credit = 100;
   if (state.stats.ETH === undefined) state.stats.ETH = 60;
@@ -1116,6 +1152,189 @@ function friendTick(state) {
   });
 }
 
+/* =========================================================
+ * 主动互动：不是你单方面去敲门，他们也会来找你
+ * 父母 / 配偶 / 恋人 / 朋友 / 同学 —— 每年可能有人主动发起一次
+ * ========================================================= */
+const INBOUND_LINES = {
+  parents: [
+    '周末回不回来？我炖了汤，凉了就不好喝了。',
+    '你爸这两天血压有点高，你抽空打个电话给他。',
+    '钱够不够用？家里不用你操心，你自己别省着。',
+    '院子里的月季开了，你要是回来，还能赶上看一眼。',
+    '你张阿姨问起你了，我说你在外头挺好的。'
+  ],
+  spouse: [
+    '我订了你爱吃的那家，七点。你能不能准时？',
+    '孩子一直在问，爸爸/妈妈什么时候回来。',
+    '我们多久没一起出门了？就这个周末。',
+    '你今天回来吃饭吗？我多做一份。'
+  ],
+  lover: [
+    '周末有空吗？我想见你。',
+    '我路过你公司楼下，要不要一起吃个饭。',
+    '那家新开的店，你不是说想去吗。'
+  ],
+  friend: [
+    '出来喝一杯，老地方。就我们几个。',
+    '好久没见了，聚一下？',
+    '我这边出了点事，能跟你说说话吗。'
+  ],
+  classmate: [
+    '班长在群里喊了：毕业这些年，聚一次吧。',
+    '我结婚，你来不来？',
+    '翻到咱们班那张合照了，突然想找你聊聊。'
+  ]
+};
+
+function inboundPick(state) {
+  const list = [];
+  const ps = state.parents;
+  if (ps && ((ps.father && ps.father.alive) || (ps.mother && ps.mother.alive)) && state.age >= 7) list.push('parents');
+  if (state.flags.married && state.spouse && state.spouse.alive !== false) list.push('spouse');
+  const cands = (state.love && state.love.candidates || []).filter(l => l.alive !== false);
+  if (cands.length) list.push('lover');
+  if ((state.friends || []).some(f => f.alive !== false)) list.push('friend');
+  if (state.age >= 14 && (state.classmates || []).length) list.push('classmate');
+  return list;
+}
+
+function inboundTarget(state, kind) {
+  if (kind === 'parents') {
+    const ps = state.parents || {};
+    const alive = [ps.mother, ps.father].filter(p => p && p.alive);
+    return alive.length ? alive[randInt(0, alive.length - 1)] : null;
+  }
+  if (kind === 'spouse') return state.spouse;
+  if (kind === 'lover') {
+    const c = (state.love && state.love.candidates || []).filter(l => l.alive !== false);
+    return c.length ? c[randInt(0, c.length - 1)] : null;
+  }
+  if (kind === 'friend') {
+    const f = (state.friends || []).filter(x => x.alive !== false);
+    return f.length ? f[randInt(0, f.length - 1)] : null;
+  }
+  if (kind === 'classmate') {
+    const c = state.classmates || [];
+    return c.length ? c[randInt(0, c.length - 1)] : null;
+  }
+  return null;
+}
+
+function makeInboundEvent(state, kind) {
+  const p = inboundTarget(state, kind);
+  if (!p) return null;
+  const lines = INBOUND_LINES[kind] || ['有空吗？'];
+  const line = lines[randInt(0, lines.length - 1)];
+  const who = p.name || 'TA';
+  const ib = { kind: kind, name: who };
+  const head = kind === 'parents' ? `【${who} 的电话】`
+    : kind === 'spouse' ? `【${who} 的消息】`
+      : kind === 'lover' ? `【${who} 找你】`
+        : kind === 'friend' ? `【${who} 的邀约】` : `【来自 ${who}】`;
+  const tip = kind === 'parents' ? '手机在桌上震了很久。'
+    : kind === 'spouse' ? '屏幕亮了，是家里发来的。'
+      : kind === 'lover' ? '对话框弹出来的时候，你愣了一下。'
+        : kind === 'friend' ? '微信群里跳出一条 @ 你的消息。' : '群里忽然热闹起来了。';
+  const text = `${head}${tip}\n「${line}」`;
+
+  let choices;
+  if (kind === 'parents') {
+    choices = [
+      { text: '回去，陪他们吃顿饭', risk: 1, ibGain: 7, eff: { LOVE: 6, SEC: 5, MOOD: 4, STRESS: -5, MONEY: -800000 } },
+      { text: '回个电话，寄点钱回去', risk: 1, ibGain: 3, eff: { LOVE: 2, SEC: 2, MONEY: -3000000 } },
+      { text: '说加班，下次一定', risk: 2, ibGain: -6, eff: { LOVE: -4, STRESS: 3, LOY: 3 } }
+    ];
+  } else if (kind === 'spouse') {
+    choices = [
+      { text: '推掉应酬，回家', risk: 1, ibGain: 8, eff: { LOVE: 6, SEC: 4, MOOD: 4, STRESS: -4, MONEY: -1200000 } },
+      { text: '加班，这几年都这样', risk: 2, ibGain: -5, eff: { LOY: 4, LOVE: -5, STRESS: 5 } },
+      { text: '带 TA 出去，把周末还给你们', risk: 1, ibGain: 12, eff: { LOVE: 9, SEC: 5, MOOD: 6, MONEY: -5000000 } }
+    ];
+  } else if (kind === 'lover') {
+    choices = [
+      { text: '去，把时间空出来', risk: 1, ibGain: 10, eff: { LOVE: 6, CHA: 1, MOOD: 3, MONEY: -1500000 } },
+      { text: '改天吧，最近有点忙', risk: 2, ibGain: -3, eff: { LOVE: -2, STRESS: 2 } },
+      { text: '现在就把话说清楚', risk: 3, ibGain: -10, eff: { LOVE: -6, WILL: 3, STRESS: 6 } }
+    ];
+  } else if (kind === 'friend') {
+    choices = [
+      { text: '去，老地方见', risk: 1, ibGain: 7, eff: { NET: 4, LOVE: 3, STRESS: -5, MONEY: -1200000, HP: -2 } },
+      { text: '推了，最近不太想出门', risk: 2, ibGain: -4, eff: { LOVE: -2, MOOD: -2 } },
+      { text: '去了，但提前走', risk: 1, ibGain: 2, eff: { NET: 2, STRESS: -2, MONEY: -500000 } }
+    ];
+  } else {
+    choices = [
+      { text: '去，看看他们都变成什么样了', risk: 2, ibGain: 8, eff: { NET: 6, CHA: 2, LOVE: 3, MONEY: -2500000, STRESS: -3 } },
+      { text: '不去，各有各的生活', risk: 1, ibGain: -3, eff: { MOOD: -1, SEC: 1 } },
+      { text: '只跟几个还聊得来的聚', risk: 1, ibGain: 4, eff: { NET: 3, LOVE: 2, MONEY: -1000000 } }
+    ];
+  }
+  return {
+    id: 'inb_' + kind + '_' + state.age,
+    age: [7, 200], w: 0,
+    ib: ib,
+    text: text,
+    choices: choices.map(c => Object.assign({}, c, { ibGain: c.ibGain }))
+  };
+}
+
+/* 主动互动的结果要落到「那个人」身上，而不是只改你的属性 */
+function applyInbound(state, ib, gain) {
+  if (!ib || !gain) return;
+  let p = null;
+  if (ib.kind === 'parents') {
+    const ps = state.parents || {};
+    p = [ps.father, ps.mother].filter(x => x && x.alive).find(x => x.name === ib.name) || null;
+  } else if (ib.kind === 'spouse') {
+    p = state.spouse && state.spouse.name === ib.name ? state.spouse : state.spouse;
+  } else if (ib.kind === 'lover') {
+    const c = (state.love && state.love.candidates) || [];
+    p = c.find(x => x.name === ib.name) || null;
+  } else if (ib.kind === 'friend') {
+    p = (state.friends || []).find(x => x.name === ib.name) || null;
+  } else if (ib.kind === 'classmate') {
+    p = (state.classmates || []).find(x => x.name === ib.name) || null;
+  }
+  if (!p) return;
+  p.affinity = clamp((p.affinity || 40) + gain, 0, 100);
+  if (ib.kind === 'spouse') {
+    const touch = state.socialTouch = state.socialTouch || {};
+    touch.spouse = state.age; // 回应了配偶的主动，也算经营过
+  }
+}
+
+/* ---------- 主动做件好事：道德是能攒回来的 ---------- */
+function doGoodDeed(state, id) {
+  const d = GOOD_DEEDS.find(x => x.id === id);
+  if (!d) return { ok: false, msg: '没有这件事' };
+  if (state.age < (d.minAge || 0)) return { ok: false, msg: `${d.minAge} 岁以后才做得到` };
+  const touch = state.goodTouch = state.goodTouch || {};
+  if (touch[id] === state.age) return { ok: false, msg: '今年做过了' };
+  const cost = d.cost || 0;
+  if (cost && state.stats.MONEY < cost) return { ok: false, msg: '钱不够' };
+  if (cost) state.stats.MONEY -= cost;
+  touch[id] = state.age;
+  applyEffects(state, d.eff);
+  pushLog(state, `【善事】${d.name}。${d.desc}${cost ? `（花了 ${fmtMoney(cost)}）` : ''}`, 'money');
+  return { ok: true, name: d.name };
+}
+
+/* 每年最多一次「有人来找你」，避免刷屏 */
+function inboundTick(state) {
+  if (state.age < 7) return;
+  if (state.inboundYear === state.age) return;
+  const kinds = inboundPick(state);
+  if (!kinds.length) return;
+  if (!chance(kinds.indexOf('parents') >= 0 ? 0.34 : 0.26)) return;
+  const kind = kinds[randInt(0, kinds.length - 1)];
+  const ev = makeInboundEvent(state, kind);
+  if (!ev) return;
+  state.inboundYear = state.age;
+  state.extraQueue = state.extraQueue || [];
+  state.extraQueue.push({ type: 'event', ev: ev });
+}
+
 /* ---------- 自动求职 ---------- */
 function autoEmploy(state) {
   const offers = jobOffers(state).filter(o => o.okEdu && o.okStat && o.okFlag);
@@ -1125,9 +1344,22 @@ function autoEmploy(state) {
     pushLog(state, '【求职】你只找到了一份服务员的工作。先干着吧。', 'muted');
     return;
   }
-  offers.sort((a, b) => b.career.ladder[b.entry].sal - a.career.ladder[a.entry].sal);
-  const pick = offers[randInt(0, Math.min(2, offers.length - 1))];
+  // 专业对口优先，其次才看钱：学什么干什么，不是一句空话
+  const myMajor = majorCatOf(state);
+  const ranked = offers.map(o => ({
+    o: o,
+    match: (myMajor && o.career.major && o.career.major.indexOf(myMajor) >= 0) ? 1 : 0,
+    sal: o.career.ladder[o.entry].sal
+  }));
+  ranked.sort((a, b) => (b.match - a.match) || (b.sal - a.sal));
+  const pool = ranked.filter(x => x.match);
+  const list = pool.length ? pool : ranked;
+  const pick = list[randInt(0, Math.min(2, list.length - 1))].o;
+  const hit = pool.length > 0;
   applyJob(state, pick.career.id);
+  if (hit && myMajor) {
+    pushLog(state, `【对口】${myMajor}方向出身，第一份工作落在了 ${pick.career.name}。简历上的那一行专业，终于有了去处。`, 'money');
+  }
 }
 
 /* ---------- 年度基础结算 ---------- */
@@ -1216,6 +1448,7 @@ function yearBase(state) {
   if (state.edu && state.edu.gradAge && state.age >= state.edu.gradAge && state.job === '大学生') {
     const u = UNIVERSITIES.find(x => x.id === state.edu.uni);
     state.job = '待业';
+    state.noAutoJobYear = state.age;  // 毕业当年绝不自动塞工作：先走毕业三选一
     state.classStage = null;   // 毕业了：同学不再是同班，但人还在人脉里
     const mates = (state.classmates || []).filter(c => c.stage === 'uni').length;
     pushLog(state, `【毕业】${u ? u.name : '大学'} · ${state.edu.major || ''} 专业。你搬出了宿舍，把学士服叠进了箱底。${mates ? `这一班的 ${mates} 个人散到各地，以后要见只能约。` : ''}`, 'money');
@@ -1226,7 +1459,8 @@ function yearBase(state) {
   }
 
   // 待业：按学历自动找一份能干的工作（避免长期无业陷入负债螺旋）
-  if (state.age >= 17 && (state.job === '待业' || state.job === '无业')) {
+  // 毕业当年与间隔年除外——那一年要先把「考研 / 就业 / 再等一年」选完
+  if (state.age >= 17 && (state.job === '待业' || state.job === '无业') && state.noAutoJobYear !== state.age) {
     autoEmploy(state);
   }
   // 退休
@@ -1320,9 +1554,11 @@ function step(state) {
   }
 
   refreshClassmates(state);
+  scoutTick(state);
   careerTick(state);
   loveTick(state);
   friendTick(state);
+  inboundTick(state);   // 别人也会主动来找你
   familyTick(state);
   illnessTick(state);
   if (state.finished) return { type: 'end' };
@@ -1351,6 +1587,7 @@ function resolveExam(state, index) {
   if (!item || item.type !== 'exam') return;
   const opt = item.exam.options[index];
   if (!opt) return;
+  if (opt.locked) return; // 分数不够的学校点不动
   applySchool(state, opt.id);
   state.pending = null;
 }
@@ -1396,12 +1633,12 @@ function makeGradEvent(state) {
       `考研成功率约 ${Math.round(p * 100)}%（智力 ${Math.round(state.stats.INT)} · 学习投入 ${Math.round(state.edu.study || 0)}）。你怎么选？`,
     choices: [
       {
-        text: '直接找工作：先在社会里站住脚',
-        risk: 1, flags: ['job_now'], eff: { NET: 3, WILL: 2, STRESS: 3 }
+        text: '考研：给自己再搏一次学历（成功率约 ' + Math.round(p * 100) + '%）',
+        risk: 3, flags: ['kaoyan_try'], eff: { STRESS: 6 }, study: true
       },
       {
-        text: `考研：给自己再搏一次学历（成功率 ${Math.round(p * 100)}%）`,
-        risk: 3, flags: ['kaoyan_try'], eff: { STRESS: 6 }, study: true
+        text: '放弃考研，把简历投出去',
+        risk: 1, flags: ['job_now'], eff: { NET: 3, WILL: 2, STRESS: 3 }
       },
       {
         text: '休整一年：先去看看这个世界再说话',
@@ -1411,16 +1648,111 @@ function makeGradEvent(state) {
   };
 }
 
+/* 考研落榜：是二战还是认了（不会再被直接塞进一份工作） */
+function makeKaoyanFailEvent(state) {
+  return {
+    id: 'kaoyan2_at_' + state.age,
+    age: [18, 200], w: 0,
+    kaoyanP: clamp(0.26 + state.stats.INT * 0.004 + (state.edu.study || 0) * 0.003 + (state.flags.kaoyan_fail ? -0.06 : 0.04), 0.12, 0.8),
+    text: '【落榜】分数出来了，差的那几分像一道门缝。\n' +
+      '自习室的座位还留着你的水杯。再坐一年要钱，也要命；投出去的简历，也可能石沉大海。',
+    choices: [
+      {
+        text: '二战：再来一年，就一年',
+        risk: 3, flags: ['kaoyan_again'], eff: { STRESS: 10, WILL: 4, INT: 2, MONEY: -6000000 }, study: true
+      },
+      {
+        text: '认了，去投简历找工作',
+        risk: 1, flags: ['job_after_fail'], eff: { NET: 2, WILL: 1, STRESS: 4 }
+      }
+    ]
+  };
+}
+
+/* ---------- 星探：初中 / 高中被发掘，要不要放弃学业去当练习生 ---------- */
+function makeScoutEvent(state) {
+  const cha = Math.round(state.stats.CHA);
+  const look = Math.round(state.stats.CHA * 0.7 + (state.stats.HP || 60) * 0.3);
+  return {
+    id: 'scout_at_' + state.age,
+    age: [12, 19], w: 0,
+    scout: true,
+    text: `【星探】放学路上，一个人拦住你，递了张名片。\n` +
+      `「我们公司在招练习生。你这张脸——」他比划了一下，「不试试可惜。」\n` +
+      `你的条件：魅力 ${cha}（颜值评估 ${look}）。签约意味着退学，也意味着每天十小时的练习室。`,
+    choices: [
+      {
+        text: '签。书什么时候都能念，机会只有一次', risk: 3,
+        flags: ['scout_sign', 'music', 'idol_signed'],
+        eff: { CHA: 4, FAME: 6, WILL: 4, STRESS: 8, SEC: -6, INT: -2 }
+      },
+      {
+        text: '要一笔签约金才肯签：开口赌一把', risk: 3,
+        flags: ['scout_money'],
+        eff: { CHA: 2, STRESS: 4 },
+        gamble: {
+          p: 0.42,
+          win: { MONEY: 25000000, CHA: 3, FAME: 4, WILL: 2, flags: ['music', 'idol_signed'] },
+          lose: { MONEY: -1000000, MOOD: -5, FAME: -2 }
+        }
+      },
+      {
+        text: '把书念完再说：这不是我该走的路', risk: 1,
+        flags: ['scout_refuse'],
+        eff: { INT: 3, WILL: 3, ETH: 2, SEC: 3, FAME: 1 }
+      }
+    ]
+  };
+}
+
+/* 每年一次判定：长得好看 / 念艺术学校的人，初高中就可能被拦下来 */
+function scoutTick(state) {
+  if (state.flags.idol_signed || state.flags.scout_sign) return;
+  if (state.scoutYear === state.age) return;
+  const st = schoolStageOf(state);
+  if (st !== 'mid' && st !== 'high') return;
+  if (state.age < 13 || state.age > 18) return;
+  const art = state.edu && state.edu.hs === 'hs_art';
+  const pretty = state.stats.CHA >= 52 || art;
+  if (!pretty) return;
+  // 长得越好看，被拦下的概率越高
+  const p = clamp(0.10 + (state.stats.CHA - 45) * 0.012 + (art ? 0.18 : 0) + (state.flags.talent_pretty ? 0.12 : 0), 0.08, 0.55);
+  if (!chance(p)) return;
+  state.scoutYear = state.age;
+  state.extraQueue = state.extraQueue || [];
+  state.extraQueue.push({ type: 'event', ev: makeScoutEvent(state) });
+}
+
+/* 星探签约落定：退学 + 进 idol 线（未成年也进得去，只是没工资） */
+function signAsIdol(state) {
+  state.flags.idol_signed = true;
+  state.flags.idol_contract = true;
+  state.flags.music = true;
+  dropOut(state, '练习生');
+  if (state.age >= CAREER_META.minWorkAge) {
+    const r = applyJob(state, 'idol');
+    if (!r.ok) {
+      state.job = '练习生';
+      state.career = { id: 'idol', level: 0, years: 0, joinedAge: state.age };
+    }
+  } else {
+    state.job = '练习生';
+    state.career = { id: 'idol', level: 0, years: 0, joinedAge: state.age };
+    pushLog(state, '【签约】你成了练习生。年纪还小，工资没有，只有练习室的镜子。', 'warn');
+  }
+}
+
 /* ---------- 录取后选专业 ---------- */
 function makeMajorEvent(state, u) {
-  const majors = (u.major || []).slice(0, 3);
+  const majors = (u.major || []).slice(0, 6);
   return {
     id: 'major_at_' + state.age,
     age: [15, 200], w: 0,
     uniId: u.id,
-    text: `【填志愿】${u.name} 的录取系统亮了。招生简章摊在桌上——这几个专业你都能报，命运的分岔口就在这一栏。`,
+    text: `【填志愿】${u.name} 的录取系统亮了。招生简章摊在桌上——这几个专业你都能报。\n` +
+      `专业的名字，会在往后的每一份简历上跟着你。`,
     choices: majors.map((m, i) => ({
-      text: `${m}（${MAJOR_LABEL[m] || '通用'}方向）`,
+      text: `${m}（${majorCatCn(MAJOR_LABEL[m])}方向 · 出路：${majorCareerHint(m)}）`,
       major: m,
       risk: i === 0 ? 2 : (i === 1 ? 2 : 1),
       eff: i === 0 ? { INT: 2 } : (i === 1 ? { CHA: 2 } : { WILL: 2 })
@@ -1428,21 +1760,68 @@ function makeMajorEvent(state, u) {
   };
 }
 
-/* 专业方向归类：决定哪些职业对口 */
+/* 专业方向归类：决定哪些职业对口（52 个专业 / 9 个方向） */
 const MAJOR_LABEL = {
-  '计算机': '理工', '电子信息': '理工', '软件工程': '理工', '机械': '理工',
-  '土木工程': '理工', '机电': '理工', '环境工程': '理工',
-  '金融': '金融', '会计': '金融', '工商管理': '金融', '市场营销': '金融',
-  '电子商务': '金融', '物流管理': '金融',
-  '临床医学': '医学', '护理': '医学',
-  '法学': '法律',
-  '师范': '师范', '新闻传播': '师范', '英语': '师范', '汉语言': '师范', '学前教育': '师范',
-  '设计': '艺术', '动画': '艺术', '广告设计': '艺术'
+  /* 理工 */
+  '计算机': '理工', '软件工程': '理工', '电子信息': '理工', '人工智能': '理工',
+  '自动化': '理工', '通信工程': '理工', '机械': '理工', '车辆工程': '理工',
+  '土木工程': '理工', '机电': '理工', '环境工程': '理工', '材料成型': '理工',
+  '数学': '理工', '物理学': '理工', '电气工程': '理工',
+  /* 经管 */
+  '金融学': '金融', '会计学': '金融', '经济学': '金融', '财务管理': '金融',
+  '工商管理': '金融', '市场营销': '金融', '电子商务': '金融', '物流管理': '金融',
+  '人力资源管理': '金融', '国际经济与贸易': '金融',
+  /* 医学 */
+  '临床医学': '医学', '护理学': '医学', '口腔医学': '医学', '药学': '医学',
+  '公共卫生': '医学', '中医学': '医学',
+  /* 法律 */
+  '法学': '法律', '知识产权': '法律', '政治学与行政学': '法律',
+  /* 教育 */
+  '教育学': '师范', '小学教育': '师范', '学前教育': '师范', '英语': '师范',
+  '汉语言文学': '师范', '历史学': '师范', '心理学': '师范',
+  /* 艺术 */
+  '视觉传达设计': '艺术', '环境设计': '艺术', '动画': '艺术', '数字媒体艺术': '艺术',
+  '美术学': '艺术', '服装设计': '艺术', '音乐表演': '艺术', '舞蹈编导': '艺术',
+  '表演': '艺术', '播音与主持艺术': '艺术',
+  /* 传媒 */
+  '新闻学': '传媒', '传播学': '传媒', '广告学': '传媒',
+  '广播电视编导': '传媒', '网络与新媒体': '传媒',
+  /* 体育 */
+  '体育教育': '体育', '运动训练': '体育',
+  /* 农林 */
+  '农学': '农林', '动物医学': '农林', '林学': '农林'
+};
+/* 旧存档兼容：v5.4 改过一批专业名，老档能自动对上新名 */
+const MAJOR_LEGACY = {
+  '金融': '金融学', '会计': '会计学', '设计': '视觉传达设计', '广告设计': '广告学',
+  '护理': '护理学', '新闻传播': '新闻学', '汉语言': '汉语言文学', '旅游管理': '国际经济与贸易'
+};
+function majorCanonical(m) { return MAJOR_LEGACY[m] || m; }
+
+/* 方向 → 中文名（UI 与提示用） */
+const MAJOR_CAT_CN = {
+  '理工': '理工', '金融': '经管', '医学': '医学', '法律': '法律',
+  '师范': '教育', '艺术': '艺术', '传媒': '传媒', '体育': '体育', '农林': '农林'
+};
+/* 方向 → 主要对口职业（填志愿时告诉玩家出路） */
+const MAJOR_CAREER_HINT = {
+  '理工': '程序员 / AI 算法 / 产品经理 / 电商运营',
+  '金融': '会计 / 投行券商 / 销售 / 电商运营',
+  '医学': '医生 / 护士',
+  '法律': '律师',
+  '师范': '中小学教师',
+  '艺术': '设计师 / 偶像练习生 / 自媒体 / 演员',
+  '传媒': '自媒体博主 / 产品经理 / 电商运营',
+  '体育': '偶像练习生 / 演员',
+  '农林': '创业者 / 工厂管理'
 };
 function majorCatOf(state) {
   const m = state.edu && state.edu.major;
-  return m ? (MAJOR_LABEL[m] || null) : null;
+  if (!m) return null;
+  return MAJOR_LABEL[m] || MAJOR_LABEL[MAJOR_LEGACY[m]] || null;
 }
+function majorCatCn(cat) { return MAJOR_CAT_CN[cat] || cat || '通用'; }
+function majorCareerHint(m) { return MAJOR_CAREER_HINT[MAJOR_LABEL[m]] || '各行各业都要'; }
 
 function resolveEvent(state, ev, choiceIndex) {
   state.used.push(ev.id);
@@ -1455,6 +1834,7 @@ function resolveEvent(state, ev, choiceIndex) {
     ch = list[choiceIndex];
     eff = ch.eff || {};
     applyFlags(state, ch.flags);
+    if (ev.ib && ch.ibGain) applyInbound(state, ev.ib, ch.ibGain);
     if (ch.pet) {
       state.pet = { type: ch.pet, name: randomPetName(ch.pet), alive: true, since: state.age };
       const t = (ch.pet === 'cat') ? '猫' : '狗';
@@ -1674,14 +2054,77 @@ function resolveEvent(state, ev, choiceIndex) {
       } else {
         state.flags.kaoyan_fail = true;
         applyEffects(state, { STRESS: 10, WILL: 3, MOOD: -6 });
-        pushLog(state, '【落榜】考研分数出来了，差了几分。二战的钱和勇气都没攒够，先把工作找起来吧。', 'warn');
-        autoEmploy(state);
+        pushLog(state, '【落榜】考研分数出来了，差了几分。路要自己再选一次。', 'warn');
+        // 落榜不等于立刻被安排一份工作：二战还是就业，交给玩家
+        state.extraQueue = state.extraQueue || [];
+        state.extraQueue.push({ type: 'event', ev: makeKaoyanFailEvent(state) });
       }
     } else if (ch && ch.flags && ch.flags.indexOf('job_now') >= 0) {
       autoEmploy(state);
       pushLog(state, '【求职】你更新了简历开始投递。等通知的日子里，你把这座城市又走了一遍。', 'muted');
     } else if (ch && ch.flags && ch.flags.indexOf('gap_year') >= 0) {
-      pushLog(state, '【间隔年】你背着包走了很远。有些答案不在自习室里。', 'muted');
+      state.job = '待业';
+      pushLog(state, '【间隔年】你背着包走了很远。有些答案不在自习室里。回来之后，简历还得投。', 'muted');
+    }
+  }
+  // 落榜后的二战 / 就业：二战也不是稳的
+  if (ev.id && String(ev.id).indexOf('kaoyan2_at_') === 0) {
+    const e = state.edu;
+    if (ch && ch.flags && ch.flags.indexOf('kaoyan_again') >= 0) {
+      if (chance(ev.kaoyanP || 0.35)) {
+        e.eduLevel = 5;
+        e.salaryK = Math.max(e.salaryK || 1, 1.45);
+        e.gradAge = state.age + 3;
+        state.job = '大学生';
+        state.flags.kaoyan_ok = true;
+        applyEffects(state, { INT: 4, FAME: 4, WILL: 4 });
+        pushLog(state, '【二战上岸】第二年，名字终于出现在拟录取名单上。你坐在台阶上，哭得像个小孩。', 'money');
+      } else {
+        state.job = '待业';
+        applyEffects(state, { STRESS: 12, MOOD: -8, WILL: 2 });
+        pushLog(state, '【二战落榜】又一次差了几分。你把书卖了，第二天去了招聘会。', 'warn');
+      }
+    } else if (ch && ch.flags && ch.flags.indexOf('job_after_fail') >= 0) {
+      autoEmploy(state);
+    }
+  }
+
+  // 有人向你表白：接住 / 装傻 / 说清楚
+  if (ev.id && String(ev.id).indexOf('confess_at_') === 0) {
+    const lv = loveInit(state);
+    let l = (lv.candidates || []).find(x => x.name === ev.confessName);
+    if (ch && ch.flags && ch.flags.indexOf('confess_yes') >= 0) {
+      if (!l) {
+        l = makeLover(state, '表白');
+        l.name = ev.confessName;
+        lv.candidates.push(l);
+      }
+      l.affinity = clamp((l.affinity || 40) + 14, 0, 100);
+      if (state.flags.married) {
+        l.outside = true; l.secret = true; l.affairSince = state.age;
+        if (state.spouse) state.spouse.affinity = clamp((state.spouse.affinity || 60) - 6, 0, 100);
+        pushLog(state, `【偷情】你接住了 ${l.name} 的那句话。从此手机有了第二个密码。`, 'warn');
+      } else {
+        lv.partner = l;
+        state.flags.dating = true; state.flags.in_love = true;
+        pushLog(state, `【在一起】你和 ${l.name} 在一起了。${state.age} 岁这年，有人先说了那句话。`, 'money');
+      }
+    } else if (ch && ch.flags && ch.flags.indexOf('confess_no') >= 0) {
+      if (l) l.affinity = clamp(l.affinity - 12, 0, 100);
+      pushLog(state, `【回绝】你把话回得很体面。${ev.confessName} 说：我明白。`, 'muted');
+    } else if (ch && ch.flags && ch.flags.indexOf('confess_ignore') >= 0) {
+      pushLog(state, `【沉默】你把手机扣了过去。那条消息，你后来再也没点开过。`, 'muted');
+    }
+  }
+
+  // 星探签约：真的会退学，真的会去练习室
+  if (ev.id && String(ev.id).indexOf('scout_at_') === 0) {
+    // 注意：applyFlags 已经把 scout_sign 打上了，所以这里用「是否已签约」来判断
+    const signed = state.flags.idol_signed || !!(ch && ch.flags && ch.flags.indexOf('scout_sign') >= 0);
+    if (signed && !state.flags.idol_contract) {
+      signAsIdol(state);
+    } else if (ch && ch.flags && ch.flags.indexOf('scout_refuse') >= 0) {
+      pushLog(state, '【星探】你把名片夹在了课本里，后来再没翻到过。', 'muted');
     }
   }
 

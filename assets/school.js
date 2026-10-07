@@ -29,6 +29,13 @@ const HIGH_SCHOOLS = [
     flags: ['hs_ord'], gaoBonus: 5
   },
   {
+    id: 'hs_art', name: '艺术高中 / 艺校', tier: 2, minScore: 50, years: 3,
+    desc: '专业课占半天：声乐、器乐、表演、美术。文化课可以差一点，但长得好看或天赋够，是硬通货。',
+    eff: { CHA: 6, WILL: 3, INT: -1, STRESS: 5, NET: 4, FAME: 3 },
+    flags: ['hs_art'], gaoBonus: -2,
+    req: { CHA: 38 }, reqText: '要过专业面试（魅力 38）'
+  },
+  {
     id: 'hs_vo', name: '职业高中 / 中专', tier: 1, minScore: 40, years: 3,
     desc: '学一门手艺：汽修、烹饪、电商、幼师。三年后直接进厂或开店。',
     eff: { STR: 4, CHA: 3, WILL: 2, STRESS: 2, NET: 5 },
@@ -46,35 +53,35 @@ const HIGH_SCHOOLS = [
 const UNIVERSITIES = [
   {
     id: 'u_985', name: '985 重点大学', edu: 5, minScore: 88, years: 4, tier: 5,
-    major: ['计算机', '金融', '临床医学', '法学', '电子信息'],
+    major: ['计算机', '人工智能', '金融学', '临床医学', '法学', '电子信息'],
     desc: '录取通知书是红色的。村里或小区门口，会贴一张大红榜。',
     eff: { INT: 8, NET: 10, FAME: 10, CHA: 3, WILL: 4 },
     flags: ['uni_985'], salaryK: 1.42
   },
   {
     id: 'u_211', name: '211 大学', edu: 4, minScore: 78, years: 4, tier: 4,
-    major: ['软件工程', '会计', '新闻传播', '机械', '师范'],
+    major: ['软件工程', '会计学', '新闻学', '机械', '教育学', '播音与主持艺术'],
     desc: '也是好学校。校招的时候，简历能过第一道机器筛选。',
     eff: { INT: 6, NET: 8, FAME: 7, CHA: 2, WILL: 3 },
     flags: ['uni_211'], salaryK: 1.20
   },
   {
     id: 'u_yiben', name: '普通一本', edu: 4, minScore: 68, years: 4, tier: 3.5,
-    major: ['工商管理', '土木工程', '英语', '市场营销', '设计'],
+    major: ['工商管理', '土木工程', '英语', '市场营销', '视觉传达设计', '表演'],
     desc: '省里的好学校。能不能出头，看这四年你怎么过。',
     eff: { INT: 5, NET: 6, FAME: 4, CHA: 2, WILL: 2 },
     flags: ['uni_bk'], salaryK: 1.04
   },
   {
     id: 'u_erben', name: '二本 / 民办本科', edu: 3, minScore: 56, years: 4, tier: 3,
-    major: ['电子商务', '旅游管理', '环境工程', '汉语言', '动画'],
+    major: ['电子商务', '国际经济与贸易', '环境工程', '汉语言文学', '动画', '音乐表演'],
     desc: '学费是家里咬牙凑的。毕业证上写着本科，剩下的看你自己。',
     eff: { INT: 3, NET: 5, CHA: 2, WILL: 3 },
     flags: ['uni_bk'], salaryK: 0.95
   },
   {
     id: 'u_zhuanke', name: '专科院校', edu: 2, minScore: 42, years: 3, tier: 2,
-    major: ['护理', '机电', '广告设计', '物流管理', '学前教育'],
+    major: ['护理学', '机电', '广告学', '物流管理', '学前教育'],
     desc: '三年制。技术性更强，也更容易在毕业那年就找到活干。',
     eff: { STR: 3, NET: 5, CHA: 2, WILL: 3 },
     flags: ['uni_zk'], salaryK: 0.85
@@ -127,7 +134,9 @@ const CLASSMATE_TYPES = [
 
 function makeClassmates(state, stage) {
   const pool = CLASSMATE_TYPES.slice();
-  const n = stage === 'uni' ? 5 : 4;
+  const n = stage === 'uni' ? 5 : (stage === 'grad' ? 4 : 4);
+  // 研究生同学年纪更大一些
+  const ageAdd = stage === 'grad' ? randInt(0, 3) : 0;
   const out = [];
   for (let i = 0; i < n && pool.length; i++) {
     const t = pool.splice(randInt(0, pool.length - 1), 1)[0];
@@ -135,7 +144,7 @@ function makeClassmates(state, stage) {
       key: t.key,
       name: randomPersonName(state.gender === 'M' ? 'F' : 'M'),
       gender: state.gender === 'M' ? 'F' : 'M',
-      age: clamp(state.age + randInt(-1, 1), 5, 30),
+      age: clamp(state.age + randInt(-1, 1) + ageAdd, 5, 40),
       affinity: randInt(8, 26),
       charm: clamp(Math.round(rand(20, 70) + (t.key === 'rich' ? 15 : 0)), 5, 100),
       stage: stage,
@@ -149,7 +158,7 @@ function makeClassmates(state, stage) {
 }
 
 /* 同学阶段名 */
-const STAGE_CN = { pri: '小学', mid: '初中', high: '高中', uni: '大学' };
+const STAGE_CN = { pri: '小学', mid: '初中', high: '高中', uni: '大学', grad: '研究生' };
 const CLASSMATE_CAP = 14;
 
 function stageCn(s) { return STAGE_CN[s] || '老同学'; }
@@ -176,7 +185,8 @@ function refreshClassmates(state) {
   pushLog(state, st === 'pri' ? '【开学】小学。你背着新书包走进教室，一群同样紧张的小孩互相打量。'
     : st === 'mid' ? '【开学】初中。新的教室，新的同学，新的排名。'
       : st === 'high' ? '【开学】高中。分班榜前挤满了家长，你在名单上找到了自己。'
-        : '【开学】大学报到。宿舍四人间，上铺的同学来自一个你没听过的城市。', 'muted');
+        : st === 'grad' ? '【开学】研究生报到。同门一共几个人，导师的办公室在四楼，走廊尽头那间。'
+          : '【开学】大学报到。宿舍四人间，上铺的同学来自一个你没听过的城市。', 'muted');
 }
 
 /* 当前在校阶段（用于 UI 区分在校 / 校友） */
@@ -185,7 +195,10 @@ function currentStage(state) { return schoolStageOf(state); }
 function schoolStageOf(state) {
   if (!state.edu || state.edu.stopped) return null;
   const e = state.edu;
-  if (e.uni && e.uni !== 'u_fail' && state.age >= EXAM_META.gaoAge && state.age <= (e.gradAge || 22)) return 'uni';
+  if (e.uni && e.uni !== 'u_fail' && state.age >= EXAM_META.gaoAge && state.age <= (e.gradAge || 22)) {
+    // 考研上岸之后换一批同学：同门、师兄师姐
+    return (state.flags.kaoyan_ok && state.age >= 22) ? 'grad' : 'uni';
+  }
   if (state.age >= 7 && state.age < 13) return 'pri';
   if (state.age >= 13 && state.age < EXAM_META.midAge) return 'mid';
   if (state.age >= EXAM_META.midAge && state.age < EXAM_META.gaoAge) return 'high';
@@ -240,6 +253,25 @@ function recommendUni(state) {
   if (state.flags.tizhinei || state.flags.prof) return UNIVERSITIES[3];
   if (chance(0.25)) return UNIVERSITIES[4];
   return UNIVERSITIES[5];
+}
+
+/* ---------------- 录取门槛检查：进不去要说清楚为什么 ---------------- */
+const STAT_CN_LOCK = {
+  INT: '智力', STR: '体魄', CHA: '魅力', WILL: '意志', HP: '健康',
+  STRESS: '压力', NET: '人脉', FAME: '声望', LOY: '口碑', ETH: '道德', MOOD: '心情'
+};
+function schoolLockReason(state, u, total, full) {
+  const need = Math.round((u.minScore || 0) / 100 * (full || 100));
+  if (total < need) return `分数不够：差 ${need - total} 分（录取线 ${need}）`;
+  if (u.req) {
+    for (const k in u.req) {
+      if ((state.stats[k] || 0) < u.req[k]) {
+        return (u.reqText || `${STAT_CN_LOCK[k] || k} 不够`) + `（需 ${u.req[k]}，你 ${Math.round(state.stats[k] || 0)}）`;
+      }
+    }
+  }
+  if (u.needFlag && !u.needFlag.some(f => state.flags[f])) return '你没有拿到这里的门路';
+  return null;
 }
 
 /* ---------------- 生成考试事件（先答 5 道常识题，再放榜） ---------------- */
@@ -356,11 +388,17 @@ function answerExamQ(state, optIdx) {
     qz.done = true;
     if (ex.kind === 'mid') state.edu.mid = total; else state.edu.gao = total;
     const pool = ex.kind === 'mid' ? HIGH_SCHOOLS : UNIVERSITIES;
-    ex.options = pool.filter(u => total >= Math.round(u.minScore / 100 * ex.full));
+    // 所有学校都摆出来，进不去的写清楚为什么——不然玩家永远不知道自己差在哪
+    ex.options = pool.map(u => {
+      const why = schoolLockReason(state, u, total, ex.full);
+      return why ? Object.assign({}, u, { locked: true, lockReason: why }) : Object.assign({}, u);
+    });
+    const open = ex.options.filter(o => !o.locked);
     ex.text =
       `放榜了。平时分 ${ex.base} / ${ex.academicFull}，常识题答对 ${qz.correct} / 5 道得 ${quizScore} / ${ex.quizFull} 分，` +
       `总分 ${total} / ${ex.full}${total >= ex.full ? '——满分。' : '。'}\n` +
-      (ex.options.length > 1 ? `分数就摆在这里。你想去哪儿？` : `路只有一条。`);
+      (open.length > 1 ? `${pool.length} 条路摆在这里，你能走的有 ${open.length} 条。想去哪儿？`
+        : open.length === 1 ? `只有一条路能走。` : `今年，一条路都没走通。`);
     pushLog(state, `【放榜】${ex.kind === 'mid' ? '中考' : '高考'} ${total} 分（满分 ${ex.full}${total >= ex.full ? '，满分' : ''}）。`, 'money');
   }
   return { ok: true, correct: correct, done: qz.done };

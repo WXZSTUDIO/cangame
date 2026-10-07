@@ -1782,13 +1782,58 @@ const EVENTS_ERA = [
 ];
 EVENTS.push.apply(EVENTS, EVENTS_ERA);
 
+/* ---------------- 善事：道德不是只能往下掉，也可以主动攒 ---------------- */
+const GOOD_DEEDS = [
+  {
+    id: 'g_return', name: '把捡到的钱包还回去', icon: '👛', minAge: 10,
+    desc: '里面有现金和身份证。你在原地等了四十分钟。',
+    eff: { ETH: 7, WILL: 2, MOOD: 4, LOVE: 2 }, cost: 0
+  },
+  {
+    id: 'g_elder', name: '去福利院陪老人半天', icon: '🏛', minAge: 10,
+    desc: '有个奶奶一直拉着你的手，说你像她孙子。',
+    eff: { ETH: 4, LOVE: 4, MOOD: 3, SEC: 2, NET: 1 }, cost: 0
+  },
+  {
+    id: 'g_apology', name: '向被你亏欠的人道歉', icon: '🙏', minAge: 12,
+    desc: '那条消息写了删、删了写。发出去之后，你反而轻松了。',
+    eff: { ETH: 6, WILL: 3, MOOD: 5, STRESS: -5, LOVE: -1 }, cost: 0
+  },
+  {
+    id: 'g_volunteer', name: '周末去做志愿者', icon: '🧡', minAge: 14,
+    desc: '红马甲、地铁站、一天站八小时。你说的「谢谢」比这辈子都多。',
+    eff: { ETH: 5, NET: 3, LOVE: 2, MOOD: 3, HP: -2 }, cost: 0
+  },
+  {
+    id: 'g_quit', name: '戒掉一个坏习惯', icon: '🚭', minAge: 14,
+    desc: '烟、酒、熬夜、刷短视频。最难的不是第一天，是第七天。',
+    eff: { ETH: 3, WILL: 5, HP: 4, STRESS: -6 }, cost: 0
+  },
+  {
+    id: 'g_blood', name: '去献一次血', icon: '🩸', minAge: 18,
+    desc: '护士说：你这血型最近很缺。你躺在那儿，觉得这半天没白活。',
+    eff: { ETH: 4, HP: -3, MOOD: 3, FAME: 1 }, cost: 0
+  },
+  {
+    id: 'g_donate', name: '匿名捐一笔钱', icon: '💰', minAge: 18,
+    desc: '汇款单上「捐赠人」那一栏，你写了「一个路过的人」。',
+    eff: { ETH: 6, LOVE: 3, MOOD: 4, SEC: 1, FAME: 1 }, cost: 6000000
+  },
+  {
+    id: 'g_teach', name: '去山区支教一学期', icon: '📚', minAge: 20,
+    desc: '四十个学生，两个年级，一间教室。你第一次知道「老师」两个字有多重。',
+    eff: { ETH: 8, INT: 2, FAME: 3, LOVE: 4, WILL: 4, STRESS: 5 }, cost: 3000000
+  }
+];
+
 /* ---------------- 朋友圈类型（人际关系卡片） ---------------- */
+/* ageGap：相对「你」的年龄差区间。恩师必须年长一辈，同事/生意伙伴跨度更大 */
 const FRIEND_TYPES = [
-  { key: 'childhood', avatar: '🧑‍🤝‍🧑', label: '发小', pass: { LOVE: 0.5 }, line: '每年关爱 +', from: 5 },
-  { key: 'colleague', avatar: '👔', label: '同事', pass: { LOY: 0.5 }, line: '每年职场口碑 +', from: 17, needCareer: true },
-  { key: 'biz', avatar: '🤝', label: '生意伙伴', pass: { MONEY: 250000 }, line: '每年现金 +', from: 24, needCareer: true },
-  { key: 'neighbor', avatar: '🏘', label: '老友', pass: { HP: 0.4 }, line: '每年健康 +', from: 38 },
-  { key: 'teacher', avatar: '👩‍🏫', label: '恩师', pass: { INT: 0.4 }, line: '每年智力 +', from: 7, to: 23 }
+  { key: 'childhood', avatar: '🧑‍🤝‍🧑', label: '发小', pass: { LOVE: 0.5 }, line: '每年关爱 +', from: 5, ageGap: [-1, 2] },
+  { key: 'colleague', avatar: '👔', label: '同事', pass: { LOY: 0.5 }, line: '每年职场口碑 +', from: 17, needCareer: true, ageGap: [-7, 9] },
+  { key: 'biz', avatar: '🤝', label: '生意伙伴', pass: { MONEY: 250000 }, line: '每年现金 +', from: 24, needCareer: true, ageGap: [-9, 13] },
+  { key: 'neighbor', avatar: '🏘', label: '老友', pass: { HP: 0.4 }, line: '每年健康 +', from: 38, ageGap: [-5, 8] },
+  { key: 'teacher', avatar: '👩‍🏫', label: '恩师', pass: { INT: 0.4 }, line: '每年智力 +', from: 7, to: 23, ageGap: [16, 30] }
 ];
 
 /* ---------------- 称号（按人生阶段显示身份） ---------------- */

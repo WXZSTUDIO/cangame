@@ -17,10 +17,10 @@ const CAREERS = [
     id: 'rider', name: '外卖骑手', cat: '服务业', edu: 0, risk: 2, need: {},
     desc: '电动车、保温箱、超时罚款。时间就是钱，这句话在这里是字面意思。',
     ladder: [
-      { title: '外卖骑手', sal: 12000000, cost: 8000000 },
-      { title: '金牌骑手', sal: 17000000, cost: 8500000 },
-      { title: '站点组长', sal: 23000000, cost: 9500000 },
-      { title: '区域承包商', sal: 34000000, cost: 13000000 }
+      { title: '外卖骑手', sal: 8000000, cost: 7600000 },
+      { title: '金牌骑手', sal: 11500000, cost: 8000000 },
+      { title: '站点组长', sal: 15500000, cost: 9000000 },
+      { title: '区域承包商', sal: 23000000, cost: 12000000 }
     ],
     tick: { STR: -1, HP: -1, STRESS: 2, NET: 1 }
   },
@@ -28,11 +28,11 @@ const CAREERS = [
     id: 'extra', name: '群众演员', cat: '演艺', edu: 0, risk: 2, need: {},
     desc: '一天八十块，盒饭管饱。躺在地上演死尸，一躺就是六个小时。',
     ladder: [
-      { title: '群演', sal: 8000000, cost: 7000000 },
-      { title: '特约演员', sal: 15000000, cost: 9000000 },
-      { title: '配角演员', sal: 28000000, cost: 13000000 },
-      { title: '有名气的演员', sal: 70000000, cost: 22000000 },
-      { title: '主演 / 艺人', sal: 180000000, cost: 40000000 }
+      { title: '群演', sal: 5000000, cost: 7000000 },
+      { title: '特约演员', sal: 10000000, cost: 9000000 },
+      { title: '配角演员', sal: 19000000, cost: 13000000 },
+      { title: '有名气的演员', sal: 50000000, cost: 22000000 },
+      { title: '主演 / 艺人', sal: 130000000, cost: 40000000 }
     ],
     tick: { CHA: 1, FAME: 2, SEC: -1, STRESS: 2 }
   },
@@ -40,10 +40,10 @@ const CAREERS = [
     id: 'waiter', name: '餐饮服务员', cat: '服务业', edu: 0, risk: 1, need: {},
     desc: '端盘子、擦桌子、被骂。第一份工作大多是这样开始的。',
     ladder: [
-      { title: '服务员', sal: 9000000, cost: 7000000 },
-      { title: '领班', sal: 14000000, cost: 8000000 },
-      { title: '店长', sal: 24000000, cost: 10000000 },
-      { title: '区域店长', sal: 40000000, cost: 14000000 }
+      { title: '服务员', sal: 6200000, cost: 6800000 },
+      { title: '领班', sal: 9800000, cost: 7800000 },
+      { title: '店长', sal: 17500000, cost: 9600000 },
+      { title: '区域店长', sal: 30000000, cost: 13500000 }
     ],
     tick: { CHA: 1, NET: 1, STR: -1 }
   },
@@ -59,7 +59,7 @@ const CAREERS = [
     tick: { CHA: 2, FAME: 2, NET: 2, STRESS: 3, HP: -1 }
   },
   {
-    id: 'streamer', name: '自媒体博主', cat: '新媒体', edu: 2, risk: 2, need: { INT: 30 },
+    id: 'streamer', name: '自媒体博主', cat: '新媒体', edu: 2, risk: 2, need: { INT: 30 }, major: ['传媒', '艺术'],
     desc: '一个人、一台电脑。流量是可以被设计出来的，也可以一夜归零。',
     ladder: [
       { title: '兼职博主', sal: 10000000, cost: 7000000 },
@@ -75,10 +75,10 @@ const CAREERS = [
     id: 'factory', name: '工厂工人', cat: '制造业', edu: 1, risk: 1, need: {},
     desc: '流水线、两班倒、白班夜班。厂里包吃住，也包住你十年。',
     ladder: [
-      { title: '流水线工人', sal: 26000000, cost: 14000000 },
-      { title: '熟练工', sal: 34000000, cost: 15000000 },
-      { title: '班组长', sal: 46000000, cost: 17000000 },
-      { title: '车间主任', sal: 68000000, cost: 22000000 }
+      { title: '流水线工人', sal: 18000000, cost: 13000000 },
+      { title: '熟练工', sal: 24000000, cost: 14000000 },
+      { title: '班组长', sal: 33000000, cost: 16000000 },
+      { title: '车间主任', sal: 50000000, cost: 21000000 }
     ],
     tick: { STR: -1, HP: -1, WILL: 1 }
   },
@@ -86,10 +86,10 @@ const CAREERS = [
     id: 'courier', name: '快递员', cat: '物流', edu: 1, risk: 1, need: {},
     desc: '片区、三轮车、双十一。爬楼的时候你会想起当年没做的那道题。',
     ladder: [
-      { title: '快递员', sal: 18000000, cost: 10000000 },
-      { title: '片区骨干', sal: 26000000, cost: 11000000 },
-      { title: '网点承包人', sal: 42000000, cost: 15000000 },
-      { title: '区域加盟商', sal: 80000000, cost: 26000000 }
+      { title: '快递员', sal: 12500000, cost: 9500000 },
+      { title: '片区骨干', sal: 18500000, cost: 10500000 },
+      { title: '网点承包人', sal: 31000000, cost: 14500000 },
+      { title: '区域加盟商', sal: 62000000, cost: 25000000 }
     ],
     tick: { STR: -1, NET: 2, CHA: 1 }
   },
@@ -97,10 +97,10 @@ const CAREERS = [
     id: 'driver', name: '网约车司机', cat: '服务业', edu: 1, risk: 1, need: {},
     desc: '方向盘后面是十二个小时。你听了一整座城市的故事。',
     ladder: [
-      { title: '网约车司机', sal: 20000000, cost: 11000000 },
-      { title: '五星司机', sal: 28000000, cost: 12000000 },
-      { title: '车队长', sal: 40000000, cost: 15000000 },
-      { title: '小车队老板', sal: 70000000, cost: 24000000 }
+      { title: '网约车司机', sal: 14000000, cost: 10500000 },
+      { title: '五星司机', sal: 20000000, cost: 11500000 },
+      { title: '车队长', sal: 30000000, cost: 14500000 },
+      { title: '小车队老板', sal: 54000000, cost: 23500000 }
     ],
     tick: { NET: 1, HP: -1, STRESS: 1 }
   },
@@ -108,18 +108,18 @@ const CAREERS = [
     id: 'guard', name: '保安 / 物业', cat: '服务业', edu: 1, risk: 0, need: {},
     desc: '门岗、监控室、一杯茶。稳定，也容易把人坐懒。',
     ladder: [
-      { title: '保安', sal: 14000000, cost: 8000000 },
-      { title: '保安队长', sal: 20000000, cost: 9000000 },
-      { title: '物业主管', sal: 30000000, cost: 11000000 },
-      { title: '物业经理', sal: 45000000, cost: 15000000 }
+      { title: '保安', sal: 9500000, cost: 7500000 },
+      { title: '保安队长', sal: 14000000, cost: 8500000 },
+      { title: '物业主管', sal: 22000000, cost: 10500000 },
+      { title: '物业经理', sal: 34000000, cost: 14500000 }
     ],
     tick: { STR: -1, SEC: 2, WILL: -1 }
   },
   {
-    id: 'sales', name: '销售 / 中介', cat: '商业', edu: 1, risk: 2, need: { CHA: 25 },
+    id: 'sales', name: '销售 / 中介', cat: '商业', edu: 1, risk: 2, need: { CHA: 25 }, major: ['金融'],
     desc: '底薪三千，提成上不封顶。脸皮厚一点，收入高一点。',
     ladder: [
-      { title: '销售专员', sal: 22000000, cost: 12000000 },
+      { title: '销售专员', sal: 17000000, cost: 12000000 },
       { title: '高级销售', sal: 42000000, cost: 16000000 },
       { title: '销售主管', sal: 70000000, cost: 22000000 },
       { title: '销售总监', sal: 130000000, cost: 35000000 }
@@ -130,18 +130,18 @@ const CAREERS = [
     id: 'cook', name: '厨师', cat: '服务业', edu: 1, risk: 1, need: {},
     desc: '后厨四十度。颠勺三年，手腕比同龄人粗一圈。',
     ladder: [
-      { title: '学徒', sal: 12000000, cost: 7500000 },
-      { title: '炒锅师傅', sal: 24000000, cost: 9500000 },
-      { title: '厨师长', sal: 45000000, cost: 14000000 },
-      { title: '餐饮合伙人', sal: 90000000, cost: 26000000 }
+      { title: '学徒', sal: 8500000, cost: 7200000 },
+      { title: '炒锅师傅', sal: 17000000, cost: 9200000 },
+      { title: '厨师长', sal: 34000000, cost: 13500000 },
+      { title: '餐饮合伙人', sal: 70000000, cost: 25000000 }
     ],
     tick: { STR: -1, CHA: 1, NET: 1 }
   },
   {
-    id: 'idol', name: '偶像练习生', cat: '演艺', edu: 1, risk: 3, need: { CHA: 45 },
+    id: 'idol', name: '偶像练习生', cat: '演艺', edu: 1, risk: 3, need: { CHA: 50 }, major: ['艺术', '体育'],
     desc: '练习室的镜子和体脂秤。出道位是几百个人抢的九个位置。',
     ladder: [
-      { title: '练习生', sal: 9000000, cost: 9000000 },
+      { title: '练习生', sal: 7000000, cost: 8500000 },
       { title: '出道艺人', sal: 40000000, cost: 16000000 },
       { title: '人气成员', sal: 110000000, cost: 30000000 },
       { title: '顶流偶像', sal: 320000000, cost: 60000000 },
@@ -154,7 +154,7 @@ const CAREERS = [
     id: 'gamer', name: '电竞选手', cat: '电竞', edu: 1, risk: 3, need: { INT: 35 },
     desc: '每天训练十四小时。黄金年龄只有四年，之后呢？',
     ladder: [
-      { title: '青训队员', sal: 12000000, cost: 8000000 },
+      { title: '青训队员', sal: 7500000, cost: 8000000 },
       { title: '职业选手', sal: 40000000, cost: 13000000 },
       { title: '明星选手', sal: 120000000, cost: 26000000 },
       { title: '俱乐部股东 / 教练', sal: 200000000, cost: 40000000 }
@@ -164,13 +164,13 @@ const CAREERS = [
 
   /* ===== 专科 ===== */
   {
-    id: 'clerk', name: '公司文员', cat: '职场', edu: 2, risk: 0, need: {},
+    id: 'clerk', name: '公司文员', cat: '职场', edu: 2, risk: 0, need: {}, major: ['金融', '师范'],
     desc: '打印、报销、订会议室。写字楼里最不起眼，也最不能缺的岗位。',
     ladder: [
-      { title: '前台 / 文员', sal: 20000000, cost: 10000000 },
-      { title: '行政主管', sal: 32000000, cost: 12000000 },
-      { title: '行政经理', sal: 48000000, cost: 16000000 },
-      { title: '办公室主任', sal: 70000000, cost: 22000000 }
+      { title: '前台 / 文员', sal: 16000000, cost: 10000000 },
+      { title: '行政主管', sal: 25000000, cost: 12000000 },
+      { title: '行政经理', sal: 38000000, cost: 16000000 },
+      { title: '办公室主任', sal: 56000000, cost: 22000000 }
     ],
     tick: { LOY: 1, NET: 1, STRESS: 1 }
   },
@@ -223,7 +223,7 @@ const CAREERS = [
     tick: { INT: 2, STR: -1, HP: -1, STRESS: 2 }
   },
   {
-    id: 'pm', name: '产品经理', cat: '互联网', edu: 3, risk: 2, need: { INT: 35, CHA: 30 },
+    id: 'pm', name: '产品经理', cat: '互联网', edu: 3, risk: 2, need: { INT: 35, CHA: 30 }, major: ['理工', '金融', '传媒'],
     desc: '需求文档写不完，锅也背不完。产品是妥协的艺术。',
     ladder: [
       { title: '产品助理', sal: 28000000, cost: 11000000 },

@@ -10,7 +10,7 @@ const LOVE_META = {
   touchesPerYear: 3,   // 同一个人一年最多见 3 次（原来一年只有一次，关系根本推不动）
   pregnantBase: 0.16,
   safePregnant: 0.008, // 做好措施后的怀孕概率（几乎为零，但不是绝对）
-  safeCost: 500000,    // 措施的成本
+  safeCost: 27000,     // 措施的成本（原来 50 万，贵得没人用；现在约合 150 元）
   affairRisk: 0.34,    // 婚内越界被撞破的概率
   divorceMinYears: 1,  // 结婚满一年才能离
   dateCost: 600000,
@@ -100,6 +100,111 @@ function meetFromClassmate(state, idx) {
   lv.candidates.push(l);
   pushLog(state, `【心动】你开始在意 ${l.name} 了。早恋这件事，老师和家长都反对，但你控制不了自己。`, 'story');
   return { ok: true, lover: l };
+}
+
+/* 主动在外面认识一个人：已婚叫外遇，未婚叫邂逅 */
+function meetOutside(state) {
+  if (state.age < 18) return { ok: false, msg: '再大一点再说' };
+  const lv = loveInit(state);
+  if (lv.candidates.length >= 6) return { ok: false, msg: '已经够乱了' };
+  const married = !!state.flags.married;
+  const l = makeLover(state, married ? '外遇' : '邂逅');
+  l.outside = married;   // 只是「婚外认识的人」，要不要越线是下一步的事
+  l.affinity = randInt(22, 40);
+  lv.candidates.push(l);
+  pushLog(state, married
+    ? `【外遇】${l.srcText || ''}你认识了 ${l.name}。${l.age}岁。${loverLabel(l)}。\n你知道自己在做什么——也知道一旦被发现，要还的东西不止一句道歉。`
+    : `【邂逅】你在一次无关紧要的场合遇见了 ${l.name}。${loverLabel(l)}。有些人出现在你生活里，是没有预告的。`, 'story');
+  return { ok: true, lover: l };
+}
+
+/* 偷情 / 长期外遇：不是一夜，是维持一段见不得光的关系 */
+function startAffair(state, idx) {
+  const lv = loveInit(state);
+  const l = lv.candidates[idx];
+  if (!l) return { ok: false, msg: '没有这个人' };
+  if (l.alive === false) return { ok: false, msg: 'TA 已经不在了' };
+  if (!state.flags.married && !state.flags.dating) return { ok: false, msg: '你现在一个人，谈不上偷情' };
+  if (l.affinity < LOVE_META.touchAffinity) return { ok: false, msg: `好感还不够（需 ${LOVE_META.touchAffinity}%）` };
+  if (l.secret) return { ok: false, msg: '你们已经是这种关系了' };
+  l.secret = true;
+  l.outside = true;
+  l.affairSince = state.age;
+  applyEffects(state, { ETH: -10, LOVE: 3, SEC: -4, STRESS: 6, MOOD: 2 });
+  if (state.spouse) state.spouse.affinity = clamp((state.spouse.affinity || 60) - 3, 0, 100);
+  pushLog(state, `【偷情】你和 ${l.name} 开始了见不得光的那部分。\n` +
+    `你删掉了聊天记录，学会了一个新密码。被发现的概率，比你想的要高。`, 'warn');
+  return { ok: true, lover: l };
+}
+
+/* 断掉这段关系 */
+function endAffair(state, idx) {
+  const lv = loveInit(state);
+  const l = lv.candidates[idx];
+  if (!l) return { ok: false, msg: '没有这个人' };
+  if (!l.secret) return { ok: false, msg: '你们不是这种关系' };
+  delete l.secret;
+  l.affinity = clamp(l.affinity - 18, 0, 100);
+  applyEffects(state, { ETH: 4, LOVE: -6, MOOD: -4, STRESS: 4, SEC: 2 });
+  pushLog(state, `【收手】你和 ${l.name} 说清楚了。删掉了号码，也删掉了一部分自己。`, 'muted');
+  return { ok: true };
+}
+
+/* 有人主动向你表白——不是你单方面追人（恋爱中 / 已婚也会遇到） */
+function makeConfessEvent(state, l) {
+  const married = !!state.flags.married;
+  const dating = !!state.flags.dating;
+  const who = l ? l.name : '有人';
+  const head = married ? '【婚外的表白】' : (dating ? '【有人向你表白】' : '【被表白】');
+  return {
+    id: 'confess_at_' + state.age,
+    age: [16, 200], w: 0,
+    confessName: who,
+    text: `${head}${who} 把话说得很直：「我知道你有${married ? '家庭' : (dating ? '对象' : '你的生活')}，但我还是想让你知道。」\n` +
+      `手机屏幕暗下去之前，那行字一直亮着。`,
+    choices: [
+      {
+        text: married ? '接住它：开始一段见不得光的关系' : (dating ? '接住它：和现在的 TA 说清楚，转向这个人' : '答应：那就在一起吧'),
+        risk: 3, flags: ['confess_yes'],
+        eff: married ? { ETH: -10, LOVE: 5, SEC: -5, STRESS: 6, MOOD: 3 }
+          : (dating ? { ETH: -8, LOVE: 4, STRESS: 6, CHA: 2 } : { LOVE: 8, MOOD: 6, SEC: 3, CHA: 2 })
+      },
+      {
+        text: '装作没看见：把手机扣过去', risk: 1, flags: ['confess_ignore'],
+        eff: { ETH: 2, MOOD: -3, LOVE: -2, WILL: -1 }
+      },
+      {
+        text: '认真回绝：把话说清楚，谁都别难堪', risk: 1, flags: ['confess_no'],
+        eff: { ETH: 4, WILL: 3, LOVE: -3, SEC: 3, MOOD: -1 }
+      }
+    ]
+  };
+}
+
+/* 每年都可能有人先开口 */
+function confessTick(state) {
+  if (state.age < 16) return;
+  if (state.confessYear === state.age) return;
+  const lv = loveInit(state);
+  const married = !!state.flags.married;
+  // 频率：单身最高，已婚也有（只是性质不同）
+  const p = married ? 0.09 : (state.flags.dating ? 0.11 : 0.20);
+  if (!chance(p)) return;
+  let l = null;
+  const pool = (lv.candidates || []).filter(x => x.alive !== false && x.affinity >= 34);
+  if (pool.length && chance(0.55)) {
+    l = pool[randInt(0, pool.length - 1)];
+  } else {
+    l = makeLover(state, '表白');
+    l.outside = married;
+    l.affinity = randInt(38, 58);
+    lv.candidates.push(l);
+    pushLog(state, `【表白】${l.name} 找了个机会把话说了出口。${loverLabel(l)}。`, 'story');
+  }
+  if (!l) return;
+  state.confessYear = state.age;
+  state.extraQueue = state.extraQueue || [];
+  state.extraQueue.push({ type: 'event', ev: makeConfessEvent(state, l) });
 }
 
 function meetByMatchmaker(state) {
@@ -397,7 +502,8 @@ function loveTick(state) {
       // 婚姻是要经营的：一年到头不闻不问，感情会冷下来
       const touch = state.socialTouch || {};
       if (touch.spouse !== state.age) {
-        state.spouse.affinity = clamp((state.spouse.affinity || 60) - randInt(2, 5), 0, 100);
+        // 冷落一年才掉一点；好好经营就能稳住（原来是 -2~5，怎么互动都补不回来）
+        state.spouse.affinity = clamp((state.spouse.affinity || 60) - randInt(1, 3), 0, 100);
         if (state.spouse.affinity <= 22 && (state.marryCrisisYear || 0) + 3 <= state.age && chance(0.3)) {
           state.marryCrisisYear = state.age;
           state.extraQueue = state.extraQueue || [];
@@ -410,6 +516,15 @@ function loveTick(state) {
   const dropped = [];
   lv.candidates.forEach(l => {
     l.age = (l.age || state.age) + 1;
+    // 偷情 / 长期外遇：每一年都在被发现的风险里
+    if (l.secret) {
+      const risk = LOVE_META.affairRisk * 0.62 + Math.min(0.18, (state.age - (l.affairSince || state.age)) * 0.02);
+      if (chance(risk)) {
+        delete l.secret;
+        state.extraQueue = state.extraQueue || [];
+        state.extraQueue.push({ type: 'event', ev: makeAffairEvent(state, l) });
+      }
+    }
     // 候选人冷却：长期不联系，好感自然流失
     l.touches = 0;
     if (l.lastTouch !== state.age) l.affinity = clamp(l.affinity - randInt(1, 4), 0, 100);
@@ -425,4 +540,6 @@ function loveTick(state) {
   }
   // 偶遇（已婚也会遇上——那是另一回事）
   if (state.age >= 17) meetByChance(state);
+  // 别人也会先开口：不是永远只有你在追
+  confessTick(state);
 }

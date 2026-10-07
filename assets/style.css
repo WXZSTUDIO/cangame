@@ -248,6 +248,8 @@ body[data-screen="screen-game"] .topbar{display:none}
 }
 .dock-btn.go:hover{filter:brightness(1.1)}
 .dock-btn.go .d-ic{font-size:20px}
+/* 非人生界面时，中间大钮变成「返回人生」 */
+.dock-btn.go.back{background:var(--gold);color:var(--ink);border-color:var(--ink);box-shadow:0 0 0 3px var(--ink),0 4px 0 rgba(0,0,0,.35)}
 
 /* ===== 人际关系 / 工作 视图 ===== */
 .rel-head{display:flex;gap:8px;margin:2px 0 4px}
@@ -266,6 +268,9 @@ body[data-screen="screen-game"] .topbar{display:none}
   display:flex;align-items:center;justify-content:center;
   background:var(--blue-l);border:2px solid var(--ink);
 }
+/* 韩式证件照头像（不是 emoji） */
+.rel-ava.pic{padding:0;overflow:hidden;background:var(--blue-l);position:relative}
+.rel-ava.pic svg{display:block;width:100%;height:100%;border-radius:50%}
 .rel-ava.amber{background:var(--gold-l)}
 .rel-ava.green{background:var(--pink-l)}
 .rel-info{flex:1;min-width:0}
