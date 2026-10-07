@@ -379,84 +379,224 @@ function hashStr(s) {
   return (h >>> 0);
 }
 
+/* 韩系影楼证件照调色板（柔光、低饱和、暖调） */
+const P_SKIN = [
+  { l: '#FFF1E2', b: '#FADCBD', s: '#E2B088' },
+  { l: '#FCEBD6', b: '#F5D2AC', s: '#D8A67C' },
+  { l: '#FBE3CA', b: '#EFC49B', s: '#C79563' },
+  { l: '#F7D8BB', b: '#E4B189', s: '#B78158' },
+  { l: '#FFE9D4', b: '#F1D0B0', s: '#D2A27C' }
+];
+const P_HAIR_F = [['#33261C', '#5C4028'], ['#4A2F1E', '#7B5330'], ['#5C3A22', '#8B5F37'],
+  ['#2B2118', '#4E3A28'], ['#6E4526', '#97663D'], ['#402A1E', '#66472F']];
+const P_HAIR_M = [['#241B14', '#3E2F20'], ['#33251A', '#55402A'], ['#2B2118', '#4A3826'],
+  ['#1D1712', '#332818'], ['#3F2D1D', '#604730']];
+const P_LIPS = [['#C4655C', '#E28E80'], ['#B85A54', '#D77F72'], ['#CB6A5F', '#E69386'], ['#B0514D', '#CD756B']];
+const P_BG = [['#F7EAD9', '#E9D2B9'], ['#F9E7EC', '#EFD1D7'], ['#EDF1EA', '#D8E1D7'],
+  ['#E9EDF4', '#D4DBE8'], ['#F6EBE4', '#E8D4C9'], ['#FBF0DC', '#F1DDC0']];
+const P_CLOTH_F = [['#EFE6D8', '#D7CBB6'], ['#E6D9E5', '#CDBBD0'], ['#DAE5DE', '#BCCFC2'],
+  ['#EADACF', '#D2BCAC'], ['#DDE3ED', '#C0CADD'], ['#F1E0D3', '#DCC2B0']];
+const P_CLOTH_M = [['#3D4557', '#2E3545'], ['#504841', '#3B352F'], ['#385248', '#2B3D35'],
+  ['#4B3C46', '#372C34'], ['#435160', '#323E4B']];
+
+function _ell(cx, cy, rx, ry) {
+  return `M${(cx - rx).toFixed(2)},${cy.toFixed(2)} a${rx.toFixed(2)},${ry.toFixed(2)} 0 1 0 ${(rx * 2).toFixed(2)},0 a${rx.toFixed(2)},${ry.toFixed(2)} 0 1 0 -${(rx * 2).toFixed(2)},0 Z`;
+}
+
 function portraitSVG(name, gender, age, opt) {
   opt = opt || {};
   const h = hashStr(name + '|' + (gender || 'X'));
   const age0 = typeof age === 'number' ? age : 20;
-  const SKIN = ['#FADFC8', '#F5CFAE', '#EDBC95', '#DDA87C', '#C9905F', '#F2D6B8'];
-  const HAIR = ['#241C16', '#3A2A1E', '#5B3A21', '#7A4A22', '#171412', '#8E5A2A', '#4A3B2E'];
-  const CLOTH = ['#7DCAF6', '#A293FF', '#FFBBF4', '#00917A', '#F47575', '#FFDA57', '#2B3A55', '#E8E2D4'];
-  const BG = ['#FFE9C7', '#DDF1FF', '#F4E4FF', '#FFE1F5', '#E4F5EC', '#FFE0E0', '#FFF6D6'];
-  const skin = SKIN[h % SKIN.length];
-  const hair = (age0 >= 58) ? '#CFCBC4' : HAIR[(h >> 3) % HAIR.length];
-  const hair2 = (age0 >= 58) ? '#B9B5AE' : hair;
-  const cloth = CLOTH[(h >> 6) % CLOTH.length];
-  const bg = BG[(h >> 9) % BG.length];
-  const hairStyle = (opt.forceStyle != null) ? opt.forceStyle : (h % 5);
   const isF = String(gender).toUpperCase() === 'F';
   const kid = age0 < 13;
   const old = age0 >= 58;
   const elder = age0 >= 72;
-  const glasses = ((h >> 5) % 6 === 0) || old;
-  const blush = kid || age0 < 20;
+  const uid = 'pg' + (h % 46657).toString(36) + ((h >>> 7) % 89);
 
-  // 头身比：小孩头大，成年人正常
-  const rx = kid ? 27 : 25;
-  const ry = kid ? 30 : 29;
-  const cy = kid ? 50 : 48;
   const cx = 50;
+  const rx = kid ? 24.5 : 21.5;
+  const ry = kid ? 28 : 26;
+  const cy = kid ? 49.5 : 47;
+  const ft = kid ? 21.5 : 21;   // 发际线最高点
 
-  let hairShape = '';
-  if (hairStyle === 0) {           // 短发
-    hairShape = `<path d="M${cx - rx - 1},${cy - 2} a${rx + 1},${ry} 0 0 1 ${(rx + 1) * 2},0 l0,-4 a${rx + 1},${ry + 3} 0 0 0 -${(rx + 1) * 2},0 z" fill="${hair}"/>` +
-      `<path d="M${cx - rx},${cy - 10} q${rx},-26 ${rx * 2},0 q-${rx},-14 -${rx * 2},0 z" fill="${hair}"/>`;
-  } else if (hairStyle === 1) {    // 长发
-    hairShape = `<ellipse cx="${cx}" cy="${cy + 6}" rx="${rx + 5}" ry="${ry + 8}" fill="${hair2}"/>` +
-      `<path d="M${cx - rx},${cy - 8} q${rx},-28 ${rx * 2},0 q-${rx},-16 -${rx * 2},0 z" fill="${hair}"/>`;
-  } else if (hairStyle === 2) {    // 丸子头
-    hairShape = `<circle cx="${cx}" cy="${cy - ry - 5}" r="8" fill="${hair2}"/>` +
-      `<path d="M${cx - rx},${cy - 8} q${rx},-28 ${rx * 2},0 q-${rx},-16 -${rx * 2},0 z" fill="${hair}"/>`;
-  } else if (hairStyle === 3) {    // 齐刘海
-    hairShape = `<path d="M${cx - rx - 1},${cy - 6} q0,-30 ${rx + 1},-30 q${rx + 1},0 ${rx + 1},30 q-${rx + 4},-8 -${rx * 2 - 4},4 z" fill="${hair}"/>` +
-      `<rect x="${cx - rx - 1}" y="${cy - 26}" width="${(rx + 1) * 2}" height="12" rx="6" fill="${hair}"/>`;
-  } else {                          // 寸头 / 背头
-    hairShape = `<path d="M${cx - rx - 1},${cy - 4} q0,-32 ${rx + 1},-32 q${rx + 1},0 ${rx + 1},32 q-${rx},-12 -${rx * 2},0 z" fill="${hair}"/>`;
+  const tone = P_SKIN[(h >>> 2) % P_SKIN.length];
+  const hairPal = isF ? P_HAIR_F : P_HAIR_M;
+  const hp = hairPal[(h >>> 4) % hairPal.length];
+  const hairC = old ? '#D9D5CE' : hp[0];
+  const hairHL = old ? '#C6C1BA' : hp[1];
+  const lipc = P_LIPS[(h >>> 6) % P_LIPS.length];
+  const bgc = P_BG[(h >>> 8) % P_BG.length];
+  const clothPal = isF ? P_CLOTH_F : P_CLOTH_M;
+  const clc = clothPal[(h >>> 10) % clothPal.length];
+  const iris = ['#5A3A22', '#492D1A', '#3D2917', '#693F24'][(h >>> 12) % 4];
+  const st0 = opt.forceStyle != null ? opt.forceStyle : (h >>> 14) % 10;
+  const st = (kid && st0 === 7) ? 8 : st0;   // 小孩不梳低马尾（侧坠不像话），换成丸子头
+
+  const eyeY = cy + 1.5;
+  const dx = 9.6;
+  const browY = eyeY - 5.6;
+  const noseY = cy + 9.2;
+  const mouthY = cy + (old ? 17.5 : 17);
+
+  const defs = `<defs>` +
+    `<linearGradient id="${uid}b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${bgc[0]}"/><stop offset="1" stop-color="${bgc[1]}"/></linearGradient>` +
+    `<radialGradient id="${uid}s" cx="0.42" cy="0.34" r="0.95"><stop offset="0" stop-color="${tone.l}"/><stop offset="0.55" stop-color="${tone.b}"/><stop offset="1" stop-color="${tone.s}"/></radialGradient>` +
+    `<radialGradient id="${uid}i" cx="0.5" cy="0.35" r="0.8"><stop offset="0" stop-color="${iris}"/><stop offset="1" stop-color="#241708"/></radialGradient>` +
+    `<radialGradient id="${uid}g" cx="0.5" cy="0.4" r="0.8"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".22"/><stop offset="0.72" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient>` +
+    `</defs>`;
+
+  /* 脖子与衣服（先画，头发和脸压在上面） */
+  const neckTop = cy + ry - 9;
+  const neck = `<path d="M${cx - 6},${neckTop} L${cx - 6},83 Q${cx},87.5 ${cx + 6},83 L${cx + 6},${neckTop} Z" fill="${tone.b}"/>` +
+    `<path d="M${cx - 6},${neckTop} q6,4.6 12,0 l0,4.4 q-6,3 -12,0 z" fill="${tone.s}" opacity=".35"/>`;
+  const shW = kid ? 24 : 31;
+  let cloth;
+  if (kid) {
+    cloth = `<path d="M${cx - shW},100 C${cx - shW},88 ${cx - 13},80 ${cx - 7},78.5 L${cx + 7},78.5 C${cx + 13},80 ${cx + shW},88 ${cx + shW},100 Z" fill="${clc[0]}"/>` +
+      `<path d="M${cx - 7},78.5 Q${cx},83 ${cx + 7},78.5" stroke="${clc[1]}" stroke-width="1.4" fill="none" opacity=".9"/>`;
+  } else if (isF) {
+    cloth = `<path d="M${cx - shW},100 C${cx - shW + 1},84 ${cx - 18},77.5 ${cx - 7},75.5 L${cx - 6},80.5 Q${cx},88.5 ${cx + 6},80.5 L${cx + 7},75.5 C${cx + 18},77.5 ${cx + shW - 1},84 ${cx + shW},100 Z" fill="${clc[0]}"/>` +
+      `<path d="M${cx - 7},75.5 Q${cx},88.5 ${cx + 7},75.5" stroke="${clc[1]}" stroke-width="1.6" fill="none" opacity=".85"/>` +
+      `<path d="M${cx - 24},92 q7,-6 13,-7 M${cx + 24},92 q-7,-6 -13,-7" stroke="${clc[1]}" stroke-width="1.1" fill="none" opacity=".3"/>`;
+  } else {
+    cloth = `<path d="M${cx - shW},100 C${cx - shW + 1},84 ${cx - 18},77.5 ${cx - 7},75.5 L${cx + 7},75.5 C${cx + 18},77.5 ${cx + shW - 1},84 ${cx + shW},100 Z" fill="${clc[0]}"/>` +
+      `<path d="M${cx - 7},75.5 L${cx},85 L${cx + 7},75.5 L${cx + 4.4},74.6 L${cx},80 L${cx - 4.4},74.6 Z" fill="${clc[1]}"/>` +
+      `<path d="M${cx},85 L${cx},100" stroke="${clc[1]}" stroke-width="1.2" opacity=".8"/>`;
   }
 
-  // 眉眼：年纪越大，眉越垂、眼越细
-  const eyeY = cy + 2;
-  const eyeDx = 10;
-  const eyeR = old ? 1.7 : 2.4;
-  const browY = cy - 8;
-  const eyes = `<circle cx="${cx - eyeDx}" cy="${eyeY}" r="${eyeR}" fill="#20190F"/>
-    <circle cx="${cx + eyeDx}" cy="${eyeY}" r="${eyeR}" fill="#20190F"/>`;
-  const brows = `<path d="M${cx - eyeDx - 5},${browY} q5,${old ? 3 : -2} 10,0" stroke="${hair2}" stroke-width="2" fill="none" stroke-linecap="round"/>
-    <path d="M${cx + eyeDx - 5},${browY} q5,${old ? 3 : -2} 10,0" stroke="${hair2}" stroke-width="2" fill="none" stroke-linecap="round"/>`;
-  const mouth = old
-    ? `<path d="M${cx - 7},${cy + 17} q7,-3 14,0" stroke="#A9785F" stroke-width="2" fill="none" stroke-linecap="round"/>`
-    : `<path d="M${cx - 7},${cy + 15} q7,5 14,0" stroke="#B4634F" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
-  const blushS = blush ? `<ellipse cx="${cx - 17}" cy="${cy + 9}" rx="5" ry="3" fill="#F79BA6" opacity=".45"/>
-    <ellipse cx="${cx + 17}" cy="${cy + 9}" rx="5" ry="3" fill="#F79BA6" opacity=".45"/>` : '';
-  const glass = glasses ? `<g stroke="#2B2B2B" stroke-width="1.6" fill="rgba(255,255,255,.28)">
-      <circle cx="${cx - eyeDx}" cy="${eyeY}" r="7"/><circle cx="${cx + eyeDx}" cy="${eyeY}" r="7"/>
-      <path d="M${cx - eyeDx + 7},${eyeY} h${(eyeDx - 7) * 2}" fill="none"/></g>` : '';
-  const wrinkle = old ? `<g stroke="#B08C74" stroke-width="1.1" fill="none" opacity=".7">
-      <path d="M${cx - 22},${eyeY - 1} q-3,-3 -6,-1"/><path d="M${cx + 22},${eyeY - 1} q3,-3 6,-1"/>
-      <path d="M${cx - 12},${cy + 24} q12,3 24,0"/></g>` : '';
-  const forehead = elder ? `<g stroke="#B08C74" stroke-width="1" fill="none" opacity=".55">
-      <path d="M${cx - 14},${cy - 16} q14,-3 28,0"/></g>` : '';
-  const earring = (isF && !kid && (h >> 7) % 3 === 0)
-    ? `<circle cx="${cx - rx - 1}" cy="${cy + 12}" r="2.2" fill="#F2C744"/><circle cx="${cx + rx + 1}" cy="${cy + 12}" r="2.2" fill="#F2C744"/>` : '';
+  /* 脑后头发（长发披到肩下，短发的只是一圈轮廓） */
+  const hw = rx + 5.5;
+  let back = '';
+  if (isF) {
+    if (st <= 5) {          // 长直 / 长卷
+      const wavy = st >= 4;
+      back = `<path d="M${cx},${ft - 2.5} C${cx - 17},${ft - 2.5} ${cx - hw},${ft + 9} ${cx - hw},${cy + 5} ` +
+        (wavy
+          ? `L${cx - hw},87 Q${cx - hw + 6},95 ${cx - hw + 11},88 Q${cx - hw + 5},93 ${cx - hw + 11},91 `
+          : `L${cx - hw},91 Q${cx - hw + 6},96.5 ${cx - hw + 11},90 `) +
+        `L${cx - hw + 11},${cy + 17} C${cx - 18},${cy + 7} ${cx - 13},${cy - 15} ${cx},${cy - 15} ` +
+        `C${cx + 13},${cy - 15} ${cx + 18},${cy + 7} ${cx + hw - 11},${cy + 17} ` +
+        (wavy
+          ? `L${cx + hw - 11},91 Q${cx + hw - 5},93 ${cx + hw - 11},88 Q${cx + hw - 6},95 ${cx + hw},87 `
+          : `L${cx + hw - 11},90 Q${cx + hw - 6},96.5 ${cx + hw},91 `) +
+        `C${cx + hw},${ft + 9} ${cx + 17},${ft - 2.5} ${cx},${ft - 2.5} Z" fill="${hairC}"/>` +
+        `<path d="M${cx - hw + 6},${cy - 4} q-2.5,15 1,29 M${cx + hw - 6},${cy - 4} q2.5,15 -1,29" stroke="${hairHL}" stroke-width="1.5" opacity=".38" fill="none" stroke-linecap="round"/>`;
+    } else if (st === 6) {  // 齐肩 BOB
+      back = `<path d="M${cx},${ft - 2.5} C${cx - 17},${ft - 2.5} ${cx - hw},${ft + 9} ${cx - hw},${cy + 6} Q${cx - hw},${cy + 16} ${cx - 12},${cy + 14} L${cx - 12},${cy - 2} C${cx - 12},${cy - 11} ${cx + 12},${cy - 11} ${cx + 12},${cy - 2} L${cx + 12},${cy + 14} Q${cx + hw},${cy + 16} ${cx + hw},${cy + 6} C${cx + hw},${ft + 9} ${cx + 17},${ft - 2.5} ${cx},${ft - 2.5} Z" fill="${hairC}"/>`;
+    } else if (st === 7) {  // 低马尾
+      back = `<path d="M${cx},${ft - 2.5} C${cx - 17},${ft - 2.5} ${cx - hw},${ft + 9} ${cx - hw},${cy + 7} L${cx - hw},${cy + 20} Q${cx - hw + 7},${cy + 25} ${cx - 11},${cy + 20} L${cx - 11},${cy - 4} C${cx - 11},${cy - 12} ${cx + 11},${cy - 12} ${cx + 11},${cy - 4} L${cx + 11},${cy + 20} Q${cx + hw - 7},${cy + 25} ${cx + hw},${cy + 20} L${cx + hw},${cy + 7} C${cx + hw},${ft + 9} ${cx + 17},${ft - 2.5} ${cx},${ft - 2.5} Z" fill="${hairC}"/>` +
+        `<ellipse cx="${cx + hw - 6.5}" cy="${cy + 22}" rx="4.2" ry="8" fill="${hairC}" transform="rotate(24 ${cx + hw - 6.5} ${cy + 22})"/>`;
+    } else {                // 丸子头
+      back = `<path d="M${cx},${ft - 2.5} C${cx - 17},${ft - 2.5} ${cx - hw},${ft + 9} ${cx - hw},${cy + 7} Q${cx - hw},${cy + 15} ${cx - 13},${cy + 13} L${cx - 13},${cy - 4} C${cx - 13},${cy - 12} ${cx + 13},${cy - 12} ${cx + 13},${cy - 4} L${cx + 13},${cy + 13} Q${cx + hw},${cy + 15} ${cx + hw},${cy + 7} C${cx + hw},${ft + 9} ${cx + 17},${ft - 2.5} ${cx},${ft - 2.5} Z" fill="${hairC}"/>` +
+        `<circle cx="${cx}" cy="${ft - 6}" r="7.5" fill="${hairC}"/>`;
+    }
+  } else {
+    back = `<path d="${_ell(cx, cy - 3, rx + 2.2, ry - .5)} ${_ell(cx, cy - 4.5, rx - 1.2, ry - 6.5)}" fill-rule="evenodd" fill="${hairC}"/>`;
+  }
 
-  return `<svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" aria-label="${esc(name || '')}">
-    <rect width="100" height="100" fill="${bg}"/>
-    <path d="M18,100 q0,-26 32,-26 q32,0 32,26 z" fill="${cloth}"/>
-    <path d="M42,74 h16 v10 h-16 z" fill="${skin}"/>
-    ${isF && !kid ? `<path d="M${cx - rx - 2},${cy - 6} q0,34 8,42 q-16,-4 -18,-42 z" fill="${hair2}"/><path d="M${cx + rx + 2},${cy - 6} q0,34 -8,42 q16,-4 18,-42 z" fill="${hair2}"/>` : ''}
-    <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${skin}"/>
-    ${hairShape}
-    ${brows}${eyes}${glass}${blushS}${mouth}${wrinkle}${forehead}${earring}
-  </svg>`;
+  /* 脸（鹅蛋形：顶部收窄，下颌圆润） */
+  const face = `<path d="M${cx - rx},${cy - ry * 0.15} C${cx - rx},${cy - ry * 0.85} ${cx - rx * 0.5},${cy - ry} ${cx},${cy - ry} C${cx + rx * 0.5},${cy - ry} ${cx + rx},${cy - ry * 0.85} ${cx + rx},${cy - ry * 0.15} C${cx + rx},${cy + ry * 0.52} ${cx + rx * 0.55},${cy + ry} ${cx},${cy + ry} C${cx - rx * 0.55},${cy + ry} ${cx - rx},${cy + ry * 0.52} ${cx - rx},${cy - ry * 0.15} Z" fill="url(#${uid}s)"/>` +
+    `<path d="M${cx - rx * 0.72},${cy + ry * 0.62} Q${cx},${cy + ry * 1.02} ${cx + rx * 0.72},${cy + ry * 0.62}" stroke="${tone.s}" stroke-width="1.6" opacity=".22" fill="none"/>`;
+
+  /* 耳朵（长发遮耳的款式不画） */
+  let ears = '';
+  if (!isF || st >= 6) {
+    ears = `<ellipse cx="${cx - rx + 0.5}" cy="${cy + 3}" rx="2.6" ry="4.2" fill="${tone.b}"/><ellipse cx="${cx + rx - 0.5}" cy="${cy + 3}" rx="2.6" ry="4.2" fill="${tone.b}"/>` +
+      `<path d="M${cx - rx + 0.4},${cy + 1.6} q1.7,1.4 0.8,3.4 M${cx + rx - 0.4},${cy + 1.6} q-1.7,1.4 -0.8,3.4" stroke="${tone.s}" stroke-width=".8" opacity=".5" fill="none"/>`;
+  }
+
+  /* 眉眼鼻唇 */
+  const eyeR = kid ? 2.15 : 1.9;
+  const lashW = isF ? 1.35 : 1.15;
+  let eyes = '';
+  [-1, 1].forEach(sgn => {
+    const x = cx + sgn * dx;
+    const wing = (isF && !kid && !old) ? ` M${x + sgn * 3.2},${eyeY - 1.5} l${sgn * 1.7},-0.9` : '';
+    eyes += (isF && !kid && !old ? `<ellipse cx="${x}" cy="${eyeY - 1}" rx="4.7" ry="2.7" fill="#D9A08A" opacity=".2"/>` : '') +
+      `<ellipse cx="${x}" cy="${eyeY}" rx="3.7" ry="2.35" fill="#FDFBF8"/>` +
+      `<circle cx="${x}" cy="${eyeY}" r="${eyeR}" fill="url(#${uid}i)"/>` +
+      `<circle cx="${x}" cy="${eyeY}" r=".85" fill="#191009"/>` +
+      `<circle cx="${x - .7}" cy="${eyeY - .9}" r=".55" fill="#FFFFFF" opacity=".95"/>` +
+      `<circle cx="${x + .6}" cy="${eyeY + .8}" r=".28" fill="#FFFFFF" opacity=".7"/>` +
+      `<path d="M${x - 3.9},${eyeY - .5} Q${x},${eyeY - 3.5} ${x + 3.9},${eyeY - 1.1}${wing}" stroke="#241A12" stroke-width="${lashW}" fill="none" stroke-linecap="round"/>` +
+      `<path d="M${x - 2.6},${eyeY + 1.7} Q${x},${eyeY + 2.7} ${x + 2.6},${eyeY + 1.8}" stroke="#4A3527" stroke-width=".55" opacity=".32" fill="none"/>` +
+      (isF && !kid && !old ? `<path d="M${x - 3.2},${eyeY - 3} Q${x},${eyeY - 4.6} ${x + 3},${eyeY - 3.2}" stroke="#8A5C42" stroke-width=".6" opacity=".4" fill="none"/>` : '') +
+      (old ? `<path d="M${x - 2.4},${eyeY + 3.1} q2.4,1.3 4.8,0" stroke="${tone.s}" stroke-width=".7" opacity=".4" fill="none"/>` : '');
+  });
+  const browDrop = old ? 1.4 : 0;
+  const brows = `<path d="M${cx - dx - 4.4},${browY + .7 + browDrop * .5} Q${cx - dx - .4},${browY - 1.7 + browDrop} ${cx - dx + 3.9},${browY + .3 + browDrop}" stroke="${hairC}" stroke-width="1.7" fill="none" stroke-linecap="round" opacity=".92"/>` +
+    `<path d="M${cx + dx - 3.9},${browY + .3 + browDrop} Q${cx + dx + .4},${browY - 1.7 + browDrop} ${cx + dx + 4.4},${browY + .7 + browDrop}" stroke="${hairC}" stroke-width="1.7" fill="none" stroke-linecap="round" opacity=".92"/>`;
+  const nose = `<path d="M${cx + 2.1},${cy - 1} q1.2,5.6 -.5,9.6" stroke="${tone.s}" stroke-width=".95" opacity=".42" fill="none" stroke-linecap="round"/>` +
+    `<path d="M${cx - 2.7},${noseY + .6} q2.7,2.1 5.4,0" stroke="${tone.s}" stroke-width=".95" opacity=".5" fill="none" stroke-linecap="round"/>` +
+    `<circle cx="${cx - 2.6}" cy="${noseY}" r=".6" fill="${tone.s}" opacity=".45"/><circle cx="${cx + 2.6}" cy="${noseY}" r=".6" fill="${tone.s}" opacity=".45"/>`;
+  let mouth;
+  if (old) {
+    mouth = `<path d="M${cx - 6},${mouthY} q6,${isF ? 1.6 : 1.2} 12,0" stroke="${lipc[0]}" stroke-width="1.9" fill="none" stroke-linecap="round"/>`;
+  } else if (isF) {
+    mouth = `<path d="M${cx - 6.2},${mouthY} Q${cx - 3},${mouthY - 2.2} ${cx - .9},${mouthY - 1} Q${cx},${mouthY - 1.4} ${cx + .9},${mouthY - 1} Q${cx + 3},${mouthY - 2.2} ${cx + 6.2},${mouthY} Q${cx},${mouthY + 1.6} ${cx - 6.2},${mouthY} Z" fill="${lipc[0]}"/>` +
+      `<path d="M${cx - 5.6},${mouthY + .5} Q${cx},${mouthY + 5.3} ${cx + 5.6},${mouthY + .5} Q${cx},${mouthY + 2.3} ${cx - 5.6},${mouthY + .5} Z" fill="${lipc[1]}"/>` +
+      `<ellipse cx="${cx - 2}" cy="${mouthY + 2.6}" rx="1.9" ry=".85" fill="#FFFFFF" opacity=".32"/>`;
+  } else {
+    mouth = `<path d="M${cx - 6},${mouthY} Q${cx},${mouthY + 3.4} ${cx + 6},${mouthY}" stroke="#A65B50" stroke-width="1.7" fill="none" stroke-linecap="round"/>` +
+      `<path d="M${cx - 4.6},${mouthY + 1.5} Q${cx},${mouthY + 3.4} ${cx + 4.6},${mouthY + 1.5}" fill="${lipc[1]}" opacity=".4"/>`;
+  }
+  const blushOn = isF || kid;
+  const blush = blushOn ? `<ellipse cx="${cx - 14.5}" cy="${cy + 11}" rx="4.3" ry="2.4" fill="#F0A091" opacity="${kid ? .42 : .3}"/><ellipse cx="${cx + 14.5}" cy="${cy + 11}" rx="4.3" ry="2.4" fill="#F0A091" opacity="${kid ? .42 : .3}"/>` : '';
+
+  /* 前发：一圈包住发际线，再叠刘海 */
+  let fringe = '';
+  if (kid) {
+    fringe = `<path d="M${cx - rx + 3},${cy - 4} C${cx - rx + 3},${ft - 6} ${cx + rx - 3},${ft - 6} ${cx + rx - 3},${cy - 4} C${cx + 13},${cy - 9.5} ${cx + 6},${cy - 7.5} ${cx + 1},${cy - 11} C${cx - 4},${cy - 7.5} ${cx - 11},${cy - 9.5} ${cx - rx + 3},${cy - 4} Z" fill="${hairC}"/>` +
+      `<circle cx="${cx + 6}" cy="${cy - 8.6}" r="2.1" fill="${hairC}"/>`;
+  } else if (isF) {
+    if (st === 2 || st === 3 || st === 6 || st === 7) {   // 中分八字帘
+      fringe = `<path d="M${cx},${cy - 20.5} C${cx - 7},${cy - 19.5} ${cx - 13},${cy - 14} ${cx - 15.2},${cy - 5.5} C${cx - 14},${cy - 11} ${cx - 10},${cy - 13.5} ${cx - 5.5},${cy - 12.8} C${cx - 8},${cy - 8.5} ${cx - 8.5},${cy - 4} ${cx - 7.6},${cy - .5} C${cx - 4},${cy - 6} ${cx - 1.6},${cy - 10.5} ${cx},${cy - 13.5} Z" fill="${hairC}"/>` +
+        `<path d="M${cx},${cy - 20.5} C${cx + 7},${cy - 19.5} ${cx + 13},${cy - 14} ${cx + 15.2},${cy - 5.5} C${cx + 14},${cy - 11} ${cx + 10},${cy - 13.5} ${cx + 5.5},${cy - 12.8} C${cx + 8},${cy - 8.5} ${cx + 8.5},${cy - 4} ${cx + 7.6},${cy - .5} C${cx + 4},${cy - 6} ${cx + 1.6},${cy - 10.5} ${cx},${cy - 13.5} Z" fill="${hairC}"/>`;
+    } else {                                              // 侧分大帘
+      fringe = `<path d="M${cx - 16},${cy - 5} C${cx - 16.5},${cy - 17} ${cx - 8},${cy - 21.5} ${cx},${cy - 21.5} C${cx + 9.5},${cy - 21.5} ${cx + 16},${cy - 15} ${cx + 16},${cy - 5} C${cx + 14.5},${cy - 11.5} ${cx + 9},${cy - 15.5} ${cx + 2.5},${cy - 15.5} C${cx + 6},${cy - 10.5} ${cx + 5},${cy - 6.5} ${cx + 2.6},${cy - 3.5} C${cx - 2},${cy - 10} ${cx - 9.5},${cy - 11} ${cx - 12.5},${cy - 4.5} Z" fill="${hairC}"/>`;
+    }
+  } else {
+    if (st <= 2) {          // 碎盖 / 蘑菇头
+      fringe = `<path d="M${cx - 13.5},${cy - 9} C${cx - 14},${cy - 18} ${cx + 14},${cy - 18} ${cx + 13.5},${cy - 9} C${cx + 10.5},${cy - 13.2} ${cx + 4},${cy - 15} ${cx - .5},${cy - 14} C${cx - 6.5},${cy - 13} ${cx - 11},${cy - 11.5} ${cx - 13.5},${cy - 9} Z" fill="${hairC}"/>`;
+    } else if (st <= 4) {   // 侧分油头
+      fringe = `<path d="M${cx - 14},${cy - 6} C${cx - 14.5},${cy - 18} ${cx - 6},${cy - 21.5} ${cx + 2},${cy - 21} C${cx + 10},${cy - 20.5} ${cx + 14.5},${cy - 14} ${cx + 14},${cy - 6} C${cx + 13},${cy - 12} ${cx + 8},${cy - 15.5} ${cx + 2},${cy - 15.5} C${cx - 4},${cy - 15.5} ${cx - 8},${cy - 13} ${cx - 9.5},${cy - 8} C${cx - 10.5},${cy - 5.5} ${cx - 12},${cy - 5} ${cx - 14},${cy - 6} Z" fill="${hairC}"/>`;
+    } else if (st <= 6) {   // 寸头
+      fringe = `<path d="${_ell(cx, cy - 1.2, rx + 2.2, ry + 1.2)} ${_ell(cx, cy + 5, rx - 1.4, ry - 5)}" fill-rule="evenodd" fill="${hairC}" opacity=".95"/>`;
+    } else if (st <= 8) {   // 微卷
+      fringe = `<path d="M${cx - 13},${cy - 7} C${cx - 13},${cy - 18.5} ${cx + 13},${cy - 18.5} ${cx + 13},${cy - 7} C${cx + 10},${cy - 12.5} ${cx + 3},${cy - 14.5} ${cx - 1},${cy - 13} C${cx - 6},${cy - 11.5} ${cx - 10.5},${cy - 10} ${cx - 13},${cy - 7} Z" fill="${hairC}"/>` +
+        `<circle cx="${cx - 10.5}" cy="${cy - 14.6}" r="2.9" fill="${hairC}"/><circle cx="${cx - 3.5}" cy="${cy - 15.8}" r="3.1" fill="${hairC}"/><circle cx="${cx + 3.5}" cy="${cy - 15.4}" r="3" fill="${hairC}"/><circle cx="${cx + 10.5}" cy="${cy - 13.8}" r="2.7" fill="${hairC}"/>`;
+    } else {                // 背头 + 美人尖
+      fringe = `<path d="M${cx - 14.5},${cy - 6} C${cx - 15},${cy - 18} ${cx + 15},${cy - 18} ${cx + 14.5},${cy - 6} C${cx + 13},${cy - 13} ${cx + 6},${cy - 16.5} ${cx},${cy - 16.5} C${cx - 6},${cy - 16.5} ${cx - 13},${cy - 13} ${cx - 14.5},${cy - 6} Z" fill="${hairC}"/>` +
+        `<path d="M${cx},${cy - 16.5} l-2.5,4.6 l5,0 Z" fill="${hairC}"/>`;
+    }
+  }
+  const ring = `<path d="${_ell(cx, cy - 1.2, rx + 2.2, ry + 1.2)} ${_ell(cx, kid ? cy + 3.6 : (isF ? cy + 4.2 : cy + 5), kid ? rx - 4.2 : (isF ? rx - 5.2 : rx - 2.4), kid ? ry - 7.6 : (isF ? ry - 8.2 : ry - 5))}" fill-rule="evenodd" fill="${hairC}"/>`;
+  const shine = `<path d="M${cx - 10},${cy - 15.5} q10,-5.5 20,-1.5" stroke="${hairHL}" stroke-width="1.5" opacity=".5" fill="none" stroke-linecap="round"/>` +
+    `<path d="M${cx - 13},${cy - 12.5} q5,-3.5 11,-4" stroke="${hairHL}" stroke-width="1" opacity=".32" fill="none" stroke-linecap="round"/>`;
+
+  /* 岁月痕迹 / 眼镜 / 耳饰 */
+  const wrinkleBrow = elder ? `<g stroke="${tone.s}" stroke-width=".9" fill="none" opacity=".55"><path d="M${cx - 13},${cy - 12.5} q13,-2.5 26,0"/><path d="M${cx - 10},${cy - 9.5} q10,-2 20,0"/></g>` : '';
+  const wrinkle = old ? `<g stroke="${tone.s}" stroke-width=".9" fill="none" opacity=".6">` +
+    `<path d="M${cx - dx - 5.5},${eyeY - .5} q-2.4,-2.4 -4.6,-1.6 M${cx - dx - 5.2},${eyeY + 1.4} q-2.2,-1 -4,-.4"/>` +
+    `<path d="M${cx + dx + 5.5},${eyeY - .5} q2.4,-2.4 4.6,-1.6 M${cx + dx + 5.2},${eyeY + 1.4} q2.2,-1 4,-.4"/>` +
+    `<path d="M${cx - 9.5},${cy + 10.5} q2.6,4 1.2,8 M${cx + 9.5},${cy + 10.5} q-2.6,4 -1.2,8"/></g>` : '';
+  const glass = (((h >>> 5) % 6 === 0) || old) ? `<g stroke="#39322C" stroke-width="1.4" fill="rgba(255,255,255,.15)">` +
+    `<rect x="${cx - dx - 5.4}" y="${eyeY - 4.4}" width="10.8" height="8.9" rx="4.2"/>` +
+    `<rect x="${cx + dx - 5.4}" y="${eyeY - 4.4}" width="10.8" height="8.9" rx="4.2"/>` +
+    `<path d="M${cx - dx + 5.4},${eyeY - .8} q${dx - 5.4},-1.8 ${2 * (dx - 5.4)},0" fill="none"/>` +
+    `<path d="M${cx - dx - 5.4},${eyeY - 1.5} l-3.4,-1.2 M${cx + dx + 5.4},${eyeY - 1.5} l3.4,-1.2" fill="none"/></g>` : '';
+  const earring = (isF && !kid && (h >>> 15) % 3 === 0 && (!isF || st >= 6))
+    ? `<circle cx="${cx - rx + .5}" cy="${cy + 8}" r="1.15" fill="#E8C36A"/><path d="M${cx - rx + .5},${cy + 9.1} l0,2.4" stroke="#E8C36A" stroke-width=".7"/><circle cx="${cx + rx - .5}" cy="${cy + 8}" r="1.15" fill="#E8C36A"/><path d="M${cx + rx - .5},${cy + 9.1} l0,2.4" stroke="#E8C36A" stroke-width=".7"/>` : '';
+
+  return `<svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" aria-label="${esc(name || '')}">` +
+    defs +
+    `<rect width="100" height="100" fill="url(#${uid}b)"/>` +
+    `<rect width="100" height="100" fill="url(#${uid}g)"/>` +
+    neck + cloth + back + ears + face +
+    wrinkleBrow + blush + nose + mouth + brows + eyes +
+    ring + fringe + shine +
+    glass + wrinkle + earring +
+    `</svg>`;
 }
 
 /* 包装成可放进 rel-ava 的方块 */
@@ -729,13 +869,22 @@ function renderRelView() {
       }
     }
     const oppG = STATE.gender === 'M' ? 'F' : 'M';
-    if (STATE.ex) {
+    exList(STATE).forEach((ex, i) => {
+      const canChat = ex.lastTouch !== STATE.age;
+      const canRe = ex.wasSpouse && !STATE.flags.married && (ex.affinity || 0) >= LOVE_META.marryAffinity && STATE.age >= LOVE_META.marryAge;
+      const canRe2 = !STATE.flags.married && !STATE.flags.dating && (ex.affinity || 0) >= 55;
+      const tag = ex.wasSpouse ? (STATE.gender === 'M' ? '前妻' : '前夫') : '前任';
       cards.push({
-        avaSvg: personAvatar(STATE.ex.name, oppG, (STATE.ex.age || STATE.age), 'amber'),
-        name: `前任 · ${STATE.ex.name}`,
-        sub: `${STATE.ex.at}岁那年离的${STATE.ex.reason ? '（' + esc(STATE.ex.reason) + '）' : ''}。${STATE.childCount ? '孩子的事，你们还得见面。' : '从此你们只在别人的婚礼上遇见。'}`, dead: true
+        avaSvg: personAvatar(ex.name, ex.gender || oppG, ex.age || STATE.age, 'amber'),
+        name: `${tag} · ${ex.name}`,
+        sub: `${ex.at || STATE.age} 岁那年${ex.wasSpouse ? '离的' : '分开的'}${ex.reason ? `（${esc(ex.reason)}）` : ''} · 好感 ${Math.round(ex.affinity || 0)}%` +
+          `${canChat ? '' : ' · 今年联系过了'}${STATE.childCount && ex.wasSpouse ? ' · 孩子的事，你们还得见面' : ''}`,
+        key: null,
+        multi: `${canChat ? `<button class="rel-act" onclick="uiExChat(${i})">联系</button>` : '<span class="rel-act dis">今年联系过了</span>'}` +
+          `${canRe2 ? `<button class="rel-act" onclick="uiRekindle(${i})">复合</button>` : ''}` +
+          `${canRe ? `<button class="rel-act" onclick="uiRemarry(${i})">复婚</button>` : ''}`
       });
-    }
+    });
     if (STATE.flags.married && STATE.spouse) {
       const sp = STATE.spouse;
       cards.push(sp.alive
@@ -750,12 +899,28 @@ function renderRelView() {
     } else if (STATE.flags.married) {
       cards.push({ avaSvg: personAvatar(STATE.spouseName || '配偶', oppG, STATE.age, 'green'), name: STATE.spouseName || '配偶', sub: '携手走过半生的人。', key: 'spouse' });
     } else if (STATE.flags.dating) {
-      cards.push({ avaSvg: personAvatar('恋人', oppG, STATE.age, 'green'), name: '恋人', sub: '交往中。关系是要经营的。', key: 'spouse' });
+      const lv0 = loveInit(STATE);
+      const dp = lv0.partner;
+      cards.push({
+        avaSvg: personAvatar(dp ? dp.name : '恋人', oppG, dp ? dp.age : STATE.age, 'green'),
+        name: dp ? `${dp.name} · 恋人` : '恋人',
+        sub: dp ? `${loverLabel(dp)} · 交往中。关系是要经营的。` : '交往中。关系是要经营的。', key: 'spouse'
+      });
     }
+    (STATE.children || []).forEach(c => {
+      const ca = childAge(STATE, c);
+      const stage = ca < 3 ? '蹒跚学步' : ca < 7 ? '上幼儿园了' : ca < 13 ? '上小学了' : ca < 16 ? '念初中' : ca < 19 ? '念高中' : ca < 23 ? '念大学' : '已经长大';
+      cards.push({
+        avaSvg: personAvatar(c.name, c.gender || 'M', ca, ''),
+        name: `${c.name} · ${c.gender === 'F' ? '女儿' : '儿子'}`,
+        sub: `${ca} 岁 · ${stage}。陪伴错过了就回不来了。`,
+        key: null
+      });
+    });
     if (STATE.childCount) {
       cards.push({
-        ava: '👶', cls: '', name: `孩子 × ${STATE.childCount}`,
-        sub: STATE.grandCount ? `他们很棒——你已经是 ${STATE.grandCount} 个孙辈的祖辈了。` : '正在长大。陪伴错过了就回不来了。',
+        ava: '🧸', cls: '', name: `陪孩子们待一天`,
+        sub: `${STATE.grandCount ? `你已经是 ${STATE.grandCount} 个孙辈的祖辈了。` : '一年的陪伴，是他们记一辈子的东西。'}`,
         key: 'child'
       });
     }
@@ -877,6 +1042,7 @@ function renderRelView() {
           ${intimateBtns}
           ${affairBtns}
           ${!married && l.affinity >= LOVE_META.marryAffinity && STATE.age >= LOVE_META.marryAge ? `<button class="rel-act" onclick="uiPropose(${i})">求婚</button>` : ''}
+          ${!married ? `<button class="rel-act danger" onclick="uiBreakup(${i})">分手</button>` : ''}
         ` : '<span class="rel-act dis">今年的次数用完了</span>'
       });
     });
@@ -993,6 +1159,51 @@ function uiEndAffair(i) {
   const r = endAffair(STATE, i);
   if (!r.ok) { toast(r.msg || '现在不行'); return; }
   afterAct('你收手了');
+}
+
+/* 分手：结束一段恋爱关系 */
+function uiBreakup(i) {
+  const lv = loveInit(STATE);
+  const l = lv.candidates[i];
+  if (!l) return;
+  uiConfirm('确定要分手吗',
+    `和 <b>${esc(l.name)}</b> 分手？<br>好感会掉、心情会差，TA 会进入「前任」名单。这一步不可撤销。`,
+    '分手', () => {
+      const r = breakup(STATE, i);
+      if (!r.ok) { toast(r.msg || '现在不行'); return; }
+      afterAct('分开了');
+    });
+}
+
+/* 前任：联系 / 复合 / 复婚 */
+function uiExChat(i) {
+  const r = exChat(STATE, i);
+  if (!r.ok) { toast(r.msg || '现在不行'); return; }
+  afterAct('聊了一场');
+}
+
+function uiRekindle(i) {
+  const ex = exList(STATE)[i];
+  if (!ex) return;
+  uiConfirm('想复合吗',
+    `和 <b>${esc(ex.name)}</b> 重新开始？<br>TA 现在的好感是 ${Math.round(ex.affinity || 0)}%——太低的话，会被拒绝。`,
+    '重新开始', () => {
+      const r = rekindle(STATE, i);
+      if (!r.ok) { toast(r.msg || '没成'); return; }
+      afterAct('旧情复燃');
+    });
+}
+
+function uiRemarry(i) {
+  const ex = exList(STATE)[i];
+  if (!ex) return;
+  uiConfirm('申请复婚',
+    `和前配偶 <b>${esc(ex.name)}</b> 重新领证？<br>需要感情 ≥ ${LOVE_META.marryAffinity}%，还要再办一场酒席（${fmtMoney(6000000)}）。`,
+    '复婚', () => {
+      const r = remarryEx(STATE, i);
+      if (!r.ok) { toast(r.msg || '没成'); return; }
+      afterAct('复婚了');
+    });
 }
 
 /* 做件好事：道德是可以主动攒的 */

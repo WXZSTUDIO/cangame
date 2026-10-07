@@ -99,10 +99,11 @@ console.log('== 3. 离婚：二次确认 + 前任卡 ==');
   click($('confirmOk'));
   ok(!s.flags.married, '确认后已离婚');
   ok(!S().spouse, '配偶已清空');
-  ok(!!S().ex && S().ex.name === '林静', '生成前任记录', S().ex && S().ex.name);
+  // v5.5 起前任统一放进 exList（支持多人 / 复合 / 复婚）
+  ok(w.__call('exList', [S()]).length === 1 && w.__call('exList', [S()])[0].name === '林静', '生成前任记录', w.__call('exList', [S()]).map(x => x.name).join('/'));
   ok(S().flags.divorced === true, '打上 divorced 标记');
   call('setRelTab', ['family']);
-  ok(/前任 · 林静/.test(txt('view-rel')), '家人页出现前任卡');
+  ok(/前妻 · 林静/.test(txt('view-rel')), '家人页出现前妻卡');
 }
 
 console.log('== 4. 疾病卡：工作页可治疗 ==');

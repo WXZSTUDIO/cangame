@@ -456,6 +456,8 @@ body[data-screen="screen-game"] .topbar{display:none}
 
 .ill-name{background:var(--red-l);border:2px solid var(--red-d);border-radius:12px;padding:7px 10px;color:var(--red-d);font-weight:900}
 .rel-act.safe{background:var(--teal-l);border-color:var(--teal-d);color:var(--teal-d)}
+.rel-act.danger{background:var(--red-l);border-color:var(--red-d);color:var(--red-d)}
+.rel-act.danger:hover{background:var(--red-d);color:#fff;box-shadow:none}
 
 .ach-wall{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .ach{

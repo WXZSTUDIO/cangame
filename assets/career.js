@@ -341,6 +341,19 @@ const CAREERS = [
       { title: '上市公司创始人', sal: 900000000, cost: 100000000 }
     ],
     tick: { WILL: 2, NET: 2, INT: 1, HP: -2, STRESS: 4 }
+  },
+  {
+    id: 'athlete', name: '职业运动员', cat: '体育', edu: 0, risk: 3, need: { STR: 26, HP: 55 }, major: ['体育'],
+    desc: '训练房、队医、成绩单。吃的是青春饭，拼的是骨头和心气。',
+    ladder: [
+      { title: '青训队员', sal: 9000000, cost: 7200000 },
+      { title: '职业球员', sal: 16000000, cost: 9000000 },
+      { title: '主力球员', sal: 34000000, cost: 12000000 },
+      { title: '国字号球员', sal: 72000000, cost: 16000000 },
+      { title: '传奇球星', sal: 150000000, cost: 22000000 },
+      { title: '总教练 / 解说', sal: 60000000, cost: 14000000 }
+    ],
+    tick: { STR: 1, HP: -2, FAME: 1, STRESS: 2, WILL: 1 }
   }
 ];
 

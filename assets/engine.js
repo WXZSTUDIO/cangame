@@ -25,12 +25,21 @@ function randomSpouseName(gender) {
   const pool = GIVEN_NAMES[opp];
   return SURNAMES[randInt(0, SURNAMES.length - 1)] + pool[randInt(0, pool.length - 1)];
 }
-function randomParentName(gender) {
-  // 父母用更年长一代的名字
+function elderGiven(gender) {
+  // 父母辈用更年长一代的名字
   const old = { M: ['建国', '志强', '国平', '伟民', '建军', '德胜', '长海', '永年'],
                 F: ['秀英', '桂芳', '玉兰', '淑珍', '丽华', '春梅', '素芬', '月娥'] };
   const pool = (gender === 'F') ? old.F : old.M;
-  return SURNAMES[randInt(0, SURNAMES.length - 1)] + pool[randInt(0, pool.length - 1)];
+  return pool[randInt(0, pool.length - 1)];
+}
+function randomParentName(gender) {
+  // 母亲随自己的姓；父亲应当随孩子姓——要生成父亲请用 parentNameFor
+  return SURNAMES[randInt(0, SURNAMES.length - 1)] + elderGiven(gender);
+}
+function parentNameFor(state, gender) {
+  // 父亲跟孩子同姓（户口本上写得明明白白）
+  if (gender === 'M' && state && state.name) return state.name[0] + elderGiven('M');
+  return randomParentName(gender);
 }
 function randomPetName(type) {
   const dog = ['旺财', '大黄', '豆豆', '可乐', '布丁', '团子', '闪电', '土豆'];
@@ -38,6 +47,20 @@ function randomPetName(type) {
   const pool = (type === 'cat') ? cat : dog;
   return pool[randInt(0, pool.length - 1)];
 }
+
+/* ---------- 孩子：有名有姓，随你姓 ---------- */
+function addChild(state, opt) {
+  opt = opt || {};
+  const g = opt.gender || (chance(0.5) ? 'M' : 'F');
+  const pool = GIVEN_NAMES[g];
+  const sn = (state && state.name) ? state.name[0] : SURNAMES[randInt(0, SURNAMES.length - 1)];
+  state.children = state.children || [];
+  const c = { name: opt.name || (sn + pool[randInt(0, pool.length - 1)]), gender: g, born: state.age, alive: true };
+  state.children.push(c);
+  state.childCount = (state.childCount || 0) + 1;
+  return c;
+}
+function childAge(state, c) { return Math.max(0, (state.age || 0) - (c.born || 0)); }
 
 /* ---------- 朋友圈 ---------- */
 /* 出生时一个朋友都没有——朋友是活出来的，不是生下来就配好的 */
@@ -483,9 +506,10 @@ function createGame(opt) {
   const startYear = opt.startYear || randInt(1955, 2005);
   const isOrphan = family.id === 'fuli';
   const isSingle = family.id === 'danqin';
+  const pname = opt.name || randomPersonName(opt.gender || 'M'); // 先把名字定下来：父亲要跟你同姓
   const parents = isOrphan ? null : {
     father: isSingle ? null : {
-      name: randomParentName('M'), alive: true, affinity: randInt(42, 68),
+      name: parentNameFor({ name: pname }, 'M'), alive: true, affinity: randInt(42, 68),
       age: randInt(25, 38), bond: '父', job: parentJob('M', family), hp: randInt(72, 96)
     },
     mother: {
@@ -498,7 +522,7 @@ function createGame(opt) {
     seed: Date.now(),
     createdAt: Date.now(),
     updatedAt: Date.now(),
-    name: opt.name || randomPersonName(opt.gender || 'M'),
+    name: pname,
     gender: opt.gender || 'M',
     startYear: startYear,
     priority: opt.priority || 'balance',
@@ -576,7 +600,7 @@ function migrateState(state) {
   if (!state.parents && !state.flags.orphan) {
     const single = !!state.flags.single;
     state.parents = {
-      father: single ? null : { name: randomParentName('M'), alive: !!state.flags.parents_alive, affinity: 55, age: clamp(state.age + randInt(24, 34), 30, 70), bond: '父' },
+      father: single ? null : { name: parentNameFor(state, 'M'), alive: !!state.flags.parents_alive, affinity: 55, age: clamp(state.age + randInt(24, 34), 30, 70), bond: '父' },
       mother: { name: randomParentName('F'), alive: !!state.flags.parents_alive, affinity: 62, age: clamp(state.age + randInt(22, 30), 28, 68), bond: '母' }
     };
   }
@@ -586,6 +610,29 @@ function migrateState(state) {
   }
   if (!state.love) state.love = { candidates: [], partner: null, met: [] };
   if (state.goodTouch == null) state.goodTouch = {};
+  // v5.5：孩子要有名字（老存档只记了数量，按现有年龄倒推补齐）
+  if (state.children == null) state.children = [];
+  if ((state.childCount || 0) > state.children.length) {
+    for (let i = state.children.length; i < state.childCount; i++) {
+      const g = chance(0.5) ? 'M' : 'F';
+      const pool = GIVEN_NAMES[g];
+      state.children.push({
+        name: (state.name ? state.name[0] : SURNAMES[0]) + pool[randInt(0, pool.length - 1)],
+        gender: g, born: Math.max(1, (state.age || 20) - (state.childCount - i) * 3), alive: true, guess: true
+      });
+    }
+  }
+  // v5.5：前任改成列表（离过婚的标记为前配偶——能联系，感情够了还能复婚）
+  if (state.exes == null) {
+    state.exes = [];
+    if (state.ex) {
+      state.exes.push(Object.assign(
+        { wasSpouse: true, gender: state.gender === 'M' ? 'F' : 'M', affinity: 42, lastTouch: -1, look: 60 },
+        state.ex
+      ));
+      delete state.ex;
+    }
+  }
   if (state.loans == null) state.loans = [];
   if (state.credit == null) state.credit = 100;
   if (state.stats.ETH === undefined) state.stats.ETH = 60;
@@ -1893,9 +1940,9 @@ function resolveEvent(state, ev, choiceIndex) {
     pushLog(state, `【结婚】你与 ${sp} 结为连理。从此，人生不再是你一个人的战场。`, 'muted');
   }
   if ((ev.baby || (ch && ch.baby)) && state.flags.married) {
-    state.childCount = (state.childCount || 0) + 1;
+    const kid = addChild(state);
     applyEffects(state, { LOVE: 4, GROW: 3 });
-    pushLog(state, `【新生命】第 ${state.childCount} 个孩子降生。${state.spouseName || 'TA'} 说：像极了你小时候。`, 'muted');
+    pushLog(state, `【新生命】${kid.gender === 'M' ? '儿子' : '女儿'} ${kid.name} 降生。${state.spouseName || 'TA'} 说：像极了你小时候。`, 'muted');
   }
   if ((ev.grand || (ch && ch.grand)) && state.flags.married && state.childCount > 0) {
     state.grandCount = (state.grandCount || 0) + 1;
@@ -1937,17 +1984,17 @@ function resolveEvent(state, ev, choiceIndex) {
   if (ev.id && String(ev.id).indexOf('pregnant_at_') === 0) {    const lv = loveInit(state);
     const l = lv.candidates.find(x => x.name === ev.loverName) || lv.partner;
     if (ch && ch.flags && ch.flags.indexOf('pregnant_keep') >= 0) {
-      state.childCount = (state.childCount || 0) + 1;
+      const kid = addChild(state);
       if (l) l.pregnant = false;
-      pushLog(state, `【生育】孩子出生了。你没有婚礼，只有一张出生证明和一堆学费。`, 'money');
+      pushLog(state, `【生育】${kid.gender === 'M' ? '儿子' : '女儿'} ${kid.name} 出生了。你没有婚礼，只有一张出生证明和一堆学费。`, 'money');
       if (!state.flags.married && l && state.age >= 20 && chance(0.5)) {
         marry(state, l);
       }
     } else if (ch && ch.flags && ch.flags.indexOf('pregnant_marry') >= 0) {
       if (l && !state.flags.married) {
         marry(state, l);
-        state.childCount = (state.childCount || 0) + 1;
-        pushLog(state, `【奉子成婚】婚礼办得很仓促。亲戚们在背后议论，你们只顾着抱孩子。`, 'money');
+        const kid = addChild(state);
+        pushLog(state, `【奉子成婚】婚礼办得很仓促。${kid.name} 的名字还是满月酒上才定下来的。亲戚们在背后议论，你们只顾着抱孩子。`, 'money');
       }
     } else if (ch && ch.flags && ch.flags.indexOf('pregnant_drop') >= 0) {
       if (l) { l.pregnant = false; l.affinity = clamp(l.affinity - 15, 0, 100); }

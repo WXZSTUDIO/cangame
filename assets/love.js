@@ -372,17 +372,144 @@ function divorce(state, reason) {
   const paid = Math.min(want, Math.max(0, state.stats.MONEY));
   state.stats.MONEY -= paid;
   state.childCount = keep;
+  if (state.children && state.children.length > keep) state.children.length = keep;
   delete state.flags.married;
   delete state.flags.in_love;
   state.flags.divorced = true;
-  state.ex = { name: sp.name, age: sp.age, met: sp.since || state.age, at: state.age, reason: reason || '' };
+  state.exes = state.exes || [];
+  state.exes.unshift({
+    name: sp.name, gender: state.gender === 'M' ? 'F' : 'M', age: sp.age,
+    met: sp.since || state.age, at: state.age, reason: reason || '过不下去了',
+    wasSpouse: true, affinity: clamp(sp.affinity || 40, 20, 62), look: sp.look || 60, lastTouch: -1
+  });
+  if (state.exes.length > 5) state.exes.length = 5;
   state.spouse = null;
   state.spouseName = null;
   applyEffects(state, { LOVE: -22, SEC: -14, MOOD: -10, STRESS: 14, ETH: -8, FAME: -6, HP: -4 });
   pushLog(state, `【离婚】你和 ${sp.name} 把证换成了另一本${reason ? '（' + reason + '）' : ''}。` +
     `分走了 ${fmtMoney(paid)}${lost ? `，${lost} 个孩子跟着对方走了` : ''}。房子空了一半，你花了很久才习惯。`, 'warn');
   if (typeof addGrief === 'function') addGrief(state, `和 ${sp.name} 离婚`, 10);
-  return { ok: true, paid: paid, lost: lost, ex: state.ex };
+  return { ok: true, paid: paid, lost: lost, ex: (state.exes || [])[0] };
+}
+
+/* ---------- 分手：恋爱关系可以主动结束 ---------- */
+function breakup(state, idx) {
+  const lv = loveInit(state);
+  const l = lv.candidates[idx];
+  if (!l) return { ok: false, msg: '没有这个人' };
+  const isPartner = lv.partner === l;
+  // 只有当这个人就是配偶本人时才必须走离婚（领证时配偶已移出候选列表，
+  // 所以这里按名字比对，避免「已婚 + 旧引用」把情人也误锁起来）
+  const spName = state.flags.married ? ((state.spouse && state.spouse.name) || state.spouseName) : null;
+  if (spName && l.name === spName) return { ok: false, msg: '结婚的人要走离婚流程' };
+  lv.candidates.splice(idx, 1);
+  if (isPartner) {
+    lv.partner = null;
+    delete state.flags.dating;
+    delete state.flags.in_love;
+  } else if (state.flags.dating && !lv.partner) {
+    delete state.flags.dating;
+  }
+  delete l.secret;
+  delete l.pregnant;
+  l.affinity = clamp(l.affinity - 12, 15, 62);
+  state.exes = state.exes || [];
+  state.exes.unshift({
+    name: l.name, gender: l.gender || (state.gender === 'M' ? 'F' : 'M'), age: l.age,
+    met: l.met || state.age, at: state.age, reason: '分手', wasSpouse: false,
+    affinity: l.affinity, look: l.look || 60, lastTouch: -1
+  });
+  if (state.exes.length > 5) state.exes.length = 5;
+  applyEffects(state, { LOVE: -8, MOOD: -7, STRESS: 5 });
+  pushLog(state, `【分手】你和 ${l.name} 把话说开了，然后就再也没说别的。通讯录里少了一个置顶。`, 'warn');
+  return { ok: true };
+}
+
+/* ---------- 前任：还能来往，感情够了能复合，前配偶甚至能复婚 ---------- */
+function exList(state) {
+  if (state.exes == null) {
+    state.exes = [];
+    if (state.ex) {
+      state.exes.push(Object.assign(
+        { wasSpouse: true, gender: state.gender === 'M' ? 'F' : 'M', affinity: 42, lastTouch: -1, look: 60 },
+        state.ex
+      ));
+      delete state.ex;
+    }
+  }
+  return state.exes;
+}
+
+function exChat(state, i) {
+  const ex = exList(state)[i];
+  if (!ex) return { ok: false, msg: '没有这个人' };
+  if (ex.lastTouch === state.age) return { ok: false, msg: '今年已经联系过了' };
+  ex.lastTouch = state.age;
+  const gain = randInt(3, 8) + Math.round((state.stats.CHA || 40) / 25);
+  ex.affinity = clamp((ex.affinity || 30) + gain, 0, 96);
+  applyEffects(state, { LOVE: 1, MOOD: -1 });
+  pushLog(state, `【旧火】你和 ${ex.name} 好好聊了一次。有些话隔了这些年，反而说得出口。好感 ${Math.round(ex.affinity)}%。`, 'muted');
+  return { ok: true, affinity: ex.affinity };
+}
+
+/* 复合：前任重新变成恋人 */
+function rekindle(state, i) {
+  const ex = exList(state)[i];
+  if (!ex) return { ok: false, msg: '没有这个人' };
+  if (state.flags.married) return { ok: false, msg: '你已经结婚了' };
+  if ((ex.affinity || 0) < 55) return { ok: false, msg: `感情还不够（现在 ${Math.round(ex.affinity || 0)}%，需 55%）` };
+  const p = clamp(0.4 + (ex.affinity - 55) / 120 + (state.stats.CHA || 40) / 400, 0.15, 0.9);
+  if (!chance(p)) {
+    ex.affinity = clamp(ex.affinity - 10, 0, 100);
+    applyEffects(state, { MOOD: -5, STRESS: 4 });
+    pushLog(state, `【复合未成】${ex.name} 想了很久，说：「算了吧，回不去了。」`, 'warn');
+    return { ok: false, msg: '被拒绝了' };
+  }
+  const lv = loveInit(state);
+  const l = {
+    name: ex.name, gender: ex.gender || (state.gender === 'M' ? 'F' : 'M'), age: ex.age || state.age,
+    look: ex.look || 60, charm: 60, tp: 'warm', bg: 'mid', src: '旧情复燃',
+    affinity: clamp(ex.affinity, 50, 88), alive: true, lastTouch: state.age, touches: 1,
+    met: ex.met || state.age, pregnant: false
+  };
+  lv.candidates.push(l);
+  lv.partner = l;
+  state.flags.dating = true;
+  state.flags.in_love = true;
+  exList(state).splice(i, 1);
+  applyEffects(state, { LOVE: 8, MOOD: 6 });
+  pushLog(state, `【复合】兜兜转转，你又和 ${l.name} 走到了一起。这一次要好好走。`, 'money');
+  return { ok: true };
+}
+
+/* 复婚：前配偶感情足够就能把证领回来 */
+function remarryEx(state, i) {
+  const ex = exList(state)[i];
+  if (!ex) return { ok: false, msg: '没有这个人' };
+  if (state.flags.married) return { ok: false, msg: '你已经结婚了' };
+  if (!ex.wasSpouse) return { ok: false, msg: '你们没结过婚，先处着吧' };
+  if (state.age < LOVE_META.marryAge) return { ok: false, msg: `${LOVE_META.marryAge} 岁才能领证` };
+  if ((ex.affinity || 0) < LOVE_META.marryAffinity) return { ok: false, msg: `感情还不够（需 ${LOVE_META.marryAffinity}%）` };
+  const p = clamp(0.5 + (ex.affinity - LOVE_META.marryAffinity) / 60 + (state.stats.CHA || 40) / 350
+    + (state.flags.own_house ? 0.1 : 0), 0.15, 0.92);
+  if (!chance(p)) {
+    ex.affinity = clamp(ex.affinity - 8, 0, 100);
+    applyEffects(state, { MOOD: -6, STRESS: 5 });
+    pushLog(state, `【复婚未成】${ex.name} 说：「我们都试着往前走吧。」证没领成，饭倒是吃完了。`, 'warn');
+    return { ok: false, msg: 'TA 没答应' };
+  }
+  exList(state).splice(i, 1);
+  state.flags.married = true;
+  state.flags.in_love = true;
+  state.spouseName = ex.name;
+  state.spouse = {
+    name: ex.name, age: ex.age || state.age, affinity: clamp(ex.affinity, 60, 92),
+    alive: true, since: state.age, look: ex.look || 60, tp: 'warm', bg: 'mid'
+  };
+  delete state.flags.dating;
+  applyEffects(state, { LOVE: 10, SEC: 6, MOOD: 8, MONEY: -6000000 });
+  pushLog(state, `【复婚】绕了一大圈，你和 ${ex.name} 又把证领了回来。这一次，都学会了低头。`, 'money');
+  return { ok: true };
 }
 
 /* 未婚怀孕：三选一 */
@@ -453,6 +580,7 @@ function marry(state, l) {
   lv.candidates = lv.candidates.filter(x => x !== l);
   applyEffects(state, { LOVE: 10, SEC: 8, WILL: 3, STRESS: 5, MONEY: -8000000 });
   pushLog(state, `【结婚】你和 ${l.name} 领了证。${state.age}，${fmtYear(state)}。从此人生不再是一个人的战场。`, 'money');
+  return { ok: true, spouse: state.spouse };
 }
 
 /* ---------- 婚姻生活 ---------- */
@@ -479,9 +607,11 @@ function tryBaby(state) {
     pushLog(state, `【备孕】这一年月子中心又没排上。你们决定顺其自然。`, 'muted');
     return { ok: true, baby: false };
   }
-  state.childCount = (state.childCount || 0) + 1;
+  const kid = (typeof addChild === 'function')
+    ? addChild(state)
+    : (state.childCount = (state.childCount || 0) + 1, null);
   applyEffects(state, { LOVE: 5, GROW: 3, MONEY: -9000000, STRESS: 6 });
-  pushLog(state, `【出生】第 ${state.childCount} 个孩子。${state.spouseName || '伴侣'} 说：像极了你小时候。`, 'money');
+  pushLog(state, `【出生】${kid ? (kid.gender === 'M' ? '儿子 ' : '女儿 ') + kid.name : '第 ' + state.childCount + ' 个孩子'}来到这个世界。${state.spouseName || '伴侣'} 说：像极了你小时候。`, 'money');
   return { ok: true, baby: true };
 }
 
@@ -538,6 +668,11 @@ function loveTick(state) {
     lv.candidates = lv.candidates.filter(x => dropped.indexOf(x) < 0);
     if (lv.partner && dropped.indexOf(lv.partner) >= 0) lv.partner = null;
   }
+  // 前任：也在一年年变老；不联系就慢慢淡，但比陌生人淡得慢
+  exList(state).forEach(ex => {
+    ex.age = (ex.age || state.age) + 1;
+    if (ex.lastTouch !== state.age) ex.affinity = clamp((ex.affinity || 30) - 1, 0, 100);
+  });
   // 偶遇（已婚也会遇上——那是另一回事）
   if (state.age >= 17) meetByChance(state);
   // 别人也会先开口：不是永远只有你在追

@@ -9,7 +9,7 @@ vm.createContext(ctx);
   .forEach(f => vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f }));
 
 const A = vm.runInContext(`({
-  createGame, step, resolveEvent, loveInit, loveAct, loveIntimate, loveTick, propose, marry, divorce,
+  createGame, step, resolveEvent, loveInit, loveAct, loveIntimate, loveTick, propose, marry, divorce, exList,
   makeAffairEvent, makeMarriageEvent, meetByMatchmaker, makeLover, LOVE_META,
   familyTick, familyIncome, illnessTick, treatIllness, cureChance, illStageCn, illnessRisk,
   checkAchievements, buyLottery, ACHIEVEMENTS, ILLNESS, LOTTERY, CORE_STATS, FAMILY_ACTS,
@@ -58,7 +58,9 @@ console.log('== 2. 结婚后可以离婚 ==');
   const r = A.divorce(s, '过不下去了');
   ok(r.ok, '离婚执行成功');
   ok(!s.flags.married && s.flags.divorced, '婚姻状态已解除', `divorced=${!!s.flags.divorced}`);
-  ok(!!s.ex && s.ex.name === l.name, '前任记录在案', s.ex ? s.ex.name : '—');
+  // v5.5 起前任是列表（可多人），旧的单 ex 对象由 migrateState 迁移
+  ok(A.exList(s).length === 1 && A.exList(s)[0].name === l.name && A.exList(s)[0].wasSpouse,
+    '前任记录在案', A.exList(s).map(x => x.name).join('/') || '—');
   ok(s.stats.MONEY < before, '分走了一部分家产', `${A.fmtMoney(before)} → ${A.fmtMoney(s.stats.MONEY)}`);
   ok(A.divorce(s).ok === false, '不能离第二次');
 }
