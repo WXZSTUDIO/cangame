@@ -1,0 +1,710 @@
+{
+  "fault": "none",
+  "desc": "无故障（基线对照）",
+  "n": "60",
+  "cases": "",
+  "assertions": [
+    {
+      "case": "REG-00",
+      "pass": true,
+      "name": "1000 局零崩溃",
+      "detail": "崩溃 0 / 1002"
+    },
+    {
+      "case": "REG-00",
+      "pass": true,
+      "name": "无 NaN / Infinity 泄漏进 stats / netWorth / score",
+      "detail": "脏局 0 / 1002"
+    },
+    {
+      "case": "REG-00",
+      "pass": true,
+      "name": "可复现性：同种子两次构造的人生摘要逐字节一致（此条红了，上面所有红绿都不可信）",
+      "detail": "1aac7dcf:31026 / 1aac7dcf:31026"
+    },
+    {
+      "case": "REG-01",
+      "pass": true,
+      "name": "无崩溃",
+      "detail": "crash=0"
+    },
+    {
+      "case": "REG-01",
+      "pass": true,
+      "name": "哨兵 · 结局死因字段（endCause）覆盖率 —— 此条红了，下面的「熄灭占比」不可信",
+      "detail": "实测 1 · 目标 >= 0.70"
+    },
+    {
+      "case": "REG-01",
+      "pass": false,
+      "name": "激进流平均寿命",
+      "detail": "实测 37.02岁 · 目标 >= 60岁"
+    },
+    {
+      "case": "REG-01",
+      "pass": false,
+      "name": "激进流「熄灭」占比",
+      "detail": "实测 0.60 · 目标 <= 0.25"
+    },
+    {
+      "case": "REG-01",
+      "pass": true,
+      "name": "激进流 30 岁 HP 中位",
+      "detail": "实测 80 · 目标 >= 60"
+    },
+    {
+      "case": "REG-01",
+      "pass": false,
+      "name": "激进流 30 岁压力中位",
+      "detail": "实测 97.50 · 目标 <= 80"
+    },
+    {
+      "case": "REG-01",
+      "pass": true,
+      "name": "哨兵 · 亡命流 endCause 覆盖率",
+      "detail": "实测 1 · 目标 >= 0.70"
+    },
+    {
+      "case": "REG-01",
+      "pass": false,
+      "name": "亡命流平均寿命",
+      "detail": "实测 31.22岁 · 目标 >= 60岁"
+    },
+    {
+      "case": "REG-01",
+      "pass": false,
+      "name": "亡命流「熄灭」占比",
+      "detail": "实测 0.68 · 目标 <= 0.25"
+    },
+    {
+      "case": "REG-02",
+      "pass": false,
+      "name": "稳健流终局净资产中位",
+      "detail": "实测 16.26亿 · 目标 [2000.0万, 2.00亿]"
+    },
+    {
+      "case": "REG-02",
+      "pass": true,
+      "name": "（参考）p90 净资产",
+      "detail": "62.64亿"
+    },
+    {
+      "case": "REG-02",
+      "pass": false,
+      "name": "30 岁房价/收入比",
+      "detail": "实测 0.51 · 目标 [6, 15]"
+    },
+    {
+      "case": "REG-03",
+      "pass": false,
+      "name": "工资结余 / 终局净资产（中位）",
+      "detail": "实测 0.30 · 目标 >= 0.35"
+    },
+    {
+      "case": "REG-04",
+      "pass": false,
+      "name": "稳健流 S 级占比",
+      "detail": "实测 0.88 · 目标 <= 0.35"
+    },
+    {
+      "case": "REG-04",
+      "pass": true,
+      "name": "稳健流评分标准差",
+      "detail": "实测 21.72 · 目标 >= 12"
+    },
+    {
+      "case": "REG-04",
+      "pass": false,
+      "name": "摆烂流 S 级占比",
+      "detail": "实测 0.60 · 目标 <= 0.20"
+    },
+    {
+      "case": "REG-05",
+      "pass": true,
+      "name": "走 ENDINGS 判定的比例（守卫 · S-04 后恒 100%，见 F-02）",
+      "detail": "实测 1 · 目标 >= 0.60"
+    },
+    {
+      "case": "REG-05",
+      "pass": false,
+      "name": "单次采样触达的正式结局种类占 ENDINGS 总数的比例（签字须 N=300）",
+      "detail": "实测 0.56 · 目标 >= 0.70"
+    },
+    {
+      "case": "REG-05",
+      "pass": true,
+      "name": "（参考）触达种类数 / ENDINGS 总数",
+      "detail": "9 / 16"
+    },
+    {
+      "case": "REG-05",
+      "pass": true,
+      "name": "forceEnd id（end_elder/end_ill/end_dead）不应再作为最终结局",
+      "detail": ""
+    },
+    {
+      "case": "REG-06",
+      "pass": true,
+      "name": "全年龄空转率",
+      "detail": "实测 0.14 · 目标 <= 0.20"
+    },
+    {
+      "case": "REG-06",
+      "pass": false,
+      "name": "66-100 岁空转率",
+      "detail": "实测 0.47 · 目标 <= 0.20"
+    },
+    {
+      "case": "REG-07",
+      "pass": false,
+      "name": "骑手 vs AI 终局净资产倍数",
+      "detail": "实测 412.91× · 目标 <= 150×"
+    },
+    {
+      "case": "REG-07",
+      "pass": false,
+      "name": "平均「曾换过职业」比例（单侧下界 · 越高越好）",
+      "detail": "实测 0.07 · 目标 >= 0.25"
+    },
+    {
+      "case": "REG-07",
+      "pass": true,
+      "name": "（观察项·不判定）换职业率 >35% 告警",
+      "detail": "0.070（正常区间）"
+    },
+    {
+      "case": "REG-07",
+      "pass": true,
+      "name": "（参考）骑手终局净资产",
+      "detail": "1342.3万"
+    },
+    {
+      "case": "REG-07",
+      "pass": true,
+      "name": "（参考）AI 终局净资产",
+      "detail": "55.42亿"
+    },
+    {
+      "case": "REG-08",
+      "pass": false,
+      "name": "1955 出生组 18 岁家庭净值中位",
+      "detail": "实测 -25.5万 · 目标 [-10.0万, 5.0万]"
+    },
+    {
+      "case": "REG-08",
+      "pass": false,
+      "name": "1965 出生组 18 岁家庭净值中位",
+      "detail": "实测 -33.5万 · 目标 [-10.0万, 5.0万]"
+    },
+    {
+      "case": "REG-08",
+      "pass": false,
+      "name": "1975 出生组 18 岁家庭净值中位",
+      "detail": "实测 -40.7万 · 目标 [-10.0万, 5.0万]"
+    },
+    {
+      "case": "REG-08",
+      "pass": false,
+      "name": "1985 出生组 18 岁家庭净值中位",
+      "detail": "实测 -11.4万 · 目标 [-10.0万, 5.0万]"
+    },
+    {
+      "case": "REG-09",
+      "pass": false,
+      "name": "在职年份中 state.career 非空的比例",
+      "detail": "实测 0.59 · 目标 >= 0.90"
+    },
+    {
+      "case": "REG-09",
+      "pass": true,
+      "name": "（参考）在职年份总数 / 空 career 年数",
+      "detail": "3531 / 1438"
+    },
+    {
+      "case": "REG-10",
+      "pass": true,
+      "name": "careerIncome 可被「阶梯表 × 工龄 × 学历K × 属性」静态复现（最大误差）",
+      "detail": "实测 0.00 · 目标 <= 0.10"
+    },
+    {
+      "case": "REG-10",
+      "pass": true,
+      "name": "rider 实测/静态",
+      "detail": "1.000×"
+    },
+    {
+      "case": "REG-10",
+      "pass": true,
+      "name": "cook 实测/静态",
+      "detail": "1.000×"
+    },
+    {
+      "case": "REG-10",
+      "pass": true,
+      "name": "clerk 实测/静态",
+      "detail": "1.000×"
+    },
+    {
+      "case": "REG-10",
+      "pass": true,
+      "name": "programmer 实测/静态",
+      "detail": "1.000×"
+    },
+    {
+      "case": "REG-10",
+      "pass": true,
+      "name": "ai 实测/静态",
+      "detail": "1.000×"
+    },
+    {
+      "case": "REG-10",
+      "pass": false,
+      "name": "同一职级 2025 年薪 / 1985 年薪（**名义**比 · 口径 = SALARY_ERA_INDEX）",
+      "detail": "实测 1× · 目标 >= 3.50×"
+    },
+    {
+      "case": "REG-10",
+      "pass": false,
+      "name": "同一职级 2025 / 1985 年薪的**实得**比（名义比 ÷ CPI 比，防「工资通胀齐涨」式假修复）",
+      "detail": "实测 0.36× · 目标 >= 1.50×"
+    },
+    {
+      "case": "REG-10",
+      "pass": true,
+      "name": "（参考）名义 / 实得",
+      "detail": "1.00× / 0.36×（CPI 比 2.80）"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "每格样本充足（正交 2 画像 × 3 剂量）",
+      "detail": "最少一格 150 局 / 共 900 局"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "（参考）实验设计",
+      "detail": "正交：steady/explorer × cramCap 0/10/40，每格 150 局；判定用**画像平衡**口径"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "自变量有效（studyAt18：不补习 → 补到上限）",
+      "detail": "实测 30.50点 · 目标 >= 20点"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "（参考）studyAt18 中位 · 三档剂量",
+      "detail": "0→0  10→15  40→30.5"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "30 岁收入比（画像平衡 · 补到上限 / 不补习 · 倒挂须 ≤5%）",
+      "detail": "实测 1.17× · 目标 >= 0.95×"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "（参考）30 岁收入中位（内部单位）",
+      "detail": "0→2.65亿  10→3.14亿  40→3.11亿"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "（参考）分画像 30 岁收入比",
+      "detail": "steady 1.45×  explorer 1.11×"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "高考分数随学习投入单调不减（补到上限 − 不补习）",
+      "detail": "实测 42分 · 目标 >= -5分"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "（参考）高考分数中位 · 三档剂量",
+      "detail": "0→490  10→514  40→532"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "（参考·不作判定）D-1 边际收益比（15→31 段 / 0→15 段 · 画像平衡）",
+      "detail": "7.21×   （salaryK 均值 1.086 → 1.095 → 1.164；0→15 段 0.010 / 15→31 段 0.069）· **全体平均会抹平条件性断层，不作判定**"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "（参考·不作判定）steady salaryK 边际比",
+      "detail": "1.39×   （1.032 → 1.067 → 1.116）"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "（参考·不作判定）explorer salaryK 均值 · 首段边际 ≤ 0",
+      "detail": "1.140 → 1.123 → 1.212"
+    },
+    {
+      "case": "REG-11",
+      "pass": false,
+      "name": "D-1 门 A · 档位内 salaryK 连续化（超线 0 / 35 / 70 分应给出不同值）",
+      "detail": "u_211（录取线 546）→ salaryK 1.200 / 1.200 / 1.200 —— 档位内恒等，超线分完全不兑现"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "（说明）门 A 为确定性断言，零噪声、不需蒙特卡洛；修复前必红、修复后必绿",
+      "detail": ""
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "（参考·不作判定）steady 收入边际比（15→31 段 / 0→15 段）",
+      "detail": "0.07×   （重尾量：1.52亿 → 1026.3万；复跑符号会翻转，**不可作门**）"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "（参考·不作判定）explorer 收入边际比（15→31 段 / 0→15 段）",
+      "detail": "首段边际 -4027.8万 ≤ 0 —— 符号不可信（收入中位复跑摆动可达 40%），**不可作门**"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "（参考·不作判定）高考分边际比（15→31 段 / 0→15 段）",
+      "detail": "0.75×   （低噪声量：24 分 → 18 分）"
+    },
+    {
+      "case": "REG-12",
+      "pass": false,
+      "name": "保守流 40 岁 HP 中位",
+      "detail": "实测 117 · 目标 [70, 95]"
+    },
+    {
+      "case": "REG-12",
+      "pass": false,
+      "name": "保守流 50-60 岁压力中位",
+      "detail": "实测 2 · 目标 >= 15"
+    },
+    {
+      "case": "REG-12",
+      "pass": true,
+      "name": "保守流平均寿命（均值，防止修复过猛把人全修死）",
+      "detail": "实测 87.47岁 · 目标 [72岁, 100岁]"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L0 合成极简核（压力样本·非真实形状） · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "L0 合成极简核（压力样本·非真实形状） · 迁移后字段形状完整（5 种子）",
+      "detail": "5/5 缺：seed20251008: used(undefined),investments(undefined),friends(undefined),family(undefined) | seed13579: used(undefined),investments(undefined),friends(undefined),family(undefined)"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "L0 合成极简核（压力样本·非真实形状） · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "5/5 炸：seed20251008: Cannot read properties of undefined (reading 'NET') | seed13579: Cannot read properties of undefined (reading 'NET')"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L0 合成极简核（压力样本·非真实形状） · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L1 合成极简核（压力样本·非真实形状） · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "L1 合成极简核（压力样本·非真实形状） · 迁移后字段形状完整（5 种子）",
+      "detail": "5/5 缺：seed20251008: investments(undefined) | seed13579: investments(undefined)"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "L1 合成极简核（压力样本·非真实形状） · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "5/5 炸：seed20251008: Cannot read properties of undefined (reading 'filter') | seed13579: Cannot read properties of undefined (reading 'filter')"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L1 合成极简核（压力样本·非真实形状） · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L2 合成（有 market/career，无 v5.5 新增） · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L2 合成（有 market/career，无 v5.5 新增） · 迁移后字段形状完整（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L2 合成（有 market/career，无 v5.5 新增） · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L2 合成（有 market/career，无 v5.5 新增） · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L3 合成（children 只有数量 / ex 是单体 / 旧专业名） · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L3 合成（children 只有数量 / ex 是单体 / 旧专业名） · 迁移后字段形状完整（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L3 合成（children 只有数量 / ex 是单体 / 旧专业名） · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L3 合成（children 只有数量 / ex 是单体 / 旧专业名） · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L4 完整当前版（对照） · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L4 完整当前版（对照） · 迁移后字段形状完整（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L4 完整当前版（对照） · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L4 完整当前版（对照） · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L5 孤儿型旧存档（删 parents + 删 flags） · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L5 孤儿型旧存档（删 parents + 删 flags） · 迁移后字段形状完整（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L5 孤儿型旧存档（删 parents + 删 flags） · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L5 孤儿型旧存档（删 parents + 删 flags） · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L6 删 log + 删 queue · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L6 删 log + 删 queue · 迁移后字段形状完整（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L6 删 log + 删 queue · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L6 删 log + 删 queue · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L7 删 family + 删 market · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "L7 删 family + 删 market · 迁移后字段形状完整（5 种子）",
+      "detail": "5/5 缺：seed20251008: family(undefined) | seed13579: family(undefined)"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L7 删 family + 删 market · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L7 删 family + 删 market · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v4.x（pre-5.0） 真实形状（32 字段） · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v4.x（pre-5.0） 真实形状（32 字段） · 迁移后字段形状完整（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v4.x（pre-5.0） 真实形状（32 字段） · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v4.x（pre-5.0） 真实形状（32 字段） · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v5.0.0 真实形状（43 字段） · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v5.0.0 真实形状（43 字段） · 迁移后字段形状完整（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v5.0.0 真实形状（43 字段） · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v5.0.0 真实形状（43 字段） · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v5.3.0 真实形状（47 字段） · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v5.3.0 真实形状（47 字段） · 迁移后字段形状完整（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v5.3.0 真实形状（47 字段） · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v5.3.0 真实形状（47 字段） · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v5.4.0 真实形状（47 字段） · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v5.4.0 真实形状（47 字段） · 迁移后字段形状完整（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v5.4.0 真实形状（47 字段） · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v5.4.0 真实形状（47 字段） · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "C 组 A 类：删除任一字段后 migrateState 不抛错（5 种子）",
+      "detail": "0/25"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "C 组 C 类：删除任一字段后仍能推进 5 年（5 种子）",
+      "detail": "0/25"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "C 组 B 类：删除任一字段后字段形状仍完整（形状债）",
+      "detail": "缺兜底: friends(5/5), family(5/5), talents(5/5)"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "用例可复现（同种子两次构造的存档摘要一致，非 flaky）",
+      "detail": "1aac7dcf:31026 / 1aac7dcf:31026"
+    }
+  ]
+}

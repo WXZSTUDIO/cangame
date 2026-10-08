@@ -1,0 +1,40 @@
+================ 验收门准入证明 · REG-01 ================
+
+──────── playtest-raw-pre-imp01.json  (2026-10-08T02:44:46.596Z) ────────
+判据：平均寿命 ≥ 60 岁   且   「熄灭」占比（end.cause）≤ 0.25
+
+  画像         n    哨兵   旧判据    新判据   寿命    寿命门  熄灭门   总判定
+                        end.id   end.cause         ≥60     ≤0.25
+  ----------------------------------------------------------------------------
+  aggressive  200   FAIL    0.670      0.000    36.9   FAIL  PASS    🔴 RED
+  baseline    200   FAIL    0.165      0.000    72.0   PASS  PASS    🟢 GREEN
+  explorer    200   FAIL    0.025      0.000    82.3   PASS  PASS    🟢 GREEN
+  reckless    200   FAIL    0.685      0.000    30.6   FAIL  PASS    🔴 RED
+  slacker     200   FAIL    0.000      0.000    85.3   PASS  PASS    🟢 GREEN
+  steady      200   FAIL    0.015      0.000    82.9   PASS  PASS    🟢 GREEN
+  ----------------------------------------------------------------------------
+
+  红端证明（缺陷存在时必须红）：✅ 成立 —— aggressive / reckless 判红
+  绿端证明（修复后必须能绿）：✅ 成立 —— baseline / explorer / slacker / steady 已可达绿
+
+──────── playtest-raw.json  (2026-10-08T02:52:02.410Z) ────────
+判据：平均寿命 ≥ 60 岁   且   「熄灭」占比（end.cause）≤ 0.25
+
+  画像         n    哨兵   旧判据    新判据   寿命    寿命门  熄灭门   总判定
+                        end.id   end.cause         ≥60     ≤0.25
+  ----------------------------------------------------------------------------
+  aggressive  200   PASS    0.000      0.655    37.8   FAIL  FAIL    🔴 RED
+  baseline    200   PASS    0.000      0.135    73.0   PASS  PASS    🟢 GREEN
+  explorer    200   PASS    0.000      0.020    80.8   PASS  PASS    🟢 GREEN
+  reckless    200   PASS    0.000      0.650    30.6   FAIL  FAIL    🔴 RED
+  slacker     200   PASS    0.000      0.000    84.0   PASS  PASS    🟢 GREEN
+  steady      200   PASS    0.000      0.010    82.2   PASS  PASS    🟢 GREEN
+  ----------------------------------------------------------------------------
+
+  红端证明（缺陷存在时必须红）：✅ 成立 —— aggressive / reckless 判红
+  绿端证明（修复后必须能绿）：✅ 成立 —— baseline / explorer / slacker / steady 已可达绿
+  ⚠️ 旧判据 end.id 在全部画像上恒为 0 —— 这正是 F-01「永绿门」的形态，已作废。
+
+================ 结论 ================
+  playtest-raw-pre-imp01.json  →  ✅ 双侧证明成立，REG-01 是有判定力的验收门
+  playtest-raw.json  →  ✅ 双侧证明成立，REG-01 是有判定力的验收门

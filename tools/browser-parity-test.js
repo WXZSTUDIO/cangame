@@ -29,7 +29,7 @@ w.addEventListener('error', e => errors.push('window.error: ' + e.message));
 
 // 与线上一致：按顺序插入 4 个独立 <script>
 ['assets/data.js', 'assets/market.js', 'assets/engine.js',
- 'assets/school.js', 'assets/career.js', 'assets/love.js', 'assets/loan.js', 'assets/ui.js'].forEach(f => {
+ 'assets/school.js', 'assets/career.js', 'assets/love.js', 'assets/pet.js', 'assets/legacy.js', 'assets/loan.js', 'assets/ui.js'].forEach(f => {
   const el = w.document.createElement('script');
   el.textContent = fs.readFileSync(path.join(root, f), 'utf8');
   w.document.body.appendChild(el);

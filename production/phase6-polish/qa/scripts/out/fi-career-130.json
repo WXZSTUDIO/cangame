@@ -1,0 +1,62 @@
+{
+  "fault": "career-130",
+  "desc": "A.careerIncome 结果 ×1.3（模拟薪资公式多乘一项）",
+  "n": "60",
+  "cases": "REG-10",
+  "assertions": [
+    {
+      "case": "REG-10",
+      "pass": false,
+      "name": "careerIncome 可被「阶梯表 × 工龄 × 学历K × 属性」静态复现（最大误差）",
+      "detail": "实测 0.30 · 目标 <= 0.10"
+    },
+    {
+      "case": "REG-10",
+      "pass": true,
+      "name": "rider 实测/静态",
+      "detail": "1.300×"
+    },
+    {
+      "case": "REG-10",
+      "pass": true,
+      "name": "cook 实测/静态",
+      "detail": "1.300×"
+    },
+    {
+      "case": "REG-10",
+      "pass": true,
+      "name": "clerk 实测/静态",
+      "detail": "1.300×"
+    },
+    {
+      "case": "REG-10",
+      "pass": true,
+      "name": "programmer 实测/静态",
+      "detail": "1.300×"
+    },
+    {
+      "case": "REG-10",
+      "pass": true,
+      "name": "ai 实测/静态",
+      "detail": "1.300×"
+    },
+    {
+      "case": "REG-10",
+      "pass": false,
+      "name": "同一职级 2025 年薪 / 1985 年薪（**名义**比 · 口径 = SALARY_ERA_INDEX）",
+      "detail": "实测 1× · 目标 >= 3.50×"
+    },
+    {
+      "case": "REG-10",
+      "pass": false,
+      "name": "同一职级 2025 / 1985 年薪的**实得**比（名义比 ÷ CPI 比，防「工资通胀齐涨」式假修复）",
+      "detail": "实测 0.36× · 目标 >= 1.50×"
+    },
+    {
+      "case": "REG-10",
+      "pass": true,
+      "name": "（参考）名义 / 实得",
+      "detail": "1.00× / 0.36×（CPI 比 2.80）"
+    }
+  ]
+}

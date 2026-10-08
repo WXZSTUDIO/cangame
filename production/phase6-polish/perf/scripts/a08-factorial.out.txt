@@ -1,0 +1,54 @@
+# A-08 调查 · 第三步：2×2 因子实验（决定性）
+
+生成时间：2026-10-08T01:45:31.932Z
+每格 400 局，共 1600 局。四个格子用**同一个随机序列**推进，唯一差异是画像与 `cramCap`。
+
+## 1. 先摆事实：两个画像差在哪
+
+- `steady`（稳健流）：jobTarget = [ai,doctor,finance,programmer,civil,teacher,accountant,lawyer,pm,designer,nurse,ecom,clerk]，social = **moderate**，market = house_first，cram = true
+- `explorer`（探索流）：jobTarget = [**空**]，social = **full**，market = balanced，cram = true
+
+`jobTarget` 为空 ⇒ `doPlayerActions` 里 `p.jobTarget && p.jobTarget.length` 为假 ⇒ **从不主动应聘**，职业全靠事件系统派发。
+`social: 'full'` ⇒ 每年调 `doUniActivity()` + `classmateAct()`，`classmateAct` 每次 +2 NET。
+`social: 'moderate'` ⇒ 这两个都**一次都不调**。
+
+## 2. 四格实测（30 岁中位）
+
+| 画像 | cramCap | 局数 | studyAt18 | 高考分 | 30 岁收入 | 职业 |
+|---|---|---:|---:|---:|---:|---|
+| steady | 0 | 376 | 0 | 497 | 4.24 亿 | ecom |
+| steady | 40 | 372 | 31 | 541 | 5.31 亿 | programmer |
+| explorer | 0 | 381 | 0 | 482 | 1.62 亿 | clerk |
+| explorer | 40 | 370 | 31 | 528 | 2.03 亿 | clerk |
+
+## 3. 主效应 vs 画像效应
+
+| 对比 | 口径 | 收入变化 |
+|---|---|---:|
+| **同画像内** `cramCap 0 → 40`（`steady`） | 真正的补习效应 | +25.2% |
+| **同画像内** `cramCap 0 → 40`（`explorer`） | 真正的补习效应 | +25.0% |
+| **同 cap 内** `steady → explorer`（cap=0） | 画像效应 | -61.7% |
+| **同 cap 内** `steady → explorer`（cap=40） | 画像效应 | -61.8% |
+| **原 REG-11 口径**（steady@0 vs explorer@40） | 画像+补习混在一起 | -52.1% |
+
+## 4. 属性：NET 到底是谁拉动的
+
+| 画像 | cramCap | NET 中位 | CHA 中位 | INT 中位 | STRESS 中位 |
+|---|---|---:|---:|---:|---:|
+| steady | 0 | 69.0 | 22.5 | 130.6 | 3.0 |
+| steady | 40 | 68.0 | 22.1 | 148.0 | 3.0 |
+| explorer | 0 | 193.6 | 96.9 | 147.9 | 12.0 |
+| explorer | 40 | 193.2 | 98.3 | 164.7 | 12.5 |
+
+**关键**：`cramSchool()` 的效应是 `{INT: +2~4, HP: -3, STRESS: +5, GROW: +2}` —— **完全不含 NET**。`school.js:479` 原文可查。
+所以 NET 的任何差异都不可能来自补习，只能来自 `social` 画像开关。
+
+## 5. base 分解：职业落点
+
+| 画像 | cramCap | base 中位(亿) | 有 career 比例 | 主落点 |
+|---|---|---:|---:|---|
+| steady | 0 | 2.45 | 100% | ecom 32%、programmer 31% |
+| steady | 40 | 3.00 | 100% | programmer 34%、hacker 32% |
+| explorer | 0 | 0.68 | 100% | clerk 26%、pm 9% |
+| explorer | 40 | 1.00 | 100% | clerk 24%、pm 10% |
+

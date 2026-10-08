@@ -1,0 +1,43 @@
+{
+  "seeds": [
+    20251008,
+    13579,
+    24680,
+    97531,
+    86420
+  ],
+  "fatalA": [],
+  "fatalC": [],
+  "shapeMiss": [
+    "friends(5/5)",
+    "family(5/5)",
+    "talents(5/5)"
+  ],
+  "fields": [
+    "edu",
+    "love",
+    "classmates",
+    "exes",
+    "children",
+    "friends",
+    "parents",
+    "family",
+    "market",
+    "career",
+    "loans",
+    "ill",
+    "achievements",
+    "socialTouch",
+    "uniTouch",
+    "goodTouch",
+    "spouse",
+    "spouseName",
+    "log",
+    "queue",
+    "credit",
+    "flags",
+    "pet",
+    "grief",
+    "talents"
+  ]
+}

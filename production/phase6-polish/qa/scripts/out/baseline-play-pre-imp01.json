@@ -1,0 +1,84 @@
+{
+  "ts": "2026-10-08T02:37:05.586Z",
+  "n": 1200,
+  "byPersona": {
+    "aggressive": {
+      "n": 200,
+      "crash": 0,
+      "lifeMean": 36.87,
+      "netMedCNY": 1221136490,
+      "scoreMed": 85,
+      "sShare": 0.24,
+      "salaryShareMed": -0.079,
+      "idleShareMean": 0.03,
+      "pir30Med": 0.2,
+      "firstHouseAgeMed": 25,
+      "endDeadShare": 0.67
+    },
+    "baseline": {
+      "n": 200,
+      "crash": 0,
+      "lifeMean": 72.05,
+      "netMedCNY": 4685878,
+      "scoreMed": 87,
+      "sShare": 0.45,
+      "salaryShareMed": 1.237,
+      "idleShareMean": 0.0937,
+      "pir30Med": 3.94,
+      "firstHouseAgeMed": null,
+      "endDeadShare": 0.165
+    },
+    "explorer": {
+      "n": 200,
+      "crash": 0,
+      "lifeMean": 82.28,
+      "netMedCNY": 1027743872,
+      "scoreMed": 100,
+      "sShare": 0.94,
+      "salaryShareMed": 0.0441,
+      "idleShareMean": 0.1202,
+      "pir30Med": 1.2,
+      "firstHouseAgeMed": 26,
+      "endDeadShare": 0.025
+    },
+    "reckless": {
+      "n": 200,
+      "crash": 0,
+      "lifeMean": 30.62,
+      "netMedCNY": 316372263,
+      "scoreMed": 84.5,
+      "sShare": 0.305,
+      "salaryShareMed": -0.0663,
+      "idleShareMean": 0.0361,
+      "pir30Med": 0.3,
+      "firstHouseAgeMed": 26,
+      "endDeadShare": 0.685
+    },
+    "slacker": {
+      "n": 200,
+      "crash": 0,
+      "lifeMean": 85.28,
+      "netMedCNY": 41092339,
+      "scoreMed": 93.5,
+      "sShare": 0.59,
+      "salaryShareMed": 1.233,
+      "idleShareMean": 0.1562,
+      "pir30Med": 1.51,
+      "firstHouseAgeMed": null,
+      "endDeadShare": 0
+    },
+    "steady": {
+      "n": 200,
+      "crash": 0,
+      "lifeMean": 82.86,
+      "netMedCNY": 2566822458,
+      "scoreMed": 100,
+      "sShare": 0.885,
+      "salaryShareMed": 0.0475,
+      "idleShareMean": 0.1269,
+      "pir30Med": 0.91,
+      "firstHouseAgeMed": 26,
+      "endDeadShare": 0.015
+    }
+  }
+}

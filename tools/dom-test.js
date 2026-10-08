@@ -25,7 +25,7 @@ w.addEventListener('error', e => errors.push('window.error: ' + e.message));
 
 // 必须在同一次 eval 中执行：共享 top-level const 词法作用域
 w.eval(['assets/data.js', 'assets/market.js', 'assets/engine.js',
-        'assets/school.js', 'assets/career.js', 'assets/love.js', 'assets/loan.js', 'assets/ui.js']
+        'assets/school.js', 'assets/career.js', 'assets/love.js', 'assets/pet.js', 'assets/legacy.js', 'assets/loan.js', 'assets/ui.js']
   .map(f => fs.readFileSync(path.join(root, f), 'utf8'))
   .concat(['window.__getState = function(){ return STATE; };'])
   .join('\n;\n'));

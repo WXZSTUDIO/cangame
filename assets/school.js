@@ -50,6 +50,19 @@ const HIGH_SCHOOLS = [
 ];
 
 /* ---------------- 大学（高考录取） ---------------- */
+
+/* 档内连续化：超过录取线之后，每多 SCORE_K.over 分，起薪系数 +SCORE_K.max（线性、封顶）。
+ * 与 UNIVERSITIES[].minScore 一样是配置，改这里 = 改全局教育收益。
+ *
+ * ⚠ 这个上限与「相邻档的 salaryK 地板」有硬约束：
+ *   若某档「封顶后的实际 salaryK」≥ 上一档的 salaryK，就会出现
+ *   「考得更好、拿得更少」的主导策略反转。典型例子是二本 / 一本：
+ *   二本 need=392，gao≥462 就吃满 0.95×1.10 = 1.0450；
+ *   一本 need=476，压线只有 1.0600 —— 余量仅 1.44%。
+ *   任何改动都必须跑 assertSalaryKMonotonic()（tools/_verify-school.js），
+ *   那条断言会全档扫描 gao ∈ [0,700]，把反转立刻拦下。 */
+const SCORE_K = { over: 70, max: 0.10 };
+
 const UNIVERSITIES = [
   {
     id: 'u_985', name: '985 重点大学', edu: 5, minScore: 88, years: 4, tier: 5,
@@ -70,7 +83,7 @@ const UNIVERSITIES = [
     major: ['工商管理', '土木工程', '英语', '市场营销', '视觉传达设计', '表演'],
     desc: '省里的好学校。能不能出头，看这四年你怎么过。',
     eff: { INT: 5, NET: 6, FAME: 4, CHA: 2, WILL: 2 },
-    flags: ['uni_bk'], salaryK: 1.04
+    flags: ['uni_bk'], salaryK: 1.06
   },
   {
     id: 'u_erben', name: '二本 / 民办本科', edu: 3, minScore: 56, years: 4, tier: 3,
@@ -94,6 +107,63 @@ const UNIVERSITIES = [
     flags: ['gaokao_fail'], salaryK: 0.8
   }
 ];
+
+/* ---------------- 起薪系数（纯函数区） ----------------
+ * 这四个函数是纯的：只依赖 UNIVERSITIES / clamp / SCORE_K，不碰 state、不随机。
+ * 抽出来的目的有两个：
+ *   1) 产品代码只有一处算 salaryK，不会再出现「结算与 UI 打架」（对照 career.js 的
+ *      careerIncome / careerIncomeParts 那个坑：委托了却只读零件自己重算）。
+ *   2) QA 可以直接 bestSalaryKFor(475) 注入整数分直读结果，
+ *      绕开 11 年随机过程 —— 收入复跑摆动 40%、符号翻转的问题对这几个函数不存在。 */
+function uniNeed(u) { return Math.round((u.minScore || 0) / 100 * 700); }
+
+function scoreKFor(u, gao) {
+  return 1 + clamp(Math.max(0, (gao || 0) - uniNeed(u)) / SCORE_K.over, 0, 1) * SCORE_K.max;
+}
+
+/* 某档在 gao 分下的实际起薪系数 = 档位基准 × 档内连续加成。
+ *
+ * ⚠ E-12 在这里就地生效，不放在调用点：落榜档的 need 是 0，`over` 会直接等于 gao，
+ *   gao ≥ 70 就吃满 → 0.80 × 1.10 = 0.880，高过专科压线的 0.850，
+ *   变成「考不上大学的起薪比专科还高」，与叙事完全相反。
+ *   把这条禁止项埋在函数里，任何调用方都拿不到那个 0.880 —— 禁止项必须守在源头，
+ *   否则会重演 career.js 那个「委托了却只读零件自己重算」的坑。 */
+function salaryKFor(u, gao) {
+  if (u.id === 'u_fail') return u.salaryK;
+  return u.salaryK * scoreKFor(u, gao);
+}
+
+/* gao 分下「最优可得」的档位与其起薪系数。够不到的档不参与；落榜档不参与（E-12）。
+ * 返回 { uni, k } 或 null（连落榜档都不参与 → 0 分时返回 null） */
+function bestSalaryKFor(gao) {
+  let best = null;
+  UNIVERSITIES.forEach(u => {
+    if ((gao || 0) < uniNeed(u)) return;      // 够不到
+    if (u.id === 'u_fail') return;            // E-12：落榜档不参与连续化
+    const k = salaryKFor(u, gao);
+    if (!best || k > best.k) best = { uni: u.id, k: k };
+  });
+  return best;
+}
+
+/* 不变量断言：任意 gao 下，「更差档的实际起薪系数」不得严格大于「更好档」。
+ * 违反即出现主导策略反转（考得更好反而拿得更少）。
+ * 由 tools/_verify-school.js 在回归里调用 —— 手工推导的常数必须有机器守着。 */
+function assertSalaryKMonotonic() {
+  const bad = [];
+  for (let i = 0; i < UNIVERSITIES.length - 1; i++) {
+    const better = UNIVERSITIES[i], worse = UNIVERSITIES[i + 1];
+    if (worse.id === 'u_fail') continue;      // E-12：落榜档不参与
+    for (let g = 0; g <= 700; g++) {
+      if (g < uniNeed(better)) continue;
+      if (salaryKFor(worse, g) > salaryKFor(better, g) + 1e-9) {
+        bad.push('gao=' + g + ' ' + worse.name + '(' + salaryKFor(worse, g).toFixed(4) +
+                 ') > ' + better.name + '(' + salaryKFor(better, g).toFixed(4) + ')');
+      }
+    }
+  }
+  return bad;   // 空数组 = 通过
+}
 
 /* ---------------- 校园活动（大学期间每年可选一项） ---------------- */
 const UNI_ACTIVITIES = [
@@ -279,6 +349,12 @@ function schoolLockReason(state, u, total, full) {
    权重配平过：真实玩家答对 4 题左右时，录取分布与旧制基本一致。 */
 function quizPick() {
   const pool = EXAM_QUIZ.slice();
+  // v6：智力 80+ 的学霸有概率抽到「超级大脑」高难题（答对同样是满分口径，答错不额外扣）
+  if (typeof SUPER_QUIZ !== 'undefined' && typeof STATE !== 'undefined' && STATE &&
+      (STATE.stats.INT || 0) >= 80 && chance(0.35)) {
+    const hard = SUPER_QUIZ[randInt(0, SUPER_QUIZ.length - 1)];
+    pool.splice(randInt(0, Math.max(0, pool.length - 1)), 0, hard); // 混入题池
+  }
   const out = [];
   for (let i = 0; i < 5 && pool.length; i++) {
     out.push(pool.splice(randInt(0, pool.length - 1), 1)[0]);
@@ -415,7 +491,8 @@ function applySchool(state, id) {
     e.eduLevel = u.edu;
     e.gradAge = state.age + u.years;
     e.major = null; // 专业由录取后的填志愿事件决定
-    e.salaryK = u.salaryK;
+    // 档内连续化：超线分换起薪。落榜档的排除（E-12）已内建在 salaryKFor 里。
+    e.salaryK = salaryKFor(u, e.gao);
     applyEffects(state, u.eff || {});
     (u.flags || []).forEach(f => state.flags[f] = true);
     if (u.id === 'u_fail') {
@@ -456,7 +533,7 @@ function doUniActivity(state, actId) {
   if (a.id === 'a_study') state.edu.study = clamp((state.edu.study || 0) + 12, 0, EXAM_META.studyCap);
   if (a.id === 'a_kaoyan' && chance(0.45) && state.edu.eduLevel < 5) {
     state.edu.eduLevel = 5;
-    state.edu.salaryK = Math.max(state.edu.salaryK || 1, 1.4);
+    state.edu.salaryK = Math.max(state.edu.salaryK || 1, KAOYAN_FLOOR);
     state.edu.gradAge = (state.edu.gradAge || 22) + 2;
     state.flags.kaoyan_ok = true;
     pushLog(state, '【上岸】考研成绩出来了。你考上了。研究生三年，又是一段没有人问结果的路。', 'money');

@@ -5,7 +5,7 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const ctx = { console, Math, JSON, Date, isNaN, parseInt, parseFloat, Number, String, Array, Object };
 vm.createContext(ctx);
-['assets/data.js', 'assets/market.js', 'assets/engine.js', 'assets/school.js', 'assets/career.js', 'assets/love.js', 'assets/loan.js']
+['assets/data.js', 'assets/market.js', 'assets/engine.js', 'assets/school.js', 'assets/career.js', 'assets/love.js', 'assets/pet.js', 'assets/legacy.js', 'assets/loan.js']
   .forEach(f => vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f }));
 
 const A = vm.runInContext(`({
@@ -161,14 +161,25 @@ console.log('== 7. 健康低会强制生病，不治会恶化到死 ==');
 {
   const s = A.createGame({ name: 'T', gender: 'M', familyId: 'kuangqu', priority: 'balance', talents: [] });
   s.startYear = 1990; s.age = 50; s.stats.HP = 20; s.stats.MONEY = 10;
+  // QA 修复（原为 guard < 12）：illnessTick 的得病判定是伯努利试验，
+  // HP=20 时单次命中率实测约 28.5%，12 次全不中约 1.8% → 这条断言随机红（20 轮普查命中 1 次）。
+  // 上限提到 60 次（全不中概率 ≈ 1.8e-9）。
   let got = null, guard = 0;
-  while (!got && guard++ < 12) { got = A.illnessTick(s); }
+  while (!got && guard++ < 60) { got = A.illnessTick(s); }
   ok(!!s.ill, '健康过低会强制得病', s.ill ? s.ill.name : '—');
   ok((s.extraQueue || []).some(q => String(q.ev.id).indexOf('ill_at_') === 0), '生病弹出强制事件');
-  ok((s.extraQueue || [])[0].ev.choices.length === 3, '生病有三个选择（硬扛 / 诊所 / 住院）');
-  // 一直硬扛 → 恶化 → 死亡（多次采样，单次走到哪一步有随机性）
+  // QA 修复（原为裸取 [0]）：上面一旦没得病，extraQueue[0] 是 undefined → 这里抛 TypeError，
+  // 会把整个脚本打成 exit≠0，掩盖真实失败原因。加空值保护。
+  const q0 = (s.extraQueue || [])[0];
+  ok(!!(q0 && q0.ev && q0.ev.choices && q0.ev.choices.length === 3),
+    '生病有三个选择（硬扛 / 诊所 / 住院）', q0 && q0.ev ? q0.ev.id : 'extraQueue 为空');
+  /* 一直硬扛 → 恶化 → 死亡（多次采样，单次走到哪一步有随机性）
+   * QA 修复（原为「12 例里 ≥9 例」）：实测单次成功率 q≈91.8%、病死率≈93.7%。
+   * 12 例取 ≥9（75%）时标准误约 3%，落在门限边缘 → 30 轮普查命中 1 次（3%），断言随机红。
+   * 改为 40 例：样本加大后标准误降到约 1.7%，**比例要求仍保持 75%（≥30）不放松**，
+   * 理论失败率从 0.4% 降到 0.001%，且对真实退化的灵敏度反而更高。 */
   let reached3 = 0, deadN = 0, sample = '';
-  for (let n = 0; n < 12; n++) {
+  for (let n = 0; n < 40; n++) {
     const s2 = A.createGame({ name: 'T2', gender: 'F', familyId: 'kuangqu', priority: 'balance', talents: [] });
     s2.startYear = 1990; s2.age = 58; s2.stats.HP = 50; s2.stats.MONEY = 5;
     let g2 = 0;
@@ -183,16 +194,37 @@ console.log('== 7. 健康低会强制生病，不治会恶化到死 ==');
     if (s2.finished) deadN++;
     if (!sample) sample = stages.join('→');
   }
-  ok(reached3 >= 9, '不治会一路恶化到重度以上', `${reached3}/12 例 · 例：${sample}`);
-  ok(deadN >= 10, '一直不治最终会病死', `${deadN}/12 例`);
+  ok(reached3 >= 30, '不治会一路恶化到重度以上', `${reached3}/40 例 · 例：${sample}`);
+  ok(deadN >= 32, '一直不治最终会病死', `${deadN}/40 例`);
   // 及时治疗能治好
-  const s3 = A.createGame({ name: 'T3', gender: 'M', familyId: 'yiliao', priority: 'balance', talents: [] });
-  s3.startYear = 2000; s3.age = 45; s3.stats.HP = 60; s3.stats.MONEY = 5000000000;
+  // QA 修复（原为「单局从 45 岁跑到 105 岁」）：实测每年得病概率约 1.8%，
+  // 单局 60 次伯努利试验全不中的概率 25%~34% → 这条断言随机红。
+  // 改为「最多开 12 局、每局到 75 岁为止」，全不中概率降到 < 1e-6。
+  // 注意：不能靠判 s3.finished 来解决 —— 只调 illnessTick 的循环里 finish() 不会被触发
+  // （finish() 在 step() 里，且需 age >= END_AGE=105），实测失败样本 finished 全为 false。
+  const mk3 = () => {
+    const t = A.createGame({ name: 'T3', gender: 'M', familyId: 'yiliao', priority: 'balance', talents: [] });
+    t.startYear = 2000; t.age = 45; t.stats.HP = 60; t.stats.MONEY = 5000000000;
+    return t;
+  };
+  let s3 = mk3();
   let g3 = 0;
-  while (!s3.ill && g3++ < 60) { s3.age++; A.illnessTick(s3); }
+  for (let run = 0; run < 12 && !s3.ill; run++) {
+    s3 = mk3(); g3 = 0;
+    while (!s3.ill && !s3.finished && s3.age < 75 && g3++ < 40) { s3.age++; A.illnessTick(s3); }
+  }
   if (s3.ill) {
-    const r = A.treatIllness(s3, 'hospital');
-    ok(r.ok && (r.cured || !s3.ill), '花钱治疗能治好', r.cured ? '已痊愈' : '还需疗程');
+    // QA 修复（原为只治一次）：treatIllness 按 cureChance() 判定（住院 p≈0.97−病程/严重度，
+    // 慢性病再 −0.12），单次完全可能返回「还需疗程」——原断言假设一次就好 → 随机红。
+    // 改为按产品疗程语义连续治疗至痊愈（最多 12 个疗程；刚发病 stage=1，单次最低 p≈0.65，
+    // 12 次全败概率约 3e-6）。钱给足 50 亿，不会因「钱不够」中断。
+    let cured = false, courses = 0, r = null;
+    while (s3.ill && courses++ < 12) {
+      r = A.treatIllness(s3, 'hospital');
+      if (!r.ok) break;
+      if (r.cured) { cured = true; break; }
+    }
+    ok(cured, '花钱治疗能治好', cured ? `第 ${courses} 个疗程痊愈` : (r ? r.msg : '未治疗'));
   } else { ok(false, '未能触发疾病用于治疗验证'); }
 }
 

@@ -1,0 +1,77 @@
+{
+  "ts": "2026-10-08T03:13:21.680Z",
+  "N": 120,
+  "fingerprint": "data.js@2026-10-08T00:57  market.js@2026-10-06T03:16  engine.js@2026-10-08T00:59  school.js@2026-10-07T01:17  career.js@2026-10-08T00:55  love.js@2026-10-07T04:29  loan.js@2026-10-06T03:16  ui.js@2026-10-08T01:01",
+  "cases": {
+    "REG-00": {
+      "pass": 3,
+      "total": 3,
+      "allPass": true
+    },
+    "REG-01": {
+      "pass": 4,
+      "total": 9,
+      "allPass": false
+    },
+    "REG-02": {
+      "pass": 1,
+      "total": 3,
+      "allPass": false
+    },
+    "REG-03": {
+      "pass": 0,
+      "total": 1,
+      "allPass": false
+    },
+    "REG-04": {
+      "pass": 1,
+      "total": 3,
+      "allPass": false
+    },
+    "REG-05": {
+      "pass": 3,
+      "total": 4,
+      "allPass": false
+    },
+    "REG-06": {
+      "pass": 1,
+      "total": 2,
+      "allPass": false
+    },
+    "REG-07": {
+      "pass": 3,
+      "total": 5,
+      "allPass": false
+    },
+    "REG-08": {
+      "pass": 0,
+      "total": 4,
+      "allPass": false
+    },
+    "REG-09": {
+      "pass": 1,
+      "total": 2,
+      "allPass": false
+    },
+    "REG-10": {
+      "pass": 7,
+      "total": 9,
+      "allPass": false
+    },
+    "REG-11": {
+      "pass": 16,
+      "total": 17,
+      "allPass": false
+    },
+    "REG-12": {
+      "pass": 1,
+      "total": 3,
+      "allPass": false
+    },
+    "REG-13": {
+      "pass": 46,
+      "total": 52,
+      "allPass": false
+    }
+  }
+}

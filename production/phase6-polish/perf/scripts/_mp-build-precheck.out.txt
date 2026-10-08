@@ -1,0 +1,47 @@
+# 小程序构建前置体检（只读）
+
+生成时间：2026-10-08T01:26:12.624Z
+
+## 1. 逻辑层浏览器 API 污染检查
+
+  ✓ data.js
+  ✓ market.js
+  ✓ engine.js
+  ✓ school.js
+  ✓ career.js
+  ✓ love.js
+  ✓ loan.js
+
+✅ 7 个逻辑层文件**全部干净**，重跑 `build-engine.js` 不会触发任何告警。
+
+## 2. 顶层命名冲突检查
+
+  ✓ 无冲突（这是目前唯一在保护这套架构的东西）
+
+## 3. 重跑构建后会新增哪些导出符号
+
+  现有 bundle 导出 **250** 个 → 重跑后 **261** 个
+
+  **新增 11 个**（IMP-01 引入）：
+
+  | 符号 | 落点 |
+  |---|---|
+  | `CAREER_MULT` | career.js:568 |
+  | `DEATH_CAUSES` | data.js:788 |
+  | `JOB_ALIAS` | career.js:392 |
+  | `NON_JOBS` | career.js:406 |
+  | `careerIncomeParts` | career.js:581 |
+  | `endBy` | engine.js:2243 |
+  | `endingFor` | engine.js:2225 |
+  | `freelanceIncome` | career.js:607 |
+  | `isNonJob` | career.js:447 |
+  | `resolveEnding` | engine.js:2229 |
+  | `setJob` | career.js:409 |
+
+  ✓ 无符号消失（没有删掉任何既有导出，小程序侧不会断引用）
+
+## 4. 结论
+
+- 本批改动落在 **data.js / engine.js / career.js** 三个逻辑层文件，三者都在 `build-engine.js` 的 `FILES` 列表里 → **合并前必须重跑 `node tools/build-engine.js`**。
+- 文件列表与顺序（`data → market → engine → school → career → love → loan`）本次**未改动**，重跑是安全的，不会打断小程序。
+- ⚠️ 我不改动 `cangame-mp/`，构建请由主理人或小程序侧执行；在此之前 `cangame-mp/engine/bundle.js` 仍是**改前**版本（构建于 2026-10-07 13:38），与 Web 版逻辑已不一致。

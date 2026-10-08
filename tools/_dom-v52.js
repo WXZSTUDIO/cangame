@@ -15,7 +15,7 @@ const dom = new JSDOM(html, { runScripts: 'dangerously', url: 'https://cangame.t
 const w = dom.window;
 w.addEventListener('error', e => errors.push('window.error: ' + e.message));
 w.eval(['assets/data.js', 'assets/market.js', 'assets/engine.js', 'assets/school.js',
-  'assets/career.js', 'assets/love.js', 'assets/loan.js', 'assets/ui.js']
+  'assets/career.js', 'assets/love.js', 'assets/pet.js', 'assets/legacy.js', 'assets/loan.js', 'assets/ui.js']
   .map(f => fs.readFileSync(path.join(root, f), 'utf8'))
   .concat([
     'window.__getState = function(){ return STATE; };',

@@ -1,0 +1,26 @@
+{
+  "fault": "flat-score",
+  "desc": "st.score 恒为 80（模拟评分失去区分度）",
+  "n": "60",
+  "cases": "REG-04",
+  "assertions": [
+    {
+      "case": "REG-04",
+      "pass": false,
+      "name": "稳健流 S 级占比",
+      "detail": "实测 0.85 · 目标 <= 0.35"
+    },
+    {
+      "case": "REG-04",
+      "pass": false,
+      "name": "稳健流评分标准差",
+      "detail": "实测 0 · 目标 >= 12"
+    },
+    {
+      "case": "REG-04",
+      "pass": false,
+      "name": "摆烂流 S 级占比",
+      "detail": "实测 0.33 · 目标 <= 0.20"
+    }
+  ]
+}

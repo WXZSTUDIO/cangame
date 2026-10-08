@@ -1,0 +1,21 @@
+{
+  "fault": "no-content",
+  "faultName": "no-content",
+  "desc": "A.step 的 exam / event / invest 产出全部改判为 year（模拟内容断供）",
+  "n": "60",
+  "cases": "REG-06",
+  "assertions": [
+    {
+      "case": "REG-06",
+      "pass": false,
+      "name": "全年龄空转率",
+      "detail": "实测 1.02 · 目标 <= 0.20"
+    },
+    {
+      "case": "REG-06",
+      "pass": false,
+      "name": "66-100 岁空转率",
+      "detail": "实测 1 · 目标 <= 0.20"
+    }
+  ]
+}

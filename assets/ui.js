@@ -41,13 +41,71 @@ function uiConfirmNo() {
 
 /* ---------- 存档 ---------- */
 function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
-function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
+/* IMP-01 · R-02：原来的 catch 是空的，写失败时玩家完全不知情 ——
+ * 隐私模式 / 配额写满时他会以为存了，下次回来「继续游戏」按钮就消失了。
+ * 现在写失败要：① 明确提示一次 ② 返回值让调用方能知道 ③ 控制台留痕。 */
+let _storageBroken = false;
+function lsSet(k, v) {
+  try { localStorage.setItem(k, JSON.stringify(v)); return true; }
+  catch (e) {
+    if (!_storageBroken) {
+      _storageBroken = true;
+      try {
+        toast('本机无法保存进度（浏览器禁止存储或空间已满），这一局可能不会被记住');
+        console.error('[cangame] storage write failed', e);
+      } catch (_) { }
+    }
+    return false;
+  }
+}
 
 function autosave() {
-  if (!STATE) return;
+  if (!STATE) return false;
   STATE.updatedAt = Date.now();
-  lsSet(LS.auto, STATE);
+  const ok = lsSet(LS.auto, STATE);
+  if (!ok) { try { const b = $('btnSaveGame'); if (b) b.classList.add('save-broken'); } catch (_) { } }
+  return ok;
 }
+
+/* ---------- 存档写入口：脏标记 + 延迟合流（IMP-01 · O-03 的硬前置） ----------
+ * 这一批**不改写入时机**，SAVE_DEBOUNCE_MS 仍是 0，markDirty() 等价于立刻 autosave()。
+ * 但要先把「调用点 → markDirty / autosaveNow」这条链路铺好，并把 pagehide /
+ * visibilitychange 兜底埋好 —— 这样第二批做存档节流时只改这一个常量，
+ * 不用再回去挨个换调用点，也不会漏掉「切后台就丢档」这个坑。 */
+const SAVE_DEBOUNCE_MS = 0;      // ← 第二批（O-03）把它改成 400 即开启节流
+let _saveDirty = false;
+let _saveTimer = 0;
+
+function markDirty() {
+  if (!STATE) return false;
+  _saveDirty = true;
+  if (SAVE_DEBOUNCE_MS > 0) {
+    if (!_saveTimer) _saveTimer = setTimeout(flushSave, SAVE_DEBOUNCE_MS);
+    return true;
+  }
+  return flushSave();
+}
+
+/* 关键节点（人生结束 / 刚出生 / 用户点了💾）与「切后台/关页」兜底都走这个，永远同步 */
+function autosaveNow() {
+  if (!STATE) return false;
+  _saveDirty = true;
+  return flushSave();
+}
+
+function flushSave() {
+  if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = 0; }
+  if (!_saveDirty) return false;
+  _saveDirty = false;
+  return autosave();
+}
+
+/* 手机上一按 Home / 一切标签，页面可能再也不会回来 —— 这里必须补一刀 */
+window.addEventListener('pagehide', function () { flushSave(); });
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'hidden') flushSave();
+});
+window.addEventListener('beforeunload', function () { flushSave(); });
 function loadAuto() { return lsGet(LS.auto); }
 function hasSave() {
   const a = loadAuto();
@@ -122,7 +180,19 @@ function bind(id, fn) {
   if (!el) { try { console.warn('[cangame] 缺少元素 #' + id); } catch (e) { } return; }
   try { el.onclick = fn; } catch (e) { showCrash(e.message); }
 }
+/* 文本上下文：只转义 & < > 就够（旧行为，保持不变） */
 function esc(s) { return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+/* 属性上下文：必须连引号一起转义。
+ * IMP-01 · R-04：原来只用 esc()，而它被大量用在双引号属性里
+ * （旧代码是 `aria-label="${esc(name)}"` / `title="${esc(...)}"`）。
+ * 玩家姓名（#inputName，10 字符、不限字符集，且孩子姓氏继承自 state.name[0]）
+ * 里带一个双引号就能突破属性边界，往 SVG 元素上注入 onload / onerror 这类
+ * 事件处理器属性。所有属性上下文一律改用 escAttr()。 */
+function escAttr(s) {
+  return String(s).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
 function toast(msg) {
   const t = $('toast');
   t.textContent = msg;
@@ -272,7 +342,10 @@ function confirmCreate() {
   const priority = $('priorityList').dataset.pick || 'balance';
   lsSet(LS.pref, { name, gender });
   STATE = createGame({ name, gender, familyId, priority, talents: SELECTED.slice() });
-  autosave();
+  // v6 传承 / 重生：新局落定后注入继承包或前世记忆
+  if (typeof applyRebirthBoost === 'function') applyRebirthBoost(STATE);
+  if (typeof applyHeirBoost === 'function') applyHeirBoost(STATE);
+  markDirty();
   enterGame();
 }
 
@@ -318,7 +391,7 @@ function renderStats() {
   const chip = (st) => {
     const v = Math.round(s[st.key] === undefined ? 60 : s[st.key]);
     const bad = st.warn ? !!st.warn(v) : false;
-    return `<span class="m ${bad ? 'bad' : ''}" title="${esc(st.hint || st.name)}"><i>${st.name}</i><b>${v}</b></span>`;
+    return `<span class="m ${bad ? 'bad' : ''}" title="${escAttr(st.hint || st.name)}"><i>${st.name}</i><b>${v}</b></span>`;
   };
   let stripHtml = (typeof CORE_STATS !== 'undefined' ? CORE_STATS : []).map(chip).join('');
   if (SHOW_MORE_STATS) {
@@ -588,7 +661,7 @@ function portraitSVG(name, gender, age, opt) {
   const earring = (isF && !kid && (h >>> 15) % 3 === 0 && (!isF || st >= 6))
     ? `<circle cx="${cx - rx + .5}" cy="${cy + 8}" r="1.15" fill="#E8C36A"/><path d="M${cx - rx + .5},${cy + 9.1} l0,2.4" stroke="#E8C36A" stroke-width=".7"/><circle cx="${cx + rx - .5}" cy="${cy + 8}" r="1.15" fill="#E8C36A"/><path d="M${cx + rx - .5},${cy + 9.1} l0,2.4" stroke="#E8C36A" stroke-width=".7"/>` : '';
 
-  return `<svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" aria-label="${esc(name || '')}">` +
+  return `<svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" aria-label="${escAttr(name || '')}">` +
     defs +
     `<rect width="100" height="100" fill="url(#${uid}b)"/>` +
     `<rect width="100" height="100" fill="url(#${uid}g)"/>` +
@@ -635,7 +708,8 @@ function renderJobView() {
   const c = STATE.career ? careerById(STATE.career.id) : null;
   const m = marketMigrate(STATE);
   const j = JOBS[STATE.job] || { salary: 0, cost: 12000000 };
-  const income = STATE.career ? careerIncome(STATE) : Math.round(j.salary * (1 + s.INT / 400) * (1 + s.NET / 800));
+  // 散工口径与 engine.js 的年结算共用同一个 freelanceIncome()，不再各写一份公式
+  const income = STATE.career ? careerIncome(STATE) : freelanceIncome(STATE);
   const cost = livingCost(STATE);
 
   // 当前职业卡
@@ -758,7 +832,7 @@ function renderJobView() {
     <div class="job-sec">🏅 成就 ${got.length} / ${ACHIEVEMENTS.length}</div>
     <div class="ach-wall">${ACHIEVEMENTS.map(a => {
       const on = got.indexOf(a.id) >= 0;
-      return `<span class="ach ${on ? 'on' : ''}" title="${esc(a.name + '：' + a.desc)}">${a.icon}<i>${esc(a.name)}</i></span>`;
+      return `<span class="ach ${on ? 'on' : ''}" title="${escAttr(a.name + '：' + a.desc)}">${a.icon}<i>${esc(a.name)}</i></span>`;
     }).join('')}</div>
   </div>`;
 
@@ -842,6 +916,22 @@ function familyRecentLog() {
 }
 
 /* ---------- 人际关系视图：家人 / 同学 / 朋友 / 恋人 ---------- */
+/* v6 走亲访友送礼：陪伴 + 三档礼物（价格显著影响关系值），一年每人一次 */
+function giftMulti(who, key) {
+  const touch = STATE.giftTouch || {};
+  const used = touch[who] === STATE.age;
+  const interact = key
+    ? ((STATE.socialTouch || {})[key] === STATE.age
+        ? '<span class="rel-act dis">今年已互动</span>'
+        : `<button class="rel-act" onclick="uiSocial('${key}')">陪伴</button>`)
+    : '';
+  const gifts = used ? '<span class="rel-act dis">礼已送</span>'
+    : `<button class="rel-act" onclick="uiGift('${who}','gift_small')">心意礼 ${fmtMoney(GIFT_CATALOG[0].cost)}</button>` +
+      `<button class="rel-act" onclick="uiGift('${who}','gift_big')">重礼 ${fmtMoney(GIFT_CATALOG[2].cost)}</button>` +
+      `<button class="rel-act" onclick="uiGift('${who}','gift_huge')">豪礼 ${fmtMoney(GIFT_CATALOG[3].cost)}</button>`;
+  return interact + gifts;
+}
+
 function renderRelView() {
   const touch = STATE.socialTouch || {};
   const canTouch = (key) => touch[key] !== STATE.age;
@@ -859,12 +949,12 @@ function renderRelView() {
     } else {
       if (ps.father) {
         cards.push(ps.father.alive
-          ? { avaSvg: personAvatar(ps.father.name, 'M', ps.father.age, ''), name: `父亲 · ${ps.father.name}`, sub: `${ps.father.age}岁 · ${ps.father.job || '工人'} · ${hpText(ps.father.hp)} · 亲近 ${Math.round(ps.father.affinity)}%。他不爱说话，但每次你出事，第一个到的是他。`, key: 'father' }
+          ? { avaSvg: personAvatar(ps.father.name, 'M', ps.father.age, ''), name: `父亲 · ${ps.father.name}`, sub: `${ps.father.age}岁 · ${ps.father.job || '工人'} · ${hpText(ps.father.hp)} · 亲近 ${Math.round(ps.father.affinity)}%。他不爱说话，但每次你出事，第一个到的是他。`, key: 'father', multi: giftMulti('father', 'father') }
           : { avaSvg: personAvatar(ps.father.name, 'M', ps.father.age, 'amber'), name: `父亲 · ${ps.father.name}`, sub: `已故。走得那年 ${ps.father.age}岁。`, dead: true });
       }
       if (ps.mother) {
         cards.push(ps.mother.alive
-          ? { avaSvg: personAvatar(ps.mother.name, 'F', ps.mother.age, ''), name: `母亲 · ${ps.mother.name}`, sub: `${ps.mother.age}岁 · ${ps.mother.job || '工人'} · ${hpText(ps.mother.hp)} · 亲近 ${Math.round(ps.mother.affinity)}%。她记得你所有的口味。`, key: 'mother' }
+          ? { avaSvg: personAvatar(ps.mother.name, 'F', ps.mother.age, ''), name: `母亲 · ${ps.mother.name}`, sub: `${ps.mother.age}岁 · ${ps.mother.job || '工人'} · ${hpText(ps.mother.hp)} · 亲近 ${Math.round(ps.mother.affinity)}%。她记得你所有的口味。`, key: 'mother', multi: giftMulti('mother', 'mother') }
           : { avaSvg: personAvatar(ps.mother.name, 'F', ps.mother.age, 'amber'), name: `母亲 · ${ps.mother.name}`, sub: `已故。走得那年 ${ps.mother.age}岁。`, dead: true });
       }
     }
@@ -921,7 +1011,7 @@ function renderRelView() {
       cards.push({
         ava: '🧸', cls: '', name: `陪孩子们待一天`,
         sub: `${STATE.grandCount ? `你已经是 ${STATE.grandCount} 个孙辈的祖辈了。` : '一年的陪伴，是他们记一辈子的东西。'}`,
-        key: 'child'
+        key: 'child', multi: giftMulti('child', 'child')
       });
     }
     if (STATE.pet) {
@@ -1066,6 +1156,140 @@ function renderRelView() {
           : `<button class="rel-act" onclick="uiGoodDeed('${d.id}')">就做这个</button>`
       });
     });
+  } else if (REL_TAB === 'relax') {
+    /* S-01 ③：成年期唯一系统性的减压出口。三条共享一个年度额度（spec §2.③3.3），
+     * 所以这里必须把「今年还剩几次」讲清楚，否则玩家会以为是三条各一次。 */
+    const st = Math.round(STATE.stats.STRESS || 0);
+    const used = STATE.relaxUsedYear === STATE.age;
+    extra = `<div class="rel-sub" style="padding:0 4px 8px">压力 ${st}。` +
+      `<b>今年还${used ? '没有' : '有 1 次'}机会</b>——三条只能选一条，选了就没了。` +
+      `${st < 10 ? '（说实话，你现在好像没那么累。）' : ''}</div>`;
+    RELAX_ACTS.forEach(r => {
+      const b = relaxBranch(r, STATE.age);
+      const young = STATE.age < (r.minAge || 0);
+      const poor = b.cost > (STATE.stats.MONEY || 0);
+      // 条件门槛（NET < 20 叫不出八个人）—— 提示语本身就是叙事，直接取 condMsg
+      let condFail = '';
+      if (r.cond && r.cond.min) {
+        for (const k in r.cond.min) { if ((STATE.stats[k] || 0) < r.cond.min[k]) condFail = r.condMsg || '条件还不满足'; }
+      }
+      const off = used || young || poor || !!condFail;
+      const hint = used ? '今年已经用过了'
+        : (young ? `${r.minAge} 岁以后`
+          : (poor ? '钱不够' : (condFail ? condFail : (st < 10 ? '你现在好像不需要这个' : ''))));
+      cards.push({
+        avaSvg: `<span class="rel-ava ${used ? 'amber' : ''}" style="font-size:24px">${r.icon}</span>`,
+        name: r.name,
+        sub: `${esc(b.desc)}　→ 压力 ${b.eff.STRESS}${b.cost ? ` · 花费 ${fmtMoney(b.cost)}` : ' · 不花钱'}` +
+          (hint ? ` · ${hint}` : ''),
+        key: null,
+        // E-1：STRESS 低时仍允许使用（还有 LOVE/HP 收益），只提示不禁止 —— 禁止会剥夺自主感
+        multi: off ? `<span class="rel-act dis">${hint || '今年做不了'}</span>`
+          : `<button class="rel-act" onclick="uiRelaxAct('${r.id}')">就做这个</button>`
+      });
+    });
+  } else if (REL_TAB === 'pets') {
+    /* v6 宠物生态：商店 / 喂养 / 美容 / 选美 / 繁育 / 赛马 */
+    const pets = (typeof petsInit === 'function') ? petsInit(STATE) : [];
+    const alive = pets.filter(p => p.alive);
+    extra = `<div class="rel-sub" style="padding:0 4px 8px">宠物 ${alive.length}/${typeof PET_CAP !== 'undefined' ? PET_CAP : 4} · 每年自动喂养（没现金会掉亲密）</div>`;
+    // 商店
+    extra += `<div class="pet-shop">` + Object.keys(PET_TYPES).map(tp => {
+      const t = PET_TYPES[tp];
+      const poor = t.price > STATE.stats.MONEY;
+      return `<button class="pet-buy" ${poor ? 'disabled' : ''} onclick="uiPetBuy('${tp}')">${t.icon} ${t.name}<i>${fmtMoney(t.price)}</i></button>`;
+    }).join('') + `</div>`;
+    // 已养宠物卡
+    alive.forEach((p, i) => {
+      const t = PET_TYPES[p.type];
+      cards.push({
+        ava: t.icon, cls: p.baby ? 'green' : '',
+        name: `${p.name} · ${t.name}${p.baby ? '（幼崽）' : ''}`,
+        sub: `${p.age}岁 · 亲密 ${Math.round(p.bond)}% · 美容 ${p.groom || 0}/5 · 年喂 ${fmtMoney(t.feed)}`,
+        key: null,
+        multi:
+          `<button class="rel-act" onclick="uiPetFeed(${i})">喂养</button>` +
+          `<button class="rel-act" onclick="uiPetGroom(${i})">美容</button>` +
+          `<button class="rel-act" onclick="uiPetBeauty(${i})">选美 ${fmtMoney(BEAUTY_FEE)}</button>`
+      });
+    });
+    // 繁育
+    if (alive.length >= 2) {
+      const pair = alive.find((a, i) => alive.slice(i + 1).some(b => b.type === a.type && a.age >= 2 && b.age >= 2));
+      cards.push({
+        ava: '🐣', cls: 'amber', name: '让它们试着繁育一窝',
+        sub: pair ? `${pair.name} 和同伴都成年了，可以试试。` : '需要两只同类型、两岁以上的宠物。',
+        key: null,
+        multi: pair ? `<button class="rel-act" onclick="uiPetBreed()">配对</button>` : ''
+      });
+    }
+    // 赛马
+    if (typeof horseOwn === 'function' && horseOwn(STATE)) {
+      const h = STATE.horse;
+      cards.push({
+        ava: '🐎', cls: 'green', name: `赛马 · ${h.name}`,
+        sub: `${h.age}岁 · 训练 ${h.train}/10 · 夺冠 ${h.wins || 0} 次`,
+        key: null,
+        multi:
+          `<button class="rel-act" onclick="uiHorseTrain()">训练 ${fmtMoney(HORSE_TRAIN_COST)}</button>` +
+          `<button class="rel-act" onclick="uiHorseRace()">参赛 ${fmtMoney(HORSE_RACE_FEE)}</button>`
+      });
+    } else {
+      cards.push({
+        ava: '🐎', cls: 'amber', name: '赛马线',
+        sub: `买一匹 ${fmtMoney(HORSE_PRICE)}，或者花 ${fmtMoney(5000000)} 去草原碰碰运气（45% 套得住）。`,
+        key: null,
+        multi:
+          `<button class="rel-act" ${STATE.stats.MONEY >= HORSE_PRICE ? '' : 'disabled'} onclick="uiHorseBuy()">买马</button>` +
+          `<button class="rel-act" ${STATE.stats.MONEY >= 5000000 ? '' : 'disabled'} onclick="uiHorseCatch()">草原捕捉</button>`
+      });
+    }
+  } else if (REL_TAB === 'life') {
+    /* v6 生活页：度假 / 图书馆 / 遗嘱 / 重生 / 监狱状态 */
+    const vacUsed = STATE.vacYear === STATE.age;
+    const inPrison = (STATE.prison || 0) > 0;
+    if (inPrison) {
+      cards.push({ ava: '⛓', cls: 'amber', name: `服刑中（还剩 ${STATE.prison} 年）`, sub: '高墙内外是两个世界。好好表现，读点书，等出去的那天。', key: null });
+    }
+    // 度假
+    VACATIONS.forEach(v => {
+      const poor = v.cost > STATE.stats.MONEY;
+      cards.push({
+        ava: v.icon, cls: '', name: v.name,
+        sub: `${esc(v.desc)} → 压力 ${v.eff.STRESS} · 花费 ${fmtMoney(v.cost)}${vacUsed ? ' · 今年度过了' : ''}`,
+        key: null,
+        multi: (vacUsed || poor || inPrison) ? `<span class="rel-act dis">${inPrison ? '服刑中' : (vacUsed ? '今年度过了' : '钱不够')}</span>`
+          : `<button class="rel-act" onclick="uiVacation('${v.id}')">出发</button>`
+      });
+    });
+    // 图书馆
+    const libUsed = (STATE.socialTouch || {}).library === STATE.age;
+    cards.push({
+      ava: '📚', cls: '', name: '泡一天图书馆',
+      sub: `智力 +2~4 · 意志 +1。智力 70+ 有机会被《超级大脑》节目组看中。${libUsed ? ' · 今年来过了' : ''}`,
+      key: null,
+      multi: libUsed ? '<span class="rel-act dis">今年来过了</span>' : '<button class="rel-act" onclick="uiLibrary()">去学习</button>'
+    });
+    // 遗嘱
+    if (typeof canMakeWill === 'function' && canMakeWill(STATE)) {
+      const opts = willHeirOptions(STATE);
+      cards.push({
+        ava: '🖋', cls: STATE.will ? 'green' : 'amber',
+        name: STATE.will ? `遗嘱已立 · ${STATE.will.heir.name} · ${STATE.will.share * 100}%` : '立一份遗嘱',
+        sub: STATE.will ? '去公证处改遗嘱也可以。' : '把名下资产指定给最放不下的人。老年（60+）或病危时可以立。',
+        key: null,
+        multi: opts.map((o, i) => `<button class="rel-act" onclick="uiMakeWill('${o.kind === 'child' ? 'child:' + o.idx : 'grand'}')">留给${o.kind === 'grand' ? '孙辈' : esc(o.label.split('（')[0])}</button>`).join('')
+      });
+    } else if (STATE.age >= 50) {
+      cards.push({ ava: '🖋', cls: '', name: '遗嘱', sub: `${WILL_MIN_AGE - STATE.age > 0 ? `还有 ${WILL_MIN_AGE - STATE.age} 年满 60。` : ''}到了年纪（或病危时）可以来立遗嘱。`, key: null });
+    }
+    // 人生重来
+    cards.push({
+      ava: '🥚', cls: '', name: '人生重来',
+      sub: '如果这一世满是遗憾——完整重置，上一世的阅历会化为先天记忆（智力 +3 · 意志 +3）。',
+      key: null,
+      multi: `<button class="rel-act" onclick="uiRebirth()">重来一世</button>`
+    });
   } else {
     const list = STATE.friends || [];
     if (list.length) {
@@ -1092,6 +1316,9 @@ function renderRelView() {
       <button class="rel-tab ${REL_TAB === 'friends' ? 'active' : ''}" onclick="setRelTab('friends')">🧑‍🤝‍🧑 朋友</button>
       <button class="rel-tab ${REL_TAB === 'love' ? 'active' : ''}" onclick="setRelTab('love')">💘 恋人</button>
       <button class="rel-tab ${REL_TAB === 'good' ? 'active' : ''}" onclick="setRelTab('good')">🙏 向善</button>
+      <button class="rel-tab ${REL_TAB === 'relax' ? 'active' : ''}" onclick="setRelTab('relax')">🍃 减压</button>
+      <button class="rel-tab ${REL_TAB === 'pets' ? 'active' : ''}" onclick="setRelTab('pets')">🐾 宠物</button>
+      <button class="rel-tab ${REL_TAB === 'life' ? 'active' : ''}" onclick="setRelTab('life')">🧭 生活</button>
     </div>
     ${extra}
     <div class="rel-list">
@@ -1118,7 +1345,7 @@ function afterAct(msg) {
   renderStream();
   if (GAME_VIEW === 'rel') renderRelView();
   if (GAME_VIEW === 'job') renderJobView();
-  autosave();
+  markDirty();
 }
 
 function uiSocial(key) {
@@ -1211,6 +1438,100 @@ function uiGoodDeed(id) {
   const r = doGoodDeed(STATE, id);
   if (!r.ok) { toast(r.msg || '现在不行'); return; }
   afterAct('道德 +');
+}
+
+/* 减压：三条共享一个年度额度，用完就没了（S-01 ③） */
+function uiRelaxAct(id) {
+  const r = doRelaxAct(STATE, id);
+  if (!r.ok) { toast(r.msg || '现在不行'); return; }
+  afterAct('松了一口气');
+}
+
+/* ============ v6.0 UI 动作 ============ */
+function uiGift(who, giftId) {
+  const r = familyGift(STATE, who, giftId);
+  if (!r.ok) { toast(r.msg || '送不了'); return; }
+  afterAct(`好感 +${r.gain}`);
+}
+function uiPetBuy(type) {
+  const r = petBuy(STATE, type);
+  if (!r.ok) { toast(r.msg || '买不了'); return; }
+  afterAct('家里多了个新成员');
+}
+function uiPetFeed(i) {
+  const r = petFeed(STATE, i);
+  if (!r.ok) { toast(r.msg || '喂不了'); return; }
+  afterAct('吃得津津有味');
+}
+function uiPetGroom(i) {
+  const r = petGroom(STATE, i);
+  if (!r.ok) { toast(r.msg || '做不了'); return; }
+  afterAct('美了个容');
+}
+function uiPetBeauty(i) {
+  const r = petBeautyContest(STATE, i);
+  if (!r.ok) { toast(r.msg || '参加不了'); return; }
+  afterAct(r.win ? '🏆 选美冠军！' : '参与奖');
+}
+function uiPetBreed() {
+  const alive = petsInit(STATE).filter(p => p.alive);
+  let pair = null;
+  for (let i = 0; i < alive.length && !pair; i++) {
+    for (let j = i + 1; j < alive.length; j++) {
+      if (alive[i].type === alive[j].type && alive[i].age >= 2 && alive[j].age >= 2) { pair = [i, j]; break; }
+    }
+  }
+  if (!pair) { toast('没有合适的配对'); return; }
+  const r = petBreed(STATE, pair[0], pair[1]);
+  if (!r.ok) { toast(r.msg || '配不了'); return; }
+  afterAct('🐣 新生命');
+}
+function uiHorseBuy() {
+  const r = horseAcquire(STATE, 'buy');
+  if (!r.ok) { toast(r.msg || '买不了'); return; }
+  afterAct(r.got ? '🐎 现在你有马了' : '没成');
+}
+function uiHorseCatch() {
+  const r = horseAcquire(STATE, 'catch');
+  if (!r.ok) { toast(r.msg || '去不了'); return; }
+  afterAct(r.got ? '🐎 草原上套住了一匹' : '空手而归');
+}
+function uiHorseTrain() {
+  const r = horseTrain(STATE);
+  if (!r.ok) { toast(r.msg || '练不了'); return; }
+  afterAct('训练度 +1');
+}
+function uiHorseRace() {
+  const r = horseRace(STATE);
+  if (!r.ok) { toast(r.msg || '比不了'); return; }
+  afterAct(r.place === 1 ? '🏆 头马！' : (r.place ? `第 ${r.place} 名` : '没上奖台'));
+}
+function uiVacation(id) {
+  const v = VACATIONS.find(x => x.id === id);
+  if (!v) return;
+  if (STATE.vacYear === STATE.age) { toast('今年已经度过了'); return; }
+  if (STATE.stats.MONEY < v.cost) { toast('钱不够'); return; }
+  STATE.stats.MONEY -= v.cost;
+  STATE.vacYear = STATE.age;
+  applyEffects(STATE, v.eff);
+  pushLog(STATE, `【度假】${v.name}。${v.desc}`, 'muted');
+  afterAct('回来的时候，人是轻的');
+}
+function uiLibrary() {
+  const r = libraryStudy(STATE);
+  if (!r.ok) { toast(r.msg || '现在不行'); return; }
+  afterAct(r.superbrain ? '🧠 超级大脑冠军！' : '脑子清醒多了');
+}
+function uiMakeWill(heirKey) {
+  const r = makeWill(STATE, heirKey);
+  if (!r.ok) { toast(r.msg || '立不了'); return; }
+  afterAct('遗嘱已公证');
+}
+function uiRebirth() {
+  uiConfirm('人生重来', '这一世的一切（财产、关系、人生进度）都会清空，从出生重新开始。上一世的阅历会化为先天记忆（智力 +3 · 意志 +3）。确定重来吗？', '重来一世', () => {
+    prepareRebirth();
+    startCreate();
+  });
 }
 
 function uiSocialAll(kind) {
@@ -1397,7 +1718,7 @@ function renderItem(item) {
         `<button class="btn choice quiz-opt" onclick="answerExam(${k})"><span class="quiz-letter ${OPT_COLORS[k + 1]}">${LETTERS[k]}</span>${esc(o)}</button>`
       ).join('');
       $('card').innerHTML = html;
-      renderStats(); renderStream(); autosave();
+      renderStats(); renderStream(); markDirty();
       return;
     }
     html = `<div class="card-inner exam">
@@ -1406,13 +1727,24 @@ function renderItem(item) {
       <p class="card-text">${esc(ex.text).replace(/\n/g, '<br>')}</p></div>`;
     $('actions').innerHTML = (ex.options || []).map((o, i) => {
       const meta = o.minScore != null ? `录取线 ${Math.round(o.minScore / 100 * (ex.full || 100))}` : '';
+      /* E-13：把「起薪系数」露出来。档内连续化之后，同一档内不同分数拿到的系数不同，
+       * 985 / 211 / 一本 之间只差 2%~10%，不显示这个数，玩家就是在盲选。
+       * 只有大学有 salaryK（HIGH_SCHOOLS 没有），中考放榜不显示。 */
+      let salaryTag = '';
+      if (o.salaryK != null && typeof salaryKFor === 'function') {
+        const k = salaryKFor(o, ex.score);
+        const over = (ex.score != null && ex.score > uniNeed(o)) ? '（超线加成后）' : '';
+        salaryTag = `<span class="risk r1">起薪 ×${k.toFixed(3)}${over}</span>`;
+      }
       if (o.locked) {
         return `<button class="btn choice dis" disabled>${esc(o.name)}
           <span class="gamble">${esc(o.desc)}</span>
+          ${salaryTag}
           <span class="risk r3">进不去 · ${esc(o.lockReason || '条件不够')}</span></button>`;
       }
       return `<button class="btn choice" onclick="chooseExam(${i})">${esc(o.name)}
         <span class="gamble">${esc(o.desc)}</span>
+        ${salaryTag}
         ${meta ? `<span class="risk r2">${meta}</span>` : ''}</button>`;
     }).join('');
   } else if (item.type === 'invest') {
@@ -1428,7 +1760,7 @@ function renderItem(item) {
   $('card').innerHTML = html;
   renderStats();
   renderStream();
-  autosave();
+  markDirty();
 }
 
 function advance() {
@@ -1478,7 +1810,7 @@ function doChooseExam(i) {
   resolveExam(STATE, i);
   renderStats();
   renderStream();
-  autosave();
+  markDirty();
   if (STATE.queue && STATE.queue.length) renderItem(STATE.queue.shift());
   else renderIdle();
 }
@@ -1517,7 +1849,7 @@ function doChoose(i) {
   STATE.pending = null;
   renderStats();
   renderStream();
-  autosave();
+  markDirty();
   if (STATE.finished) { finishGame(); return; }
   if (STATE.queue && STATE.queue.length) renderItem(STATE.queue.shift());
   else renderIdle();
@@ -1532,14 +1864,14 @@ function investChoice(i) {
   STATE.pending = null;
   renderStats();
   renderStream();
-  autosave();
+  markDirty();
   if (STATE.queue && STATE.queue.length) renderItem(STATE.queue.shift());
   else renderIdle();
 }
 
 function finishGame() {
   if (!STATE.finished) finish(STATE);
-  autosave();
+  autosaveNow();
   renderEnd();
 }
 
@@ -1577,12 +1909,75 @@ function renderEnd() {
     achHtml = `<h3 class="sec">🏅 成就 ${got.length} / ${ACHIEVEMENTS.length}</h3>
       <div class="ach-wall end-ach">${ACHIEVEMENTS.map(a => {
         const on = got.indexOf(a.id) >= 0;
-        return `<span class="ach ${on ? 'on' : ''}" title="${esc(a.name + '：' + a.desc)}">${a.icon}<i>${esc(a.name)}</i></span>`;
+        return `<span class="ach ${on ? 'on' : ''}" title="${escAttr(a.name + '：' + a.desc)}">${a.icon}<i>${esc(a.name)}</i></span>`;
       }).join('')}</div>`;
+  }
+  // v6 多款式墓碑：按评级解锁（S 传奇 > A 功德 > B 花环 > C 青石…）
+  const tb = pickTombstone(rank);
+  if (tb) {
+    achHtml = `<h3 class="sec">🕯 长眠之地 · ${tb.name}</h3>
+      <div class="tomb-wrap">${tombstoneSVG(STATE, tb)}
+        <div class="tomb-desc">${esc(tb.desc)}</div></div>` + achHtml;
   }
   $('endAch').innerHTML = achHtml;
   const hl = STATE.log.filter(l => l.type === 'story' || l.type === 'money').slice(-40);
   $('endReview').innerHTML = hl.map(l => `<div class="line ${l.type}"><span class="y">${l.year} 年</span>${esc(l.text)}</div>`).join('');
+  renderSuccessionBtns();
+}
+
+/* ---------- v6 墓碑结算 ---------- */
+const TOMB_RANK_ORDER = ['D', 'C', 'B', 'A', 'S'];
+function pickTombstone(rank) {
+  if (typeof TOMBSTONES === 'undefined') return null;
+  const ri = TOMB_RANK_ORDER.indexOf(rank);
+  let pick = TOMBSTONES[0];
+  TOMBSTONES.forEach(t => {
+    if (ri >= TOMB_RANK_ORDER.indexOf(t.minRank)) pick = t;
+  });
+  return pick;
+}
+function tombstoneSVG(state, tb) {
+  const year1 = state.startYear || START_YEAR;
+  const year2 = year1 + state.age;
+  const grads = {
+    tb_plain: ['#9AA3AC', '#6E7883'], tb_flower: ['#B7C4CF', '#8496A5'],
+    tb_arch: ['#C9B79C', '#9A8468'], tb_grand: ['#D8C9A8', '#A6936F'],
+    tb_legend: ['#E3D9C2', '#B3A37F']
+  };
+  const [g1, g2] = grads[tb.id] || grads.tb_plain;
+  return `<svg class="tomb" viewBox="0 0 200 170" role="img" aria-label="墓碑">
+    <defs><linearGradient id="tbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${g1}"/><stop offset="1" stop-color="${g2}"/></linearGradient></defs>
+    <ellipse cx="100" cy="156" rx="86" ry="9" fill="rgba(16,15,6,.14)"/>
+    <path d="M45 156 L45 60 Q45 18 100 18 Q155 18 155 60 L155 156 Z" fill="url(#tbg)" stroke="#4A4438" stroke-width="2.5"/>
+    <line x1="58" y1="70" x2="142" y2="70" stroke="#4A4438" stroke-width="1.4" opacity=".55"/>
+    <text x="100" y="52" text-anchor="middle" font-size="15" font-weight="700" fill="#3A342A" font-family="serif">${esc(state.name || '无名')}</text>
+    <text x="100" y="88" text-anchor="middle" font-size="9.5" fill="#4A4438">${year1} — ${year2}</text>
+    <text x="100" y="112" text-anchor="middle" font-size="8.5" fill="#4A4438" opacity=".85">${esc(tb.name)}</text>
+    ${tb.id === 'tb_flower' || tb.id === 'tb_grand' || tb.id === 'tb_legend' ? '<circle cx="34" cy="150" r="6" fill="#E88AA0"/><circle cx="44" cy="146" r="5" fill="#F4B8C8"/><circle cx="168" cy="150" r="6" fill="#E88AA0"/><circle cx="158" cy="146" r="5" fill="#F4B8C8"/>' : ''}
+    ${tb.id === 'tb_legend' ? '<path d="M20 156 L20 120 L28 120 L28 156 M172 156 L172 120 L180 120 L180 156" stroke="#4A4438" stroke-width="3" fill="none"/>' : ''}
+  </svg>`;
+}
+
+/* ---------- v6 世代传承：结局页以子女/孙辈之名继续 ---------- */
+function renderSuccessionBtns() {
+  const box = $('endLegacy');
+  if (!box) return;
+  const opts = (typeof successionOptions === 'function') ? successionOptions(STATE) : [];
+  if (!opts.length) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="legacy-tip">血脉还在延续——下一代的人生，从你留下的东西开始（最多继承 ${opts[0].kind === 'grand' ? '40' : '55'}% 净资产）：</div>
+    <div class="of-btns">${opts.map((o, i) =>
+      `<button class="btn small" onclick="uiSucceed(${i})">${esc(o.label)}</button>`).join('')}</div>`;
+  box.dataset.opts = JSON.stringify(opts);
+}
+function uiSucceed(i) {
+  const opts = JSON.parse($('endLegacy').dataset.opts || '[]');
+  const o = opts[i];
+  if (!o) return;
+  const r = prepareSuccession(STATE, o);
+  uiConfirm('世代传承', `以${o.kind === 'grand' ? '孙辈' : '子女'}之名开启新的人生：继承 ${fmtMoney(r.money)} 的家产与家风加成。新的一世无法保留这一世的记忆与关系。`, '继续', () => {
+    startCreate();
+  });
 }
 
 /* ---------- 存档管理 ---------- */
@@ -1822,7 +2217,7 @@ function afterTrade(res) {
   renderMarket();
   renderStats();
   renderStream();
-  autosave();
+  markDirty();
 }
 function uiBuyHouse(id, ratio) { afterTrade(buyProp(STATE, 'house', id, ratio, 1)); }
 function uiBuyCar(id, ratio) { afterTrade(buyProp(STATE, 'car', id, ratio, 1)); }
@@ -1875,10 +2270,15 @@ function init() {
   document.querySelectorAll('.mtab').forEach(b => {
     b.onclick = () => { MARKET_TAB = b.dataset.tab; renderMarket(); };
   });
-  bind('btnSaveGame', () => { autosave(); toast('已自动保存到本机缓存'); });
+  bind('btnSaveGame', () => { autosaveNow(); toast('已自动保存到本机缓存'); });
   bind('btnSaves2', openModal);
   bind('btnRestart', () => {
-    if (confirm('放弃当前人生，重新开始？')) { localStorage.removeItem(LS.auto); STATE = null; renderTitle(); showScreen('screen-title'); }
+    // IMP-01 · R-03：这是全项目唯一一处不在 try 里的 localStorage 调用，
+    // 隐私模式下点「重开」会抛异常，后面的 renderTitle() 就不会执行
+    if (confirm('放弃当前人生，重新开始？')) {
+      try { localStorage.removeItem(LS.auto); } catch (e) { }
+      STATE = null; renderTitle(); showScreen('screen-title');
+    }
   });
   // HUD 资产胶囊 → 市场持有页
   bind('pillCash', () => openMarketTab('hold'));

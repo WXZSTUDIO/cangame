@@ -480,3 +480,58 @@ body[data-screen="screen-game"] .topbar{display:none}
   .dock-btn span{font-size:10px}
   .game-wrap{padding-bottom:118px}
 }
+
+/* =========================================================
+ * v6.0.0 · 粉紫格纹舞台 + 拱形真人质感头像卡
+ * 参考台本：Character Leaderboard 式拱形相框、格纹斜切底纹
+ * ========================================================= */
+
+/* ---- 底：格纹斜切 + 原有柔光 ---- */
+body{
+  background:
+    linear-gradient(115deg, rgba(216,191,255,.32) 0%, transparent 34%),
+    linear-gradient(295deg, rgba(255,187,244,.30) 0%, transparent 40%),
+    repeating-conic-gradient(rgba(214,196,246,.16) 0% 25%, transparent 0% 50%) 0 0/56px 56px,
+    radial-gradient(720px 340px at 88% -4%, rgba(162,147,255,.20) 0%, transparent 60%),
+    radial-gradient(640px 320px at -4% 12%, rgba(255,187,244,.22) 0%, transparent 55%),
+    linear-gradient(180deg, #F3EFFB 0%, #F7F1F7 55%, #F5F0FA 100%);
+}
+/* 顶部/底部斜切装饰条（参考图的紫格边带） */
+.topbar{
+  background:linear-gradient(90deg, rgba(214,196,246,.35), rgba(255,187,244,.28));
+  border-bottom:2px solid rgba(122,102,201,.25);
+}
+
+/* ---- 拱形头像卡（arch portrait frame） ---- */
+.rel-ava{
+  border-radius:70px 70px 18px 18px;             /* 拱门形：上圆下方 */
+  border:3px solid #fff;
+  box-shadow:0 0 0 2.5px var(--lav), 0 6px 14px rgba(122,102,201,.22);
+  background:linear-gradient(180deg, #FDF6FF, #F2E8FA);
+}
+.rel-ava.pic{background:linear-gradient(180deg,#FDF6FF,#EFDFf6)}
+.rel-ava.pic svg{border-radius:64px 64px 14px 14px}
+.rel-ava.amber{background:linear-gradient(180deg,#FFF7E0,#FBEED3);box-shadow:0 0 0 2.5px var(--gold), 0 6px 14px rgba(214,160,60,.22)}
+.rel-ava.green{background:linear-gradient(180deg,#FFEFFB,#F7DCF3);box-shadow:0 0 0 2.5px var(--pink), 0 6px 14px rgba(176,52,158,.18)}
+.rel-card{border-radius:22px}
+
+/* ---- 宠物商店 ---- */
+.pet-shop{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;padding:0 4px 12px}
+.pet-buy{
+  display:flex;align-items:center;justify-content:space-between;gap:6px;
+  background:#fff;border:2px solid var(--ink);border-radius:14px;padding:8px 10px;
+  font-size:12.5px;font-weight:800;cursor:pointer;box-shadow:0 3px 0 rgba(16,15,6,.14);transition:.15s;
+}
+.pet-buy:not(:disabled):hover{transform:translateY(-2px)}
+.pet-buy:disabled{opacity:.45;cursor:not-allowed}
+.pet-buy i{font-style:normal;color:var(--dim);font-weight:800}
+
+/* ---- 墓碑结算 ---- */
+.tomb-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 0 4px}
+.tomb{width:min(230px,72vw);filter:drop-shadow(0 8px 14px rgba(16,15,6,.18))}
+.tomb-desc{font-size:12.5px;color:var(--dim);font-weight:700}
+
+/* ---- 世代传承 / 结局按钮区 ---- */
+.end-legacy{grid-column:1/-1;display:flex;flex-direction:column;gap:8px}
+.legacy-tip{font-size:13px;font-weight:800;color:var(--lav-d)}
+.end-legacy .of-btns{display:flex;flex-wrap:wrap;gap:8px}

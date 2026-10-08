@@ -9,7 +9,7 @@ const ctx = { console, Math, JSON, Date, isNaN, parseInt, parseFloat, Number, St
   window: { addEventListener() {} }, document: { addEventListener() {}, getElementById() { return null; }, querySelectorAll() { return []; } },
   localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} } };
 vm.createContext(ctx);
-['assets/data.js', 'assets/market.js', 'assets/engine.js', 'assets/school.js', 'assets/career.js', 'assets/love.js', 'assets/loan.js', 'assets/ui.js']
+['assets/data.js', 'assets/market.js', 'assets/engine.js', 'assets/school.js', 'assets/career.js', 'assets/love.js', 'assets/pet.js', 'assets/legacy.js', 'assets/loan.js', 'assets/ui.js']
   .forEach(f => vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f }));
 
 const A = vm.runInContext(`({
@@ -151,7 +151,14 @@ console.log('== 5. 前任：联系 / 复合 / 复婚 ==');
   const s2 = mk({ gender: 'F' }); s2.age = 27;
   s2.exes = [{ name: '张远', gender: 'M', age: 28, met: 22, at: 25, reason: '分手', wasSpouse: false, affinity: 70, look: 60, lastTouch: -1 }];
   let rk = null;
-  for (let i = 0; i < 60 && !(rk && rk.ok); i++) rk = A.rekindle(s2, 0);
+  // QA 修复（原为裸调 60 次）：rekindle() 失败会扣 10 点好感（love.js:463），
+  // affinity 70 → 60 → 50，两次失败就跌破 55 阈值 → 之后恒返「感情还不够」，剩余 58 次全是无效重试。
+  // 实测失败率 26%，与「连输两次」的概率 24.8% 吻合。
+  // 每次尝试前重置好感，与上面 remarryEx 那段（每次都重置 e0.affinity）写法保持一致。
+  for (let i = 0; i < 60 && !(rk && rk.ok); i++) {
+    const e = A.exList(s2)[0]; if (e) e.affinity = 70;
+    rk = A.rekindle(s2, 0);
+  }
   ok(rk && rk.ok, '前任能复合');
   const lv = A.loveInit(s2);
   ok(!!s2.flags.dating && lv.partner && lv.partner.name === '张远', '复合后是恋人关系');

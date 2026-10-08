@@ -1,0 +1,93 @@
+# 首屏加载剖析 · cangame v5.5.0（Web）
+生成时间：2026-10-08T01:01:54.793Z
+运行时：Node v22.22.2 / win32 x64
+采样方式：每档 9 轮，每轮用**全新 V8 context + 差异化源码**（尾部注释递增）绕开 V8 脚本复用，取中位数。
+> 换算口径：桌面 V8 上测得的毫秒数，中低端安卓机通常要 ×3～×6（单核性能 + 内存带宽差距）。
+
+## 1. 资源体积清单
+file             | 原始 KB | 行数   | gzip KB | brotli KB | gzip 压缩比
+-----------------+-------+------+---------+-----------+---------
+assets/style.css | 26.8  | 483  | 6.5     | 5.5       | 4.14x   
+assets/data.js   | 163.2 | 1998 | 53.6    | 44.5      | 3.05x   
+assets/market.js | 25.7  | 529  | 9.6     | 8         | 2.67x   
+assets/engine.js | 102   | 2300 | 33.9    | 27.7      | 3.00x   
+assets/school.js | 23.7  | 498  | 9.5     | 7.9       | 2.51x   
+assets/career.js | 27.8  | 613  | 9.3     | 7.7       | 2.99x   
+assets/love.js   | 31.5  | 681  | 9.9     | 8.3       | 3.19x   
+assets/loan.js   | 6.3   | 170  | 2.7     | 2.2       | 2.38x   
+assets/ui.js     | 101.7 | 1990 | 31.6    | 25.8      | 3.22x   
+**合计**           | 508.7 | 9262 | 166.5   | 137.7     | 3.06x   
+
+GitHub Pages 自带 brotli/gzip。**线上实际传输 ≈ 138 KB（br）/ 166 KB（gzip）**，而非源码的 509 KB。
+
+## 2. 冷解析+编译 / 顶层执行（V8 裸 context，不含 DOM）
+file             | KB    | 编译 ms | 执行 ms | 合计 ms | ms/KB
+-----------------+-------+-------+-------+-------+------
+assets/data.js   | 163.2 | 3.23  | 1.33  | 4.56  | 0.028
+assets/market.js | 25.7  | 0.48  | 0.17  | 0.65  | 0.025
+assets/engine.js | 102   | 1.39  | 0.17  | 1.55  | 0.015
+assets/school.js | 23.7  | 0.36  | 0.13  | 0.49  | 0.021
+assets/career.js | 27.8  | 0.40  | 0.29  | 0.69  | 0.025
+assets/love.js   | 31.5  | 0.44  | 0.06  | 0.50  | 0.016
+assets/loan.js   | 6.4   | 0.15  | 0.04  | 0.19  | 0.029
+
+逻辑层（7 个模块）冷加载合计：**编译 6.5 ms + 执行 2.2 ms = 8.6 ms**
+
+## 3. jsdom 端到端（含 HTML 解析 + DOM 构建 + UI 层 + init 绑定）
+file             | KB    | 注入/执行 ms
+-----------------+-------+---------
+assets/data.js   | 163.2 | 4.11    
+assets/market.js | 25.7  | 0.64    
+assets/engine.js | 102   | 1.62    
+assets/school.js | 23.7  | 0.58    
+assets/career.js | 27.8  | 0.78    
+assets/love.js   | 31.5  | 0.49    
+assets/loan.js   | 6.4   | 0.22    
+assets/ui.js     | 101.7 | 1.47    
+
+8 个脚本 + init 合计 ≈ **9.9 ms**（jsdom 是模拟器，真实浏览器 CSP/布局另有开销，但**编译与执行这部分是同一套 V8，量级可直接参考**）。
+
+## 4. 首屏关键路径
+```
+  HTML 下载+解析  ──┐
+  CSS 下载(6.5KB gz)─┤ 并行
+  8×JS 下载(预防扫描并行) ─┘  最慢的一项决定下限： data.js 52.6 KB gzip
+        ↓
+  按序执行 8 个脚本（阻塞渲染）  ← 本次实测 9.9 ms（桌面）
+        ↓
+  DOMContentLoaded → init() → renderTitle() → 首屏可见
+```
+结论：CPU 侧（编译+执行）不是瓶颈，**网络 + 串行阻塞才是**——在 3G/弱网（≈400 kbps 有效）下，光 data.js 的 52.6 KB 就要 ~1.0 s；而这段时间内页面是白屏的，因为 8 个 `<script>` 没有一个 `defer`。
+
+## 5. 内存驻留与 data.js 盘点
+两次独立 context 加载后 heapUsed 增量 ≈ **1.4 MB**（含 V8 自身对象头开销，实际纯数据更少；这是「一个 tab 只加载一次」的量级）
+
+常量             | 条目数
+---------------+----
+SURNAMES       | 30 
+TALENTS        | 124
+FAMILIES       | 24 
+ILLNESS        | 9  
+FAMILY_ACTS    | 18 
+ACHIEVEMENTS   | 18 
+EVENTS         | 241
+EVENTS_EXTRA   | 66 
+EVENTS_FAMILY  | 31 
+EVENTS_FAMILY2 | 28 
+EVENTS_ERA     | 10 
+INVESTMENTS    | 11 
+ENDINGS        | 16 
+GOOD_DEEDS     | 8  
+FRIEND_TYPES   | 5  
+TITLES         | 5  
+EXAM_QUIZ      | 42 
+STOCKS         | 12 
+UNIVERSITIES   | 6  
+HOUSES         | 11 
+CARS           | 8  
+GOODS          | 9  
+CAREERS        | 29 
+
+- 声明式条目合计 376 条；但 data.js 末尾有 `EVENTS.push.apply(EVENTS, EVENTS_EXTRA / FAMILY / FAMILY2 / ERA)` —— 四个子数组**在加载期就被合并进 EVENTS**。
+- **运行时真正的事件池 `EVENTS.length` = 241** 条；上面表里那 376 的「声明式合计」里有约 135 条是同一批对象的重复计数。
+这 241 条中文事件 + 124 条天赋描述，构成了 data.js 165 KB 的主体。

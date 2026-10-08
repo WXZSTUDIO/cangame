@@ -1,0 +1,18 @@
+{
+  "rounds": 20,
+  "cases": [
+    "_verify-v52.js",
+    "_verify-v53.js",
+    "_verify-v54.js",
+    "_verify-v55.js",
+    "v5-test.js"
+  ],
+  "exitFail": {
+    "_verify-v52.js": 20,
+    "_verify-v53.js": 20,
+    "_verify-v54.js": 20,
+    "_verify-v55.js": 20,
+    "v5-test.js": 20
+  },
+  "flaky": []
+}

@@ -1,0 +1,80 @@
+{
+  "fault": "hp-drain",
+  "desc": "20 岁后 stats.HP 恒为 12（模拟修复过猛把人修死）",
+  "n": "60",
+  "cases": "REG-01,REG-12",
+  "assertions": [
+    {
+      "case": "REG-01",
+      "pass": true,
+      "name": "无崩溃",
+      "detail": "crash=0"
+    },
+    {
+      "case": "REG-01",
+      "pass": true,
+      "name": "哨兵 · 结局死因字段（endCause）覆盖率 —— 此条红了，下面的「熄灭占比」不可信",
+      "detail": "实测 1 · 目标 >= 0.70"
+    },
+    {
+      "case": "REG-01",
+      "pass": false,
+      "name": "激进流平均寿命",
+      "detail": "实测 25.53岁 · 目标 >= 60岁"
+    },
+    {
+      "case": "REG-01",
+      "pass": false,
+      "name": "激进流「熄灭」占比",
+      "detail": "实测 0.32 · 目标 <= 0.25"
+    },
+    {
+      "case": "REG-01",
+      "pass": false,
+      "name": "激进流 30 岁 HP 中位",
+      "detail": "实测 0 · 目标 >= 60"
+    },
+    {
+      "case": "REG-01",
+      "pass": true,
+      "name": "激进流 30 岁压力中位",
+      "detail": "实测 0 · 目标 <= 80"
+    },
+    {
+      "case": "REG-01",
+      "pass": true,
+      "name": "哨兵 · 亡命流 endCause 覆盖率",
+      "detail": "实测 1 · 目标 >= 0.70"
+    },
+    {
+      "case": "REG-01",
+      "pass": false,
+      "name": "亡命流平均寿命",
+      "detail": "实测 23.87岁 · 目标 >= 60岁"
+    },
+    {
+      "case": "REG-01",
+      "pass": false,
+      "name": "亡命流「熄灭」占比",
+      "detail": "实测 0.67 · 目标 <= 0.25"
+    },
+    {
+      "case": "REG-12",
+      "pass": false,
+      "name": "保守流 40 岁 HP 中位",
+      "detail": "实测 12 · 目标 [70, 95]"
+    },
+    {
+      "case": "REG-12",
+      "pass": false,
+      "name": "保守流 50-60 岁压力中位",
+      "detail": "实测 0 · 目标 >= 15"
+    },
+    {
+      "case": "REG-12",
+      "pass": false,
+      "name": "保守流平均寿命（均值，防止修复过猛把人全修死）",
+      "detail": "实测 32.58岁 · 目标 [72岁, 100岁]"
+    }
+  ]
+}

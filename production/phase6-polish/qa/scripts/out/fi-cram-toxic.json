@@ -1,0 +1,104 @@
+{
+  "fault": "cram-toxic",
+  "desc": "每次 cramSchool 后 study −6 且 INT −30（模拟「补习有害」缺陷 · 强剂量）",
+  "n": "60",
+  "cases": "REG-11",
+  "assertions": [
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "每格样本充足（正交 2 画像 × 3 剂量）",
+      "detail": "最少一格 150 局 / 共 900 局"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "（参考）实验设计",
+      "detail": "正交：steady/explorer × cramCap 0/10/40，每格 150 局；判定用**画像平衡**口径"
+    },
+    {
+      "case": "REG-11",
+      "pass": false,
+      "name": "自变量有效（studyAt18：不补习 → 补到上限）",
+      "detail": "实测 0点 · 目标 >= 20点"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "（参考）studyAt18 中位 · 三档剂量",
+      "detail": "0→0  10→0  40→0"
+    },
+    {
+      "case": "REG-11",
+      "pass": false,
+      "name": "30 岁收入比（画像平衡 · 补到上限 / 不补习 · 倒挂须 ≤5%）",
+      "detail": "实测 0.27× · 目标 >= 0.95×"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "（参考）30 岁收入中位（内部单位）",
+      "detail": "0→2.74亿  10→7836.1万  40→7410.6万"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "（参考）分画像 30 岁收入比",
+      "detail": "steady 0.21×  explorer 0.44×"
+    },
+    {
+      "case": "REG-11",
+      "pass": false,
+      "name": "高考分数随学习投入单调不减（补到上限 − 不补习）",
+      "detail": "实测 -135分 · 目标 >= -5分"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "（参考）高考分数中位 · 三档剂量",
+      "detail": "0→490  10→359  40→355"
+    },
+    {
+      "case": "REG-11",
+      "pass": false,
+      "name": "D-1 边际收益比（15→31 段 / 0→15 段 · 画像平衡） · 首段边际 ≤ 0（前 15 点学习投入在 salaryK 上没有任何可测收益）",
+      "detail": "salaryK 均值 1.079 → 0.945 → 0.945"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "（参考·不作判定）steady salaryK 均值 · 首段边际 ≤ 0",
+      "detail": "1.025 → 0.880 → 0.886"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "（参考·不作判定）explorer salaryK 均值 · 首段边际 ≤ 0",
+      "detail": "1.132 → 1.010 → 1.005"
+    },
+    {
+      "case": "REG-11",
+      "pass": false,
+      "name": "D-1 门 A · 档位内 salaryK 连续化（超线 0 / 35 / 70 分应给出不同值）",
+      "detail": "u_211（录取线 546）→ salaryK 1.200 / 1.200 / 1.200 —— 档位内恒等，超线分完全不兑现"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "（说明）门 A 为确定性断言，零噪声、不需蒙特卡洛；修复前必红、修复后必绿",
+      "detail": ""
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "（参考·不作判定）steady 收入边际比（15→31 段 / 0→15 段）",
+      "detail": "首段边际 -2.61亿 ≤ 0 —— 符号不可信（收入中位复跑摆动可达 40%），**不可作门**"
+    },
+    {
+      "case": "REG-11",
+      "pass": true,
+      "name": "（参考·不作判定）explorer 收入边际比（15→31 段 / 0→15 段）",
+      "detail": "首段边际 -5967.4万 ≤ 0 —— 符号不可信（收入中位复跑摆动可达 40%），**不可作门**"
+    }
+  ]
+}

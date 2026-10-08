@@ -348,6 +348,48 @@ const FAMILY_FIN = {
   shuxiang: { assets: 95000000, debt: 35000000 }
 };
 
+/* 考研上岸后的起薪系数下限。school.js 与 engine.js 三处考研路径共用这一个常量。
+ *
+ * 取 1.45 而不是 1.40 的理由：
+ *   ① 985 本科的 eduLevel 也是 5，硕士下限必须 ≥ 985 本科的 1.42，否则「读研反而降薪」倒挂；
+ *   ② 取 1.40 时，985 压线档（1.42）与 u_key 满分档（1.43）考研收益被 Math.max 精确吃掉，
+ *      变成「花两年 + 学费买空气」的负收益陷阱；取 1.45 则至少为正（+1.4% / +2.1%）；
+ *   ③ 1.45 < salaryK 上限（economy-respec U-5 提案的 1.60），安全。
+ *
+ * ⚠ 985 超线档（1.42 × SCORE_K 封顶 1.10 = 1.562）考研仍无收益 ——
+ *   高分生直接工作更优，这是设计意图，但 UI 必须提示当前 salaryK，否则玩家白扔两年（E-13）。
+ *
+ * ⚠ 历史坑：这个值曾有两套（school.js 用 1.4、engine.js 用 1.45），
+ *   985 生走不同路径结果差 2.1%。现在只剩这一个常量。 */
+const KAOYAN_FLOOR = 1.45;
+
+/* ---------------- S-01 压力棘轮 · 调参入口 ----------------
+ * 三件套：① 恢复公式「固定 → 固定 + 比例（带失控阻尼）」② 风险选项不对称化 ③ 成年期减压行动。
+ * 三条必须成套上 —— 单独上任何一条都救不回激进流（数学依据见 stress-respec.md §2）。
+ *
+ * 用对象而不是散常量，是为了让调参可扫：STRESS_TUNE.DAMP_Q = x 可直接改，
+ * 不必动代码。若哪天要固定下来，把 DAMP_Q 换成字面量即可。 */
+const STRESS_TUNE = {
+  /* ① 恢复公式：s.STRESS -= FLAT + s.STRESS * K + max(0, s.STRESS - T) * Q
+   * 稳态 S* = (I - FLAT) / (K + Q·(1 - T/S*))；阈值 T 以下与今天逐点相同。 */
+  RECOVER_FLAT: 7,     // 固定恢复项，与今天一致（不变）
+  RECOVER_K: 0.12,     // 比例恢复项。方案 A 的 0.20 已被否决：会把正常玩家 S* 从 50 削到 30
+  DAMP_T: 70,          // 阻尼阈值。低于此值逐点不变，只压失控尾巴
+  DAMP_Q: 0.25         // 阻尼系数。拟合式 q = clamp((I_P75 - 34)/30, 0, 0.35)，暂定值待实测标定
+                       //   （v1.3 §3.7.3：改用 P75 而非 P90 —— P90 要求 90% 存活，会把熄灭率压到
+                       //     ~0.10，亡命流被一起压平，画像分化在拟合阶段就消失）
+};
+
+/* ② 风险选项不对称化（engine.js eventChoices 的 risk3）。
+ * 只作用于 risk3 —— scaleEff 另有两处调用点（保守 0.6/0.45、中间 1/1），
+ * 它们各自带字面量系数，不受这两个常量影响。 */
+const RISK_TUNE = {
+  GAIN_K: 2.4,         // 原 1.7：让「豁出去」的收益足够大，值得为之承压
+  LOSS_K: 1.15,        // 原 1.35：减益只轻微放大（惩罚仍在但不致命）
+  STRESS_ADD: 4        // 原 4，**不变**。它不在 scaleEff 管辖内（Object.assign 后写覆盖），
+                       //   gainK / lossK 都碰不到它。若改成经 scaleEff 计算必须显式保持 +4
+};
+
 /* 年代金额缩放：1955 年 的 1 块钱比 2005 年 值钱得多 */
 const FIN_SCALE = [
   [1955, 0.10], [1965, 0.18], [1975, 0.42], [1985, 1.00],
@@ -756,8 +798,12 @@ const ENDINGS = [
     cond: s => s.grandCount > 0 && s.stats.LOVE >= 45 },
   { id: 'end_salary', rank: 'C', title: '平凡的公司职员',
     text: '你按时上下班，按时退休。回这座城的夜景时，你还是会想起小时候画的那个圈。',
-    cond: s => ['公司职员', '公务员', '大企业职员', '工厂工人', '个体户'].indexOf(s.job) >= 0
-      && s.stats.FAME < 40 && (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) < 3000000000 },
+    // A-06 之后「公司职员」等孤儿职称会被映射进 CAREERS 阶梯，state.job 变成阶梯职称，
+    // 所以这里改成先按「所在阶梯」判（这是「平凡打工人」的真正定义），再按旧职称兜底（照顾旧存档）
+    cond: s => (
+      (s.career ? ['clerk', 'civil', 'factory', 'startup'].indexOf(s.career.id) >= 0 : false)
+      || ['公司职员', '公务员', '大企业职员', '工厂工人', '个体户'].indexOf(s.job) >= 0
+    ) && s.stats.FAME < 40 && (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) < 3000000000 },
   { id: 'end_broken', rank: 'D', title: '负债者',
     text: '你奋斗了一辈子，最后只剩下一张催缴单和城中村隔断间的钥匙。',
     cond: s => (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) < 0 },
@@ -767,6 +813,38 @@ const ENDINGS = [
   { id: 'end_normal', rank: 'C', title: '普通的人生',
     text: '你的一生没有奇迹，也没有崩塌。像江的水，平稳地流过。',
     cond: () => true }
+];
+
+/* =========================================================
+ * 死因表（IMP-01 · S-04）
+ * ---------------------------------------------------------
+ * 只回答「怎么走的」，**不替代** ENDINGS 对「这一生是什么」的判定。
+ * 原先 end_elder / end_ill / end_dead 三个 forceEnd 直接把 state.ending
+ * 写成「某某死法」，16 条正式结局一条都不参与 —— 88% 的局看不到自己
+ * 走出的人生是什么样。现在死亡也先跑 ENDINGS.find()，再把死因叠在标题与正文前。
+ *
+ * 消费方式：state.ending.cause === 'end_elder' | 'end_ill' | 'end_dead' | null
+ *  · 结局页标题：`${ending.title}`（形如「普通的人生 · 安然离世」）
+ *  · 音频 / 埋点请直接读 ending.cause，不要再去找 forceEnd 的调用时机
+ * ========================================================= */
+const DEATH_CAUSES = [
+  {
+    id: 'end_elder',
+    label: '安然离世',
+    text: s => `你在 ${typeof fmtYear === 'function' ? fmtYear(s) : s.age} 年闭上了眼睛。儿孙环绕，窗外是你看了一辈子的那棵树。`
+  },
+  {
+    id: 'end_ill',
+    label: '病逝',
+    // ctx: { illness: 病名, years: 拖了几年 }
+    text: (s, ctx) => `${typeof fmtYear === 'function' ? fmtYear(s) : s.age} 年，${s.age}岁，你没能撑过去。` +
+      (ctx && ctx.illness ? `${ctx.illness}拖了 ${ctx.years || 0} 年——你总说「等忙完这一阵就去」。` : '你总说「等忙完这一阵就去」。')
+  },
+  {
+    id: 'end_dead',
+    label: '熄灭',
+    text: s => `你在 ${typeof fmtYear === 'function' ? fmtYear(s) : s.age} 年倒下了。医生说是过劳。你最后的念头是：那件事，还没做完。`
+  }
 ];
 
 /* =========================================================
@@ -1826,6 +1904,59 @@ const GOOD_DEEDS = [
   }
 ];
 
+/* ---------------- 减压行动：压力只能进不能出，是「压力棘轮」这个比喻成立的地方 ----------------
+ *
+ * 与 GOOD_DEEDS 同构（id/name/icon/minAge/desc/eff/cost），可直接复用卡片 UI，但三处刻意不同：
+ *
+ *   1. **三条共享一个年度额度**（state.relaxUsedYear），而善事是「每件各一次」（goodTouch）。
+ *      若各一次，理论年减压 −38，叠加恢复公式会把 STRESS 打到 0，压力系统失去意义。
+ *      共享额度下理论最优 −16，且玩家必须在「社交 / 身体 / 专业帮助」之间做选择 —— 这个选择本身就是设计内容。
+ *
+ *   2. **socialAct 与 GOOD_DEEDS 都不占这个额度**。语义切分：
+ *        socialAct  = 维护一段**具体关系**（有对象、有反馈）
+ *        GOOD_DEEDS = **对外付出**（攒道德）
+ *        RELAX_ACTS = **照顾自己**（无对象、即时生效）
+ *
+ *   3. **r_court 有 55+ 分支**（羽毛球 → 公园太极/广场舞），且 55+ 免费。
+ *      硬约束：穷人永远要有一件能做的事，否则减压就成了付费功能。
+ *
+ * 金额口径：内部量级，÷180 为人民币（与全局一致）。
+ *
+ * ⚠ 三条减压量（−12 / −10 / −16）是 stress-respec.md §2.③ 的定稿值，
+ *   与 §3 的稳态推演（B = 22 = 7 恢复 + 12 减压 + 3 自住房）绑定。改这里必须同步重跑 S-1 / S-2。
+ */
+const RELAX_ACTS = [
+  {
+    id: 'r_friends', name: '攒一个老友饭局', icon: '🍲', minAge: 20,
+    desc: '八个人，一张圆桌，一半的人你三年没见了。酒过三巡，有人说起当年，所有人都在笑，笑完又安静了。',
+    eff: { STRESS: -12, LOVE: 4, MOOD: 4, HP: 2, NET: 2 },
+    cost: 3000000,                       // ≈1.7 万 RMB
+    cond: { min: { NET: 20 } },          // 得叫得出人来
+    condMsg: '你现在叫不出八个人'         // E-4：这句话本身就是叙事，不要换成「人脉不足」
+  },
+  {
+    id: 'r_court', name: '出一身汗', icon: '🏸', minAge: 16,
+    desc: '羽毛球馆的下午场，四十块一人。打到第三局你什么也不想了，只听见球拍破空的声音。',
+    eff: { STRESS: -10, HP: 6, STR: 2, MOOD: 3 },
+    cost: 800000,                        // ≈0.44 万 RMB
+    lateAge: 55,                         // 55 岁起：文案与开销切换为公园里的那套
+    descLate: '公园的空地上，第七套广播体操的音乐准时响起。你站在第二排，动作比谁都标准。',
+    lateEff: { STRESS: -10, HP: 5, STR: 1, LOVE: 3, NET: 2 },
+    lateCost: 0                          // ⚠ 免费是硬约束：保证穷人永远有一件能做的事（E-2）
+  },
+  {
+    id: 'r_counsel', name: '去看一次心理门诊', icon: '🫂', minAge: 18,
+    desc: '挂号单上写着「临床心理科」。候诊区坐满了人，有穿校服的，有抱孩子的，也有和你一样穿着上班的衣服。你忽然不那么紧张了——原来这里不是只有「有问题的人」才来。走出去的时候，你第一次把那件事完整地说给了一个人听。',
+    eff: { STRESS: -16, HP: 2, MOOD: 5, INT: 2, SEC: 2 },
+    cost: 12000000,                      // ≈6.7 万 RMB（自费心理咨询的真实量级）
+    flags: ['counseled']                 // 可在晚年事件 / 遗嘱里回收为叙事线索
+  }
+];
+
+/* ⚠ A-06 的 `JOB_ALIAS` 映射表**不在这里** —— 它在 `career.js:392`，与 `setJob()` 放在一起
+ * （IMP-01 就实现了）。曾经有人（包括我）想把它挪到 data.js，那是错的：
+ * 它引用的 `careerById()` 在 career.js，且 `setJob()` 才是唯一写入口。别再复制一份。 */
+
 /* ---------------- 朋友圈类型（人际关系卡片） ---------------- */
 /* ageGap：相对「你」的年龄差区间。恩师必须年长一辈，同事/生意伙伴跨度更大 */
 const FRIEND_TYPES = [
@@ -1957,5 +2088,207 @@ const EXAM_QUIZ = [
   { q: '牛顿第一定律也叫？', opts: ['万有引力定律', '惯性定律', '作用力定律', '能量守恒'], a: 1 },
   { q: '「三顾茅庐」请的是谁？', opts: ['庞统', '诸葛亮', '司马懿', '周瑜'], a: 1 },
   { q: '水的密度约为多少克/立方厘米？', opts: ['0.5', '1', '1.5', '2'], a: 1 },
-  { q: '「完璧归赵」中「璧」指的是？', opts: ['和氏璧', '夜明珠', '玉玺', '铜镜'], a: 0 }
+  { q: '「完璧归赵」中「璧」指的是？', opts: ['和氏璧', '夜明珠', '玉玺', '铜镜'], a: 0 },
+  { q: '中国海拔最高的高原叫？', opts: ['云贵高原', '黄土高原', '青藏高原', '内蒙古高原'], a: 2 },
+  { q: '键盘上 Ctrl+C 的功能是？', opts: ['粘贴', '复制', '剪切', '撤销'], a: 1 },
+  { q: '「床前明月光」的下一句是？', opts: ['疑是地上霜', '低头思故乡', '举头望明月', '对影成三人'], a: 0 },
+  { q: '人体正常体温大约是？', opts: ['35℃', '36.5℃', '38℃', '39.5℃'], a: 1 },
+  { q: '十二生肖排在第一的是？', opts: ['牛', '虎', '鼠', '龙'], a: 2 },
+  { q: '鸦片战争的起止年份是？', opts: ['1839-1842', '1840-1842', '1856-1860', '1894-1895'], a: 1 },
+  { q: '声音的音调高低取决于？', opts: ['振幅', '频率', '音色', '响度'], a: 1 },
+  { q: '奥运会五环的颜色不包括？', opts: ['蓝色', '黑色', '紫色', '黄色'], a: 2 },
+  { q: '中国第一部诗歌总集是？', opts: ['《楚辞》', '《诗经》', '《乐府诗集》', '《全唐诗》'], a: 1 }
+];
+
+/* =========================================================
+ * v6.0.0 扩展包（内容追加，不改动既有结构）
+ *  - EVENTS_FEST   节日主题事件（fest: true，每年可重复触发，权重加成）
+ *  - EVENTS_NEWS   突发新闻事件（eff.newsK 联动次年股市/楼市情绪）
+ *  - EVENTS_CRIME  违法与监狱事件（监狱系统）
+ *  - EVENTS_PRISON 服刑期间专属事件
+ *  - SUPER_QUIZ    超级大脑高难度题库
+ *  - GIFT_CATALOG  礼物目录（走亲访友送礼）
+ *  - TOMBSTONES    多款式墓碑结算页
+ * ========================================================= */
+
+/* ---------------- 节日事件（fest: 可重复触发） ---------------- */
+const EVENTS_FEST = [
+  { id: 'ft_cny_kid', fest: true, age: [3, 14], w: 9, text: '过年了。鞭炮声从凌晨响到天亮，你攥着压岁钱数了三遍，一分都没舍得花。',
+    eff: { MOOD: 6, LOVE: 3, SEC: 2 } },
+  { id: 'ft_cny_home', fest: true, age: [20, 58], w: 9, cond: {}, text: '除夕。你抢到（或没抢到）回家的票，挤在人潮里往家赶。桌上的饺子永远是妈妈包的那个味道。',
+    eff: { LOVE: 5, MOOD: 5, STRESS: -6 } },
+  { id: 'ft_cny_old', fest: true, age: [59, 120], w: 8, text: '又是除夕。孩子们都回来了，屋里好久没这么吵过。你坐在主位上，看着满桌的人，忽然想起很多年前的自己。',
+    eff: { MOOD: 6, LOVE: 4 } },
+  { id: 'ft_cny_cost', fest: true, age: [26, 55], w: 6, text: '过年=过关：给长辈的、给孩子的、同学聚会的份子钱……年过完了，钱包也空了。',
+    eff: { MONEY: -1200000, NET: 3, LOVE: 3, STRESS: 4 } },
+  { id: 'ft_lantern', fest: true, age: [5, 15], w: 6, text: '元宵节的灯会。你举着兔子灯在人群里钻来钻去，差点走丢。',
+    eff: { MOOD: 5, CUR: 2 } },
+  { id: 'ft_qingming', fest: true, age: [16, 120], w: 7, text: '清明。你跟家里人回乡扫墓。山上的风很凉，父亲指着碑上的名字，给你讲你没见过的人的故事。',
+    eff: { WILL: 2, LOVE: 3, STRESS: -3 } },
+  { id: 'ft_duanwu', fest: true, age: [6, 18], w: 6, text: '端午节。外婆包的粽子一打开满屋芦叶香，你在江边看龙舟，嗓子都喊哑了。',
+    eff: { MOOD: 5, HP: 2, LOVE: 2 } },
+  { id: 'ft_qixi_s', fest: true, age: [18, 40], w: 6, cond: { ban: ['married'] }, text: '七夕。街上的花店排起长队，你一个人走过去，假装在等一条消息。',
+    eff: { MOOD: -3, CHA: 1 } },
+  { id: 'ft_qixi_c', fest: true, age: [20, 60], w: 6, cond: { need: ['married'] }, text: '七夕。你和另一半挤出时间吃了顿饭，老夫老妻了，还是要过一过这种日子。',
+    eff: { MOOD: 4, LOVE: 3 } },
+  { id: 'ft_mid_autoon', fest: true, age: [22, 55], w: 6, text: '中秋你在加班/堵在回家的路上。月亮升起来的时候，你抬头看了一眼，把没说完的祝福发给了家人。',
+    eff: { STRESS: 4, LOVE: 3, MOOD: 2 } },
+  { id: 'ft_mid_moon', fest: true, age: [8, 16], w: 6, text: '中秋。全家人在阳台上分一块月饼，你抢到了蛋黄的那一块。',
+    eff: { MOOD: 6, LOVE: 4 } },
+  { id: 'ft_national', fest: true, age: [6, 22], w: 6, text: '十一黄金周。阅兵（或旅行人潮）刷了满屏，你为国家骄傲，也为抢不到的火车票发愁。',
+    eff: { MOOD: 4, FAME: 1 } },
+  { id: 'ft_double11', fest: true, age: [18, 45], w: 5, text: '双十一。零点你守着购物车清空了它，第二天看着账单陷入沉思。',
+    eff: { MONEY: -500000, MOOD: 4 } },
+  { id: 'ft_winter', fest: true, age: [10, 30], w: 5, text: '冬至。北方吃饺子，南方喝汤圆。你吃到了自己那一份，胃和心都暖了。',
+    eff: { MOOD: 4, HP: 2 } },
+  { id: 'ft_birthday', fest: true, age: [4, 120], w: 5, text: '你的生日。有人记得，有人忘了。吹蜡烛之前你许了一个愿望，没告诉任何人。',
+    eff: { MOOD: 5, WILL: 1 } }
+];
+EVENTS.push.apply(EVENTS, EVENTS_FEST);
+
+/* ---------------- 突发新闻事件（newsK：联动次年股市情绪） ---------------- */
+const EVENTS_NEWS = [
+  { id: 'nw_bull', age: [18, 90], w: 5, text: '财经新闻：监管释放重大利好，分析师集体上调目标价，全城的营业部又热闹了起来。',
+    eff: { newsK: 0.12, MOOD: 3 } },
+  { id: 'nw_crash', age: [18, 90], w: 5, text: '突发：外围市场深夜暴跌，避险情绪蔓延。你盯着开盘倒计时，手心全是汗。',
+    eff: { newsK: -0.13, STRESS: 5 } },
+  { id: 'nw_rate', age: [20, 90], w: 4, text: '央行宣布降息。存款利息变薄了，房贷压力轻了一点，售楼处的人多起来了。',
+    eff: { newsK: 0.08 } },
+  { id: 'nw_housetight', age: [22, 80], w: 4, text: '新一轮楼市调控出台：限购加码、房贷收紧。中介的电话一夜之间全变了语气。',
+    eff: { newsK: -0.06, houseK: -0.08 } },
+  { id: 'nw_ai', age: [22, 90], w: 4, text: '科技新闻：国产大模型发布会刷屏，「下一个时代」这个词又出现了。算力板块集体涨停。',
+    eff: { newsK: 0.10, CUR: 2 } },
+  { id: 'nw_chip', age: [20, 90], w: 4, text: '国际新闻：芯片出口管制升级。新闻联播用了很长的篇幅，半导体人的朋友圈一夜白头。',
+    eff: { newsK: -0.09, WILL: 2 } },
+  { id: 'nw_ev', age: [22, 90], w: 4, text: '产业新闻：新能源车渗透率过半，加油站开始改充电桩。时代换挡的声音，你听得清清楚楚。',
+    eff: { newsK: 0.07, CUR: 1 } },
+  { id: 'nw_aging', age: [30, 90], w: 4, text: '人口新闻：养老产业五年规划发布。你在新闻里看到了自己几十年后的样子，和它的万亿市场。',
+    eff: { newsK: 0.05, WILL: 1 } },
+  { id: 'nw_epidemic', age: [16, 90], w: 3, text: '突发公共卫生事件：确诊病例上升，口罩和退烧药又抢断了货。你囤了两周的菜。',
+    eff: { newsK: -0.11, HP: -3, STRESS: 6 } },
+  { id: 'nw_gold', age: [20, 90], w: 4, text: '金价创历史新高。金店门口排起长队，大妈们又一次赢了。',
+    eff: { newsK: 0.04, MOOD: 2 } },
+  { id: 'nw_boom', age: [18, 90], w: 4, text: '利好出尽：前期涨太猛的板块集体回调，「专家」们开始改口。你学到了一课。',
+    eff: { newsK: -0.07, INT: 1 } },
+  { id: 'nw_trade', age: [24, 90], w: 4, text: '国际经贸摩擦升级，出口企业订单承压。沿海的工厂放慢了机器的转速。',
+    eff: { newsK: -0.10, STRESS: 3 } }
+];
+EVENTS.push.apply(EVENTS, EVENTS_NEWS);
+
+/* ---------------- 违法与监狱事件（监狱系统入口） ---------------- */
+const EVENTS_CRIME = [
+  { id: 'cm_scam', age: [18, 70], w: 4, text: '老同学深夜来电：有个「内部渠道」的生意，一单抵一年工资，就缺你这份本钱。',
+    choices: [
+      { text: '报警，这不对劲', eff: { WILL: 3, ETH: 4, NET: 1 }, flags: ['good_citizen'] },
+      { text: '入伙，干一票', eff: { MONEY: 3000000, ETH: -12 }, flags: ['crime_suspect'], risk: 1 },
+      { text: '拒绝但保密', eff: { ETH: -2, STRESS: 2 } }
+    ] },
+  { id: 'cm_tax', age: [24, 80], w: 4, cond: { min: { MONEY: 20000000 } }, text: '会计建议你「做点税务筹划」——说白了，就是两套账。',
+    choices: [
+      { text: '依法纳税，一分不少', eff: { MONEY: -800000, ETH: 5, FAME: 2 } },
+      { text: '做两套账', eff: { MONEY: 2500000, ETH: -10 }, flags: ['crime_suspect'], risk: 1 }
+    ] },
+  { id: 'cm_fight', age: [16, 40], w: 4, text: '深夜大排档，隔壁桌的人指着你骂了个难听的词。朋友们都在看你。',
+    choices: [
+      { text: '忍了，带朋友走', eff: { WILL: 2, STRESS: 3 } },
+      { text: '掀桌子动手', eff: { STR: 2, ETH: -8, HP: -4 }, flags: ['crime_suspect'], risk: 1 }
+    ] },
+  { id: 'cm_speed', age: [18, 60], w: 3, cond: {}, text: '凌晨的环路空得像赛道。你把油门踩了下去，时速表的数字在跳。',
+    choices: [
+      { text: '收敛一点，安全回家', eff: { WILL: 1 } },
+      { text: '再快一点', eff: { MOOD: 5, HP: -2, ETH: -4 }, flags: ['crime_suspect'], risk: 1 }
+    ] },
+  { id: 'cm_insider', age: [24, 80], w: 3, cond: { min: { NET: 30 } }, text: '酒桌上有人压低声音：「这只票，下周就有消息。」你听得懂他的意思。',
+    choices: [
+      { text: '装作没听见', eff: { ETH: 4, WILL: 2 } },
+      { text: '重仓跟进', eff: { MONEY: 4000000, ETH: -12 }, flags: ['crime_suspect'], risk: 1 }
+    ] }
+];
+EVENTS.push.apply(EVENTS, EVENTS_CRIME);
+
+/* ---------------- 服刑期间专属事件（prison > 0 时进入高频池） ---------------- */
+const EVENTS_PRISON = [
+  { id: 'pr_in', once: true, age: [16, 90], w: 30, text: '铁门在身后关上。编号取代了你的名字。你开始学着一分钟之内吃完一顿饭。', eff: { WILL: 4, STRESS: 10, MOOD: -10, FAME: -8 } },
+  { id: 'pr_work', age: [16, 90], w: 10, text: '车间里的活不难，难的是日复一日。你因为手艺好被减了刑。', eff: { WILL: 3, STR: 2, MOOD: 2 } },
+  { id: 'pr_read', age: [16, 90], w: 10, text: '你在监狱图书室读完了半架子的书。高墙圈得住人，圈不住字。', eff: { INT: 4, WILL: 2, MOOD: 3 } },
+  { id: 'pr_fight', age: [16, 60], w: 6, text: '有人抢你的被子。这里讲道理没用，讲拳头也别想赢太多。', eff: { STR: 2, HP: -5, STRESS: 5 } },
+  { id: 'pr_visit', age: [16, 90], w: 8, text: '探视日。玻璃对面是来看你的人。你说了十分钟「我挺好的」，挂了电话才发现自己攥了一路的听筒。', eff: { LOVE: 5, MOOD: 6, STRESS: -6 } },
+  { id: 'pr_regret', age: [16, 90], w: 8, text: '夜里你把这件事从头到尾想了一遍。如果能重来——没有如果。把刑期一天一天过完，就是唯一的路。', eff: { WILL: 5, ETH: 6, MOOD: -4 } }
+];
+EVENTS.push.apply(EVENTS, EVENTS_PRISON);
+
+/* ---------------- 超级大脑高难度题库（超级大脑大赛 / 图书馆深修用） ---------------- */
+const SUPER_QUIZ = [
+  { q: '量子力学中描述粒子状态的函数叫？', opts: ['波函数', '哈密顿量', '拉格朗日量', '张量'], a: 0 },
+  { q: '哥德尔不完备定理针对的数学分支是？', opts: ['几何学', '算术公理系统', '概率论', '拓扑学'], a: 1 },
+  { q: 'DNA 复制发生在细胞周期的哪个阶段？', opts: ['G1 期', 'S 期', 'G2 期', 'M 期'], a: 1 },
+  { q: '「拉曼效应」与什么有关？', opts: ['光的散射', '电磁感应', '热传导', '放射性衰变'], a: 0 },
+  { q: '《九章算术》成书于哪个朝代？', opts: ['秦', '汉', '唐', '宋'], a: 1 },
+  { q: '图灵机理论属于哪一门学科的基础？', opts: ['生物学', '计算理论', '热力学', '光学'], a: 1 },
+  { q: '黎曼猜想关心的是哪个函数的零点？', opts: ['Γ 函数', 'ζ 函数', 'β 函数', 'Bessel 函数'], a: 1 },
+  { q: '人类基因组大约包含多少对碱基？', opts: ['30 亿', '3 亿', '300 亿', '3000 万'], a: 0 },
+  { q: '「薛定谔的猫」最初是为了说明什么？', opts: ['猫的九条命', '量子叠加的荒谬性', '放射性半衰期', '生物电'], a: 1 },
+  { q: '陈景润证明了哥德巴赫猜想的哪个部分？', opts: ['1+1', '1+2', '2+2', '1+3'], a: 1 },
+  { q: 'FFT 快速傅里叶变换的复杂度是？', opts: ['O(n)', 'O(n log n)', 'O(n²)', 'O(log n)'], a: 1 },
+  { q: '宇宙微波背景辐射的发现者中不包括？', opts: ['彭齐亚斯', '威尔逊', '伽莫夫', '哈勃'], a: 3 },
+  { q: '「杨-米尔斯理论」属于哪个领域？', opts: ['规范场论', '经典力学', '流体力学', '凝聚态'], a: 0 },
+  { q: ' RSA 加密的安全性基于哪个数学难题？', opts: ['大数分解', '离散对数', '椭圆曲线', '哈希碰撞'], a: 0 },
+  { q: '《梦溪笔谈》的作者是？', opts: ['沈括', '宋应星', '徐光启', '李时珍'], a: 0 },
+  { q: '贝叶斯公式中先验概率是指？', opts: ['观测后的概率', '观测前的概率', '联合概率', '边缘概率'], a: 1 },
+  { q: '相对论中「同时性的相对性」由什么引起？', opts: ['光速不变', '引力红移', '时间膨胀', '长度收缩'], a: 0 },
+  { q: '黑洞的「事件视界」半径与什么成正比？', opts: ['质量', '电荷', '自转', '温度'], a: 0 },
+  { q: 'CPU 缓存层级中 L1 的特点是？', opts: ['容量最大', '速度最快', '共享核间', '持久保存'], a: 1 },
+  { q: '《天工开物》记载的核心内容是？', opts: ['农业手工业技术', '天文历法', '军事阵法', '医药方剂'], a: 0 },
+  { q: '发现青蒿素的药学家是？', opts: ['屠呦呦', '钟南山', '陈薇', '李兰娟'], a: 0 },
+  { q: 'P 与 NP 问题的核心是？', opts: ['并行计算', '验证是否等同求解', '随机算法', '加密强度'], a: 1 }
+];
+
+/* ---------------- 礼物目录（走亲访友 · 价格影响关系值） ---------------- */
+const GIFT_CATALOG = [
+  { id: 'gift_small', name: '一箱牛奶水果', icon: '🎁', cost: 600000, gain: [3, 5], desc: '拎进门说「随便买的」，但谁都看得出来你挑过。' },
+  { id: 'gift_mid', name: '烟酒茶礼盒', icon: '🍷', cost: 2600000, gain: [6, 9], desc: '体面的硬通货。长辈嘴上说「乱花钱」，手已经收下了。' },
+  { id: 'gift_big', name: '金饰 / 高端保健品', icon: '💎', cost: 12000000, gain: [10, 14], desc: '打开盒子的那一秒，屋子里安静了一下。' },
+  { id: 'gift_huge', name: '一套房的首付 / 大额红包', icon: '🏰', cost: 60000000, gain: [16, 22], desc: '这不是礼物，这是改变一个家庭命运走向的东西。' }
+];
+
+/* ---------------- 墓碑款式（结局结算页 · 按人生评级解锁） ---------------- */
+const TOMBSTONES = [
+  { id: 'tb_plain', name: '青石碑', minRank: 'D', desc: '一方青石，一行名字。来过，就好。' },
+  { id: 'tb_flower', name: '花环绕身碑', minRank: 'C', desc: '碑前常年有花。来看你的人，都记得你的好。' },
+  { id: 'tb_arch', name: '功德碑', minRank: 'B', desc: '碑文很长，写满了你做过的事。' },
+  { id: 'tb_grand', name: '家族纪念碑', minRank: 'A', desc: '碑上刻着整个家族的姓。你是那个起点。' },
+  { id: 'tb_legend', name: '城市传记碑', minRank: 'S', desc: '你的名字进了教科书。碑立在江边，面朝你长大的地方。' }
+];
+
+/* ---------------- v6 新增成就 ---------------- */
+ACHIEVEMENTS.push(
+  { id: 'a_zoo', icon: '🦎', name: '异宠达人', desc: '养过爬宠或鸟类等异宠',
+    cond: s => !!(s.pets || []).some(p => p.alive && ['snake', 'spider', 'lizard', 'bird', 'pig'].indexOf(p.type) >= 0) },
+  { id: 'a_beauty', icon: '👑', name: '选美冠军', desc: '宠物在选美大赛中拿了冠军',
+    cond: s => !!(s.flags && s.flags.pet_beauty_win) },
+  { id: 'a_horse', icon: '🐎', name: '伯乐', desc: '赛马在比赛中夺冠',
+    cond: s => !!(s.flags && s.flags.horse_race_win) },
+  { id: 'a_pilot', icon: '✈️', name: '云端之上', desc: '成为民航飞行员',
+    cond: s => !!s.career && typeof careerById === 'function' && s.career.id === 'pilot' },
+  { id: 'a_astro', icon: '🚀', name: '叩问苍穹', desc: '入选航天员',
+    cond: s => !!(s.flags && s.flags.astronaut) },
+  { id: 'a_jail', icon: '⛓', name: '铁窗生涯', desc: '经历过一次刑期并走出高墙',
+    cond: s => !!(s.flags && s.flags.ex_prisoner) },
+  { id: 'a_lux', icon: '🛥', name: '顶奢人生', desc: '同时拥有游艇与私人飞机',
+    cond: s => (s.market && s.market.props || []).some(p => p.kind === 'good' && p.id === 'g_yacht') &&
+               (s.market && s.market.props || []).some(p => p.kind === 'good' && p.id === 'g_jet') },
+  { id: 'a_brain', icon: '🧠', name: '超级大脑', desc: '在超级大脑大赛中夺冠',
+    cond: s => !!(s.flags && s.flags.superbrain_win) },
+  { id: 'a_heir', icon: '👪', name: '薪火相传', desc: '以继承人的身份开启下一段人生',
+    cond: s => !!(s.flags && s.flags.inheritor) }
+);
+
+/* ---------------- 度假系统（一年一次，价格与恢复量成正比） ---------------- */
+const VACATIONS = [
+  { id: 'vac_hotspring', name: '周边温泉二日游', icon: '♨️', cost: 2500000,
+    eff: { STRESS: -14, HP: 5, MOOD: 6 }, desc: '高铁一小时，泡进热汤里。手机在保险柜，你在池子边。' },
+  { id: 'vac_sanya', name: '海岛度假一周', icon: '🏖', cost: 18000000,
+    eff: { STRESS: -22, HP: 8, MOOD: 10, CHA: 1 }, desc: '防晒霜、潜水课、晚上的烧烤摊。你晒黑了一个色号。' },
+  { id: 'vac_europe', name: '欧洲深度一个月', icon: '🏰', cost: 90000000,
+    eff: { STRESS: -30, HP: 6, MOOD: 14, CUR: 4, INT: 2, CHA: 2 }, desc: '卢浮宫的下午、阿尔卑斯的小镇。见过世界之后，很多事就小事了。' }
 ];

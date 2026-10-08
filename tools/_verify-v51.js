@@ -6,7 +6,7 @@ const root = path.join(__dirname, '..');
 const ctx = { console, Math, JSON, Date, isNaN, parseInt, Number };
 vm.createContext(ctx);
 ['assets/data.js', 'assets/market.js', 'assets/engine.js',
- 'assets/school.js', 'assets/career.js', 'assets/love.js', 'assets/loan.js'].forEach(f => {
+ 'assets/school.js', 'assets/career.js', 'assets/love.js', 'assets/pet.js', 'assets/legacy.js', 'assets/loan.js'].forEach(f => {
   vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f });
 });
 const A = vm.runInContext(`({

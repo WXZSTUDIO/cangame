@@ -1,0 +1,62 @@
+{
+  "fault": "cause-drop",
+  "desc": "抹掉 ending.cause（复现 F-01：死因字段失效）",
+  "n": "60",
+  "cases": "REG-01",
+  "assertions": [
+    {
+      "case": "REG-01",
+      "pass": true,
+      "name": "无崩溃",
+      "detail": "crash=0"
+    },
+    {
+      "case": "REG-01",
+      "pass": false,
+      "name": "哨兵 · 结局死因字段（endCause）覆盖率 —— 此条红了，下面的「熄灭占比」不可信",
+      "detail": "实测 0.27 · 目标 >= 0.70"
+    },
+    {
+      "case": "REG-01",
+      "pass": false,
+      "name": "激进流平均寿命",
+      "detail": "实测 38.25岁 · 目标 >= 60岁"
+    },
+    {
+      "case": "REG-01",
+      "pass": false,
+      "name": "激进流「熄灭」占比",
+      "detail": "实测 0.27 · 目标 <= 0.25"
+    },
+    {
+      "case": "REG-01",
+      "pass": true,
+      "name": "激进流 30 岁 HP 中位",
+      "detail": "实测 87 · 目标 >= 60"
+    },
+    {
+      "case": "REG-01",
+      "pass": false,
+      "name": "激进流 30 岁压力中位",
+      "detail": "实测 95 · 目标 <= 80"
+    },
+    {
+      "case": "REG-01",
+      "pass": false,
+      "name": "哨兵 · 亡命流 endCause 覆盖率",
+      "detail": "实测 0.12 · 目标 >= 0.70"
+    },
+    {
+      "case": "REG-01",
+      "pass": false,
+      "name": "亡命流平均寿命",
+      "detail": "实测 30.87岁 · 目标 >= 60岁"
+    },
+    {
+      "case": "REG-01",
+      "pass": true,
+      "name": "亡命流「熄灭」占比",
+      "detail": "实测 0.12 · 目标 <= 0.25"
+    }
+  ]
+}

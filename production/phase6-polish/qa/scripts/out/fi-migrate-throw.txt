@@ -1,0 +1,33 @@
+#### FAULT=migrate-throw  A.migrateState 抛异常（模拟迁移链路未兜底）  ####
+================ REG-01 回归用例集 ================
+基线指纹：data.js@2026-10-08T00:57  market.js@2026-10-06T03:16  engine.js@2026-10-08T00:59  school.js@2026-10-07T01:17  career.js@2026-10-08T00:55  love.js@2026-10-07T04:29  loan.js@2026-10-06T03:16  ui.js@2026-10-08T01:01
+每组样本量 N = 60（REG-00 固定 1000 局）
+用例：REG-13
+说明：用例是「修复验收门」。在未修复的 v5.5.0 基线上，FAIL 即待修项。
+
+REG-13 · B-08 老存档迁移（migrateState）
+  [FAIL]  L0 合成极简核（压力样本·非真实形状） · 迁移不抛错（5 种子）   << 5/5 炸：seed20251008: migrateState: INJECT: migrate boom | seed13579: migrateState: INJECT: migrate boom
+  [FAIL]  L1 合成极简核（压力样本·非真实形状） · 迁移不抛错（5 种子）   << 5/5 炸：seed20251008: migrateState: INJECT: migrate boom | seed13579: migrateState: INJECT: migrate boom
+  [FAIL]  L2 合成（有 market/career，无 v5.5 新增） · 迁移不抛错（5 种子）   << 5/5 炸：seed20251008: migrateState: INJECT: migrate boom | seed13579: migrateState: INJECT: migrate boom
+  [FAIL]  L3 合成（children 只有数量 / ex 是单体 / 旧专业名） · 迁移不抛错（5 种子）   << 5/5 炸：seed20251008: migrateState: INJECT: migrate boom | seed13579: migrateState: INJECT: migrate boom
+  [FAIL]  L4 完整当前版（对照） · 迁移不抛错（5 种子）   << 5/5 炸：seed20251008: migrateState: INJECT: migrate boom | seed13579: migrateState: INJECT: migrate boom
+  [FAIL]  L5 孤儿型旧存档（删 parents + 删 flags） · 迁移不抛错（5 种子）   << 5/5 炸：seed20251008: migrateState: INJECT: migrate boom | seed13579: migrateState: INJECT: migrate boom
+  [FAIL]  L6 删 log + 删 queue · 迁移不抛错（5 种子）   << 5/5 炸：seed20251008: migrateState: INJECT: migrate boom | seed13579: migrateState: INJECT: migrate boom
+  [FAIL]  L7 删 family + 删 market · 迁移不抛错（5 种子）   << 5/5 炸：seed20251008: migrateState: INJECT: migrate boom | seed13579: migrateState: INJECT: migrate boom
+  [FAIL]  R·v4.x（pre-5.0） 真实形状（32 字段） · 迁移不抛错（5 种子）   << 5/5 炸：seed20251008: migrateState: INJECT: migrate boom | seed13579: migrateState: INJECT: migrate boom
+  [FAIL]  R·v5.0.0 真实形状（43 字段） · 迁移不抛错（5 种子）   << 5/5 炸：seed20251008: migrateState: INJECT: migrate boom | seed13579: migrateState: INJECT: migrate boom
+  [FAIL]  R·v5.3.0 真实形状（47 字段） · 迁移不抛错（5 种子）   << 5/5 炸：seed20251008: migrateState: INJECT: migrate boom | seed13579: migrateState: INJECT: migrate boom
+  [FAIL]  R·v5.4.0 真实形状（47 字段） · 迁移不抛错（5 种子）   << 5/5 炸：seed20251008: migrateState: INJECT: migrate boom | seed13579: migrateState: INJECT: migrate boom
+  [FAIL]  C 组 A 类：删除任一字段后 migrateState 不抛错（5 种子）   << 25/25 字段会炸：edu(5/5), love(5/5), classmates(5/5), exes(5/5), children(5/5), friends(5/5), parents(5/5), family(5/5), market(5/5), career(5/5), loans(5/5), ill(5/5), achievements(5/5), socialTouch(5/5), uniTouch(5/5), goodTouch(5/5), spouse(5/5), spouseName(5/5), log(5/5), queue(5/5), credit(5/5), flags(5/5), pet(5/5), grief(5/5), talents(5/5)
+  [PASS]  C 组 C 类：删除任一字段后仍能推进 5 年（5 种子）   << 0/25
+  [PASS]  C 组 B 类：删除任一字段后字段形状仍完整（形状债）   << 0/25
+  [PASS]  用例可复现（同种子两次构造的存档摘要一致，非 flaky）   << 1aac7dcf:31026 / 1aac7dcf:31026
+  ---- REG-13 · B-08 老存档迁移（migrateState） : 3/16 PASS ----
+
+================ 汇总 ================
+用例        结果      通过        耗时
+REG-13    FAIL    3/16      1.1s
+---- 0/1 条用例全绿 ----
+总耗时 1.1s
+
+[fi] 已写出 out/fi-migrate-throw.json（断言 16 条）

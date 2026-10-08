@@ -1,0 +1,320 @@
+{
+  "fault": "migrate-nan",
+  "desc": "A.migrateState 后 stats.MONEY = NaN（模拟迁移把脏值带进存档）",
+  "n": "60",
+  "cases": "REG-13",
+  "assertions": [
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L0 合成极简核（压力样本·非真实形状） · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "L0 合成极简核（压力样本·非真实形状） · 迁移后字段形状完整（5 种子）",
+      "detail": "5/5 缺：seed20251008: used(undefined),investments(undefined),friends(undefined),family(undefined) | seed13579: used(undefined),investments(undefined),friends(undefined),family(undefined)"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "L0 合成极简核（压力样本·非真实形状） · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "5/5 炸：seed20251008: Cannot read properties of undefined (reading 'NET') | seed13579: Cannot read properties of undefined (reading 'NET')"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "L0 合成极简核（压力样本·非真实形状） · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "seed20251008: stats.MONEY | seed13579: stats.MONEY | seed24680: stats.MONEY | seed97531: stats.MONEY | seed86420: stats.MONEY"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L1 合成极简核（压力样本·非真实形状） · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "L1 合成极简核（压力样本·非真实形状） · 迁移后字段形状完整（5 种子）",
+      "detail": "5/5 缺：seed20251008: investments(undefined) | seed13579: investments(undefined)"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "L1 合成极简核（压力样本·非真实形状） · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "5/5 炸：seed20251008: Cannot read properties of undefined (reading 'filter') | seed13579: Cannot read properties of undefined (reading 'filter')"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "L1 合成极简核（压力样本·非真实形状） · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "seed20251008: stats.MONEY | seed13579: stats.MONEY | seed24680: stats.MONEY | seed97531: stats.MONEY | seed86420: stats.MONEY"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L2 合成（有 market/career，无 v5.5 新增） · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L2 合成（有 market/career，无 v5.5 新增） · 迁移后字段形状完整（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L2 合成（有 market/career，无 v5.5 新增） · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "L2 合成（有 market/career，无 v5.5 新增） · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "seed20251008: stats.MONEY | seed13579: stats.MONEY | seed24680: stats.MONEY | seed97531: stats.MONEY | seed86420: stats.MONEY"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L3 合成（children 只有数量 / ex 是单体 / 旧专业名） · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L3 合成（children 只有数量 / ex 是单体 / 旧专业名） · 迁移后字段形状完整（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L3 合成（children 只有数量 / ex 是单体 / 旧专业名） · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "L3 合成（children 只有数量 / ex 是单体 / 旧专业名） · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "seed20251008: stats.MONEY | seed13579: stats.MONEY | seed24680: stats.MONEY | seed97531: stats.MONEY | seed86420: stats.MONEY"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L4 完整当前版（对照） · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L4 完整当前版（对照） · 迁移后字段形状完整（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L4 完整当前版（对照） · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "L4 完整当前版（对照） · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "seed20251008: stats.MONEY | seed13579: stats.MONEY | seed24680: stats.MONEY | seed97531: stats.MONEY | seed86420: stats.MONEY"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L5 孤儿型旧存档（删 parents + 删 flags） · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L5 孤儿型旧存档（删 parents + 删 flags） · 迁移后字段形状完整（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L5 孤儿型旧存档（删 parents + 删 flags） · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "L5 孤儿型旧存档（删 parents + 删 flags） · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "seed20251008: stats.MONEY | seed13579: stats.MONEY | seed24680: stats.MONEY | seed97531: stats.MONEY | seed86420: stats.MONEY"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L6 删 log + 删 queue · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L6 删 log + 删 queue · 迁移后字段形状完整（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L6 删 log + 删 queue · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "L6 删 log + 删 queue · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "seed20251008: stats.MONEY | seed13579: stats.MONEY | seed24680: stats.MONEY | seed97531: stats.MONEY | seed86420: stats.MONEY"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L7 删 family + 删 market · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "L7 删 family + 删 market · 迁移后字段形状完整（5 种子）",
+      "detail": "5/5 缺：seed20251008: family(undefined) | seed13579: family(undefined)"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "L7 删 family + 删 market · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "L7 删 family + 删 market · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "seed20251008: stats.MONEY | seed13579: stats.MONEY | seed24680: stats.MONEY | seed97531: stats.MONEY | seed86420: stats.MONEY"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v4.x（pre-5.0） 真实形状（32 字段） · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v4.x（pre-5.0） 真实形状（32 字段） · 迁移后字段形状完整（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v4.x（pre-5.0） 真实形状（32 字段） · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "R·v4.x（pre-5.0） 真实形状（32 字段） · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "seed20251008: stats.MONEY | seed13579: stats.MONEY | seed24680: stats.MONEY | seed97531: stats.MONEY | seed86420: stats.MONEY"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v5.0.0 真实形状（43 字段） · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v5.0.0 真实形状（43 字段） · 迁移后字段形状完整（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v5.0.0 真实形状（43 字段） · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "R·v5.0.0 真实形状（43 字段） · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "seed20251008: stats.MONEY | seed13579: stats.MONEY | seed24680: stats.MONEY | seed97531: stats.MONEY | seed86420: stats.MONEY"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v5.3.0 真实形状（47 字段） · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v5.3.0 真实形状（47 字段） · 迁移后字段形状完整（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v5.3.0 真实形状（47 字段） · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "R·v5.3.0 真实形状（47 字段） · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "seed20251008: stats.MONEY | seed13579: stats.MONEY | seed24680: stats.MONEY | seed97531: stats.MONEY | seed86420: stats.MONEY"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v5.4.0 真实形状（47 字段） · 迁移不抛错（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v5.4.0 真实形状（47 字段） · 迁移后字段形状完整（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "R·v5.4.0 真实形状（47 字段） · 迁移后能继续推进 5 年（5 种子）",
+      "detail": "0/5"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "R·v5.4.0 真实形状（47 字段） · 迁移后无 NaN / Infinity（5 种子）",
+      "detail": "seed20251008: stats.MONEY | seed13579: stats.MONEY | seed24680: stats.MONEY | seed97531: stats.MONEY | seed86420: stats.MONEY"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "C 组 A 类：删除任一字段后 migrateState 不抛错（5 种子）",
+      "detail": "0/25"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "C 组 C 类：删除任一字段后仍能推进 5 年（5 种子）",
+      "detail": "0/25"
+    },
+    {
+      "case": "REG-13",
+      "pass": false,
+      "name": "C 组 B 类：删除任一字段后字段形状仍完整（形状债）",
+      "detail": "缺兜底: friends(5/5), family(5/5), talents(5/5)"
+    },
+    {
+      "case": "REG-13",
+      "pass": true,
+      "name": "用例可复现（同种子两次构造的存档摘要一致，非 flaky）",
+      "detail": "1aac7dcf:31026 / 1aac7dcf:31026"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+#### FAULT=crash-step  A.step 在 30 岁抛异常（模拟未捕获异常）  ####
+================ REG-01 回归用例集 ================
+基线指纹：data.js@2026-10-08T00:57  market.js@2026-10-06T03:16  engine.js@2026-10-08T00:59  school.js@2026-10-07T01:17  career.js@2026-10-08T00:55  love.js@2026-10-07T04:29  loan.js@2026-10-06T03:16  ui.js@2026-10-08T01:01
+每组样本量 N = 60（REG-00 固定 1000 局）
+用例：REG-00, REG-01
+说明：用例是「修复验收门」。在未修复的 v5.5.0 基线上，FAIL 即待修项。
+    样例错误：
+      INJECT: step boom @     at A.step (C:\Users\ro3ea\WorkBuddy\作品集\cangame\production\phase6-polish\qa\scripts\fault-inject.js:48:57)
+      INJECT: step boom @     at A.step (C:\Users\ro3ea\WorkBuddy\作品集\cangame\production\phase6-polish\qa\scripts\fault-inject.js:48:57)
+      INJECT: step boom @     at A.step (C:\Users\ro3ea\WorkBuddy\作品集\cangame\production\phase6-polish\qa\scripts\fault-inject.js:48:57)
+      INJECT: step boom @     at A.step (C:\Users\ro3ea\WorkBuddy\作品集\cangame\production\phase6-polish\qa\scripts\fault-inject.js:48:57)
+      INJECT: step boom @     at A.step (C:\Users\ro3ea\WorkBuddy\作品集\cangame\production\phase6-polish\qa\scripts\fault-inject.js:48:57)
+      INJECT: step boom @     at A.step (C:\Users\ro3ea\WorkBuddy\作品集\cangame\production\phase6-polish\qa\scripts\fault-inject.js:48:57)
+
+REG-00 执行异常：INJECT: step boom
+    at A.step (C:\Users\ro3ea\WorkBuddy\作品集\cangame\production\phase6-polish\qa\scripts\fault-inject.js:48:57)
+    at makeRealSave (C:\Users\ro3ea\WorkBuddy\作品集\cangame\production\phase6-polish\qa\scripts\regression-run.js:74:20)
+    at C:\Users\ro3ea\WorkBuddy\作品集\cangame\production\phase6-polish\qa\scripts\regression-run.js:153:54
+
+REG-01 · S-01 高风险决策可存活（激进流）
+  [FAIL]  无崩溃   << crash=56
+  [PASS]  哨兵 · 结局死因字段（endCause）覆盖率 —— 此条红了，下面的「熄灭占比」不可信   << 实测 1 · 目标 >= 0.70
+  [FAIL]  激进流平均寿命   << 实测 28.50岁 · 目标 >= 60岁
+  [PASS]  激进流「熄灭」占比   << 实测 0.25 · 目标 <= 0.25
+  [FAIL]  激进流 30 岁 HP 中位   << 实测 0 · 目标 >= 60
+  [PASS]  激进流 30 岁压力中位   << 实测 0 · 目标 <= 80
+  [PASS]  哨兵 · 亡命流 endCause 覆盖率   << 实测 1 · 目标 >= 0.70
+  [FAIL]  亡命流平均寿命   << 实测 27.39岁 · 目标 >= 60岁
+  [FAIL]  亡命流「熄灭」占比   << 实测 0.50 · 目标 <= 0.25
+  ---- REG-01 · S-01 高风险决策可存活（激进流） : 4/9 PASS ----
+
+================ 汇总 ================
+用例        结果      通过        耗时
+REG-00    FAIL    0/1       4.1s
+REG-01    FAIL    4/9       0.6s
+---- 0/2 条用例全绿 ----
+总耗时 4.7s
+
+[fi] 已写出 out/fi-crash-step.json（断言 9 条）

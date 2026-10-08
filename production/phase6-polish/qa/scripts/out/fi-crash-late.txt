@@ -1,0 +1,27 @@
+#### FAULT=crash-late  A.step 在 45 岁抛异常（晚发崩溃，避开 REG-00 的 makeRealSave）  ####
+================ REG-01 回归用例集 ================
+基线指纹：data.js@2026-10-08T00:57  market.js@2026-10-06T03:16  engine.js@2026-10-08T00:59  school.js@2026-10-07T01:17  career.js@2026-10-08T00:55  love.js@2026-10-07T04:29  loan.js@2026-10-06T03:16  ui.js@2026-10-08T01:01
+每组样本量 N = 60（REG-00 固定 1000 局）
+用例：REG-00
+说明：用例是「修复验收门」。在未修复的 v5.5.0 基线上，FAIL 即待修项。
+    样例错误：
+      INJECT: late boom @     at A.step (C:\Users\ro3ea\WorkBuddy\作品集\cangame\production\phase6-polish\qa\scripts\fault-inject.js:59:57)
+      INJECT: late boom @     at A.step (C:\Users\ro3ea\WorkBuddy\作品集\cangame\production\phase6-polish\qa\scripts\fault-inject.js:59:57)
+      INJECT: late boom @     at A.step (C:\Users\ro3ea\WorkBuddy\作品集\cangame\production\phase6-polish\qa\scripts\fault-inject.js:59:57)
+      INJECT: late boom @     at A.step (C:\Users\ro3ea\WorkBuddy\作品集\cangame\production\phase6-polish\qa\scripts\fault-inject.js:59:57)
+      INJECT: late boom @     at A.step (C:\Users\ro3ea\WorkBuddy\作品集\cangame\production\phase6-polish\qa\scripts\fault-inject.js:59:57)
+      INJECT: late boom @     at A.step (C:\Users\ro3ea\WorkBuddy\作品集\cangame\production\phase6-polish\qa\scripts\fault-inject.js:59:57)
+
+REG-00 · 稳定性门（1000 局零崩溃 + 无 NaN 泄漏 + 可复现）
+  [FAIL]  1000 局零崩溃   << 崩溃 858 / 1002
+  [PASS]  无 NaN / Infinity 泄漏进 stats / netWorth / score   << 脏局 0 / 1002
+  [PASS]  可复现性：同种子两次构造的人生摘要逐字节一致（此条红了，上面所有红绿都不可信）   << 1aac7dcf:31026 / 1aac7dcf:31026
+  ---- REG-00 · 稳定性门（1000 局零崩溃 + 无 NaN 泄漏 + 可复现） : 2/3 PASS ----
+
+================ 汇总 ================
+用例        结果      通过        耗时
+REG-00    FAIL    2/3       6.3s
+---- 0/1 条用例全绿 ----
+总耗时 6.3s
+
+[fi] 已写出 out/fi-crash-late.json（断言 3 条）

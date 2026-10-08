@@ -1,0 +1,188 @@
+{
+  "hits": [
+    {
+      "entry": "borrow(state, id, amount)",
+      "dirty": "NaN（parseInt(\"\") 的结果）",
+      "money": null,
+      "nw": null,
+      "sc": null,
+      "threw": null
+    },
+    {
+      "entry": "borrow(state, id, amount)",
+      "dirty": "undefined（空引用）",
+      "money": null,
+      "nw": null,
+      "sc": null,
+      "threw": null
+    },
+    {
+      "entry": "borrow(state, id, amount)",
+      "dirty": "字符串 \"abc\"（parseInt 失败）",
+      "money": null,
+      "nw": null,
+      "sc": null,
+      "threw": null
+    },
+    {
+      "entry": "repayLoan(state, idx, amount)",
+      "dirty": "NaN（parseInt(\"\") 的结果）",
+      "money": null,
+      "nw": null,
+      "sc": null,
+      "threw": null
+    },
+    {
+      "entry": "repayLoan(state, idx, amount)",
+      "dirty": "undefined（空引用）",
+      "money": null,
+      "nw": null,
+      "sc": null,
+      "threw": null
+    },
+    {
+      "entry": "repayLoan(state, idx, amount)",
+      "dirty": "字符串 \"abc\"（parseInt 失败）",
+      "money": null,
+      "nw": null,
+      "sc": null,
+      "threw": null
+    },
+    {
+      "entry": "buyStock(state, id, shares)",
+      "dirty": "NaN（parseInt(\"\") 的结果）",
+      "money": null,
+      "nw": null,
+      "sc": null,
+      "threw": null
+    },
+    {
+      "entry": "buyStock(state, id, shares)",
+      "dirty": "undefined（空引用）",
+      "money": null,
+      "nw": null,
+      "sc": null,
+      "threw": null
+    },
+    {
+      "entry": "buyStock(state, id, shares)",
+      "dirty": "字符串 \"abc\"（parseInt 失败）",
+      "money": null,
+      "nw": null,
+      "sc": null,
+      "threw": null
+    },
+    {
+      "entry": "sellStock(state, id, shares)",
+      "dirty": "NaN（parseInt(\"\") 的结果）",
+      "money": null,
+      "nw": null,
+      "sc": null,
+      "threw": null
+    },
+    {
+      "entry": "sellStock(state, id, shares)",
+      "dirty": "undefined（空引用）",
+      "money": null,
+      "nw": null,
+      "sc": null,
+      "threw": null
+    },
+    {
+      "entry": "sellStock(state, id, shares)",
+      "dirty": "字符串 \"abc\"（parseInt 失败）",
+      "money": null,
+      "nw": null,
+      "sc": null,
+      "threw": null
+    },
+    {
+      "entry": "repayDebt(state, amount)",
+      "dirty": "NaN（parseInt(\"\") 的结果）",
+      "money": null,
+      "nw": null,
+      "sc": null,
+      "threw": null
+    },
+    {
+      "entry": "repayDebt(state, amount)",
+      "dirty": "undefined（空引用）",
+      "money": null,
+      "nw": null,
+      "sc": null,
+      "threw": null
+    },
+    {
+      "entry": "repayDebt(state, amount)",
+      "dirty": "字符串 \"abc\"（parseInt 失败）",
+      "money": null,
+      "nw": null,
+      "sc": null,
+      "threw": null
+    },
+    {
+      "entry": "buyProp(…, …, qty)",
+      "dirty": "字符串 \"abc\"（parseInt 失败）",
+      "money": null,
+      "nw": null,
+      "sc": null,
+      "threw": null
+    }
+  ],
+  "dirtyStats": 0,
+  "dirtyWorth": 0,
+  "dirtyScore": 0,
+  "crash": 0,
+  "total": 300,
+  "rows3": [
+    [
+      "`annualPayment` → `l.principal / l.years`",
+      "loan.js:101",
+      "存档里 loan.years = 0 或 principal 缺失（旧存档 / 导入畸形码）",
+      "years=0 → Infinity；principal=undefined → NaN",
+      "**B 类：脏存档可达**"
+    ],
+    [
+      "`sellStock` → `pos.cost * (n / pos.shares)`",
+      "market.js:486",
+      "持股记录 shares = 0 或 undefined（脏存档）",
+      "{\"ok\":false,\"msg\":\"数量不对\"}",
+      "否（有 n<=0 守卫）"
+    ],
+    [
+      "`Math.sqrt(clamp(rawScore / P.ceil, 0, 1))`",
+      "school.js:307",
+      "P.ceil = 0（配置错误）或 rawScore = NaN",
+      "clamp(Inf,0,1)=1 → sqrt=1（安全）；rawScore=NaN → clamp=NaN → sqrt=NaN",
+      "C 类：需配置错误"
+    ],
+    [
+      "`tableAt` → `(year-a[0])/(b[0]-a[0])`",
+      "market.js:221",
+      "两张表里有重复年份（b[0]-a[0]=0）",
+      "FIN_SCALE 1985 → 1（表内无重复年份）",
+      "否"
+    ],
+    [
+      "`scoreOf` → `sqrt(max(0,worth)/1e8)`",
+      "engine.js:2229",
+      "worth 已是 NaN",
+      "scoreOf = NaN",
+      "**下游：放大器**"
+    ],
+    [
+      "`careerIncome` → `income*(1+s.INT/520)*…`",
+      "career.js:489",
+      "stats.INT / NET / LOY 为 NaN",
+      "careerIncome = NaN",
+      "**下游：放大器**"
+    ],
+    [
+      "`stockValue` → `p.shares * price`",
+      "market.js:392",
+      "持股 shares = undefined",
+      "netWorth = NaN",
+      "**B 类：脏存档可达**"
+    ]
+  ]
+}

@@ -10,7 +10,7 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const ctx = { console, Math, JSON, Date, isNaN, parseInt, parseFloat, Number, String, Array, Object };
 vm.createContext(ctx);
-['assets/data.js', 'assets/market.js', 'assets/engine.js', 'assets/school.js', 'assets/career.js', 'assets/love.js', 'assets/loan.js']
+['assets/data.js', 'assets/market.js', 'assets/engine.js', 'assets/school.js', 'assets/career.js', 'assets/love.js', 'assets/pet.js', 'assets/legacy.js', 'assets/loan.js']
   .forEach(f => vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f }));
 
 const A = vm.runInContext(`({
@@ -38,7 +38,11 @@ console.log('== 1. 恩师年纪要比你大一辈 ==');
   let teacher = null, peers = [];
   for (let i = 0; i < 400 && !teacher; i++) {
     const s = mk(); s.age = 12; s.friends = [];
-    for (let y = 0; y < 6; y++) { A.friendGrowth(s); s.age++; }
+    // QA 修复（原为 A.friendGrowth）：产品每年跑的是 friendTick()（= friendGrowth + 朋友增龄）。
+    // friendGrowth() 只负责结识新朋友，不给已有朋友增龄 → 恩师年龄被冻结在相遇那年，
+    // 6 年后差距被吃掉 6 岁，实测年龄差区间从配置值 [16,30] 跌到 [10,28]，约 13% 的样本跌破 14 → 断言随机红。
+    // 换回 friendTick() 后区间精确等于配置 [16,30]，失败率 0%。
+    for (let y = 0; y < 6; y++) { A.friendTick(s); s.age++; }
     const t = (s.friends || []).find(f => f.key === 'teacher');
     if (t) teacher = { age: t.age, me: s.age };
     (s.friends || []).forEach(f => { if (f.key !== 'teacher') peers.push(f.age - s.age); });
@@ -123,10 +127,27 @@ console.log('== 4. 婚后好感能涨回来 ==');
   const a2 = s.spouse.affinity;
   A.socialAct(s, 'spouse', 2);
   ok(s.spouse.affinity > a2, '送礼后感情继续涨', `${Math.round(a2)} → ${Math.round(s.spouse.affinity)}`);
-  // 一年冷落只掉一点，互动能补回来
+  /* 一年冷落只掉一点，互动能补回来
+   * QA 修复（原为「20 次平均 ≤ 2.2」）：love.js:636 掉幅是 `randInt(1, 3)`。
+   * 注意 `randInt(a,b) = Math.floor(a + Math.random()*(b-a+1))`，所以值域是 **1~3**（不是 1~4），
+   * 期望 **2.0**、σ≈0.82。原门限 2.2 只留了 0.2/0.18 ≈ 1.1σ 余量 → 约 20% 概率随机红。
+   * 已用远端 v5.5.0（IMP-01 之前）的 love.js 逐行对照：这一行**未被 IMP-01 改动**，
+   * 是历史遗留的门限余量不足，不是回归；产品侧符合「原来是 -2~5，收窄到 1~3」的设计意图。
+   * 修法：样本 20 → 60（标准误 0.18 → 0.105），门限 2.8 → 约 7.6σ 余量；
+   *       且 2.8 仍显著低于收窄前的设计期望 3.5，断言没有失去区分力。
+   * 另补一条**确定性**边界断言：单次掉幅上限 ≤ 3（收窄前是 5），不再依赖均值。 */
   let drop = 0;
-  for (let i = 0; i < 20; i++) { const b = s.spouse.affinity; s.socialTouch = {}; s.age++; A.loveTick(s); drop += (b - s.spouse.affinity); }
-  ok(drop / 20 <= 2.2, '冷落一年的掉幅收窄到 ≤2.2/年', (drop / 20).toFixed(2));
+  const drops = [];
+  for (let i = 0; i < 60; i++) {
+    const b = s.spouse.affinity;
+    s.socialTouch = {}; s.age++;
+    A.loveTick(s);
+    if (s.spouse) { const d = b - s.spouse.affinity; drops.push(d); drop += d; }
+  }
+  const per = drop / Math.max(1, drops.length);
+  ok(per <= 2.8, '冷落一年的掉幅收窄（randInt(1,3)，期望 2.0）', per.toFixed(2));
+  ok(Math.max.apply(null, drops) <= 3, '单次冷落掉幅不超过 3（收窄前是 5）',
+    '实测最大 ' + Math.max.apply(null, drops));
 }
 
 console.log('== 5. 亲友会主动来找你 ==');

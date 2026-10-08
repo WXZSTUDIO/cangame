@@ -1,0 +1,71 @@
+# IMP-01 第二批验收（A-06 晋升 / R-01 / R-02 / O-04 / O-03 前置）
+
+生成时间：2026-10-08T01:16:27.725Z
+
+## 1. A-06 晋升链：`JOB_ALIAS` 落地的职称能否被 `careerTick()` 晋升
+  ✓ `JOB_ALIAS` 映射表已存在 — 10 条
+
+| 孤儿职称 | 落地职称 | 阶梯 | 起始级 | 阶梯顶级 | 20 年后 | 判定 |
+|---|---|---|---:|---:|---:|---|
+| 公司职员 | 行政主管 | clerk | 1 | 4 | 3 | ✓ 可晋升 |
+| 大企业职员 | 行政经理 | clerk | 2 | 4 | 3 | ✓ 可晋升 |
+| 公务员 | 副科级 | civil | 1 | 6 | 5 | ✓ 可晋升 |
+| 工厂工人 | 熟练工 | factory | 1 | 4 | 3 | ✓ 可晋升 |
+| 个体户 | 拿到天使轮 | startup | 1 | 5 | 4 | ✓ 可晋升 |
+| 创业者 | 拿到天使轮 | startup | 1 | 5 | 4 | ✓ 可晋升 |
+| 军人 | 保安队长 | guard | 1 | 4 | 3 | ✓ 可晋升 |
+| 大公司战略次长 | 高级产品经理 | pm | 2 | 5 | 4 | ✓ 可晋升 |
+| 大公司副董事长 | 业务董事 | finance | 2 | 5 | 4 | ✓ 可晋升 |
+| 企业董事长 | 合伙人 / 高管 | finance | 4 | 5 | 4 | ✓ 已在终端级（无从晋升） |
+
+  ✓ 全部孤儿职称都落进了 CAREERS 阶梯 — 无遗漏
+  ✓ 非顶级的落地职称都能被 `careerTick()` 晋升 — 无卡死
+  > 注：`企业董事长` 映射后落在索引 4，而该 ladder 共 5 级（索引 0..4），已是终端级，无从再晋升，属正确行为。
+
+## 2. R-01 · 旧存档字段兜底（`log` / `queue` / `flags` 必补）
+  ✓ 删除 `log` 后 `migrateState()` 补回 — 无
+  ✓ 删除 `queue` 后 `migrateState()` 补回 — 无
+  ✓ 删除 `flags` 后 `migrateState()` 补回 — 无
+
+## 3. R-02 · localStorage 写入失败：可感知 + 可判定
+  ✓ `lsSet()` 返回布尔值，调用方能判定成功与否
+  ✓ 有「只提示一次」的闩锁 `_storageBroken`
+  ✓ 存档按钮会挂 `save-broken` 视觉标记
+  ✓ 失败时落 `console.error`，便于线上取证
+  ✓ `autosave()` 在写入抛错时不冒泡（try/catch 生效） — 未抛错
+  ✓ `autosave()` 写入失败时返回 `false` — 实测返回 false
+  ✓ 失败后 `#btnSaveGame` 挂上了 `save-broken` — className = "icon-btn save-broken"
+
+## 4. O-04 / R-04 · 属性上下文转义 `escAttr()`
+  ✓ 新增 `escAttr()`
+  ✓ `escAttr()` 覆盖 `& < >`
+  ✓ `escAttr()` 覆盖单引号 ' → &#39;
+  ✓ `escAttr()` 覆盖双引号 `"`
+
+  共扫描到 **4** 处「属性里带插值」，逐处确认：
+  ✓ ui.js:391 `title` — ${escAttr(st.hint || st.name)}
+  ✓ ui.js:661 `aria-label` — ${escAttr(name || '')}
+  ✓ ui.js:832 `title` — ${escAttr(a.name + '：' + a.desc)}
+  ✓ ui.js:1651 `title` — ${escAttr(a.name + '：' + a.desc)}
+  ✓ 覆盖了任务书点名的 4 处（1 × aria-label + 3 × title） — 实测 4 处
+  ✓ 4 组注入 payload 全部未突破 SVG 属性边界 — 4/4 干净
+  ✓ `escAttr()` 输出符合预期 — "&quot;&#39;&amp;&lt;&gt;"
+
+## 5. O-03 前置 · 关页/切后台时的存档兜底（本批只埋点，不改节流）
+  ✓ 新增 `markDirty()`（标记脏，不立即写盘）
+  ✓ 新增 `flushSave()`（立即落盘）
+  ✓ 新增 `autosaveNow()`（显式同步写）
+  ✓ `SAVE_DEBOUNCE_MS = 0`，本批保持行为不变（仅搭骨架）
+  ✓ 注册 `pagehide`（iOS Safari 唯一可靠时机）
+  ✓ 注册 `visibilitychange` 且判断 `document.hidden`
+  ✓ 注册 `beforeunload` 兜底
+  ✓ 关键节点（人生结束 / 手动存）走 `autosaveNow()` 同步写 — 3 处调用
+  ✓ `markDirty()` + `flushSave()` 后 localStorage 有存档
+  ✓ 存档内容确实被更新（不是旧值）
+  ✓ 落盘的存档里带着当前进度（age=33）
+  > `SAVE_DEBOUNCE_MS = 0` 时 `markDirty()` 会立即合流（实测 midSame=false），节流值留给 O-03 开启，本批不改行为。
+
+## 汇总
+
+通过 35 项，失败 0 项 → ✅ 全绿
+[已写出] imp-verify2.out.txt

@@ -1,0 +1,28 @@
+done steady 200 crash=0
+done aggressive 200 crash=0
+done reckless 200 crash=0
+done slacker 200 crash=0
+done explorer 200 crash=0
+done baseline 200 crash=0
+mobility rider 60
+mobility waiter 60
+mobility extra 60
+mobility factory 60
+mobility guard 60
+mobility courier 60
+mobility cook 60
+mobility clerk 60
+mobility teacher 60
+mobility nurse 60
+mobility programmer 60
+mobility doctor 60
+mobility finance 60
+mobility ai 60
+mobility civil 60
+era 1955 60
+era 1965 60
+era 1975 60
+era 1985 60
+era 1995 60
+era 2005 60
+elapsed 28.3s

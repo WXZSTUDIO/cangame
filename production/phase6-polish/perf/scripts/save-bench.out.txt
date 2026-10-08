@@ -1,0 +1,50 @@
+# 存档 / localStorage 剖析 · cangame v5.5.0
+生成时间：2026-10-08T01:02:06.225Z
+环境：jsdom + 其内置 localStorage（纯内存 Map，比真实浏览器的磁盘落盘**偏乐观**）
+
+## 1. autosave() 的调用频率
+源码里 `autosave()` 的调用点：**3** 处（ui.js 行 62, 71, 100）
+
+- 点击 60 次的过程中，autosave() 被调用 **73** 次
+- 平均每次点击 **1.22** 次存档；单次点击最多触发 **2** 次
+- 换算：完整一局的 autosave 次数见下方「整局苦役」实测。
+
+**整局苦役实测**：一路点到人生结束（或 247 次点击、83 岁、screen-end）
+- autosave() 被调用 **313** 次
+- 平均 1.27 次存档 / 次点击
+
+调用来源分布：
+来源                                       | 次数 
+-----------------------------------------+----
+flushSave (https://cangame.test/:100:10) | 313
+
+## 2. 单次写入延迟（jsdom 内存 localStorage，偏乐观）
+样本：78 岁的存档（尝试 1 次才活到这个岁数——随机作答死亡率不低）
+操作                    | p50 ms | p95 ms
+----------------------+--------+-------
+JSON.stringify(STATE) | 0.148  | 0.179 
+localStorage.setItem  | 0.001  | 0.002 
+localStorage.getItem  | 0.001  | 0.002 
+JSON.parse(读回)        | 0.164  | 0.197 
+**autosave() 全流程**    | 0.179  | 0.222 
+存档序列化后 45.5 KB。真实浏览器的 setItem 会把 **45.5 KB 同步刷到磁盘**，在低端 Android WebView 上实测常见 3–15 ms；这里是纯内存，数字要再放大。
+
+## 3. 三个 localStorage key 的常驻占用
+key                 | 占用 KB
+--------------------+------
+cangame_autosave_v1 | 45.5 
+**合计**              | 45.5 
+典型浏览器 localStorage 配额 5–10 MB → **占用率 < 1%，配额不是风险点**。
+
+## 4. 导出 / 导入存档码
+操作                                       | p50 ms | 输出 KB
+-----------------------------------------+--------+------
+btoa(unescape(encodeURIComponent(JSON))) | 1.051  | 90.1 
+> `escape/unescape` 是已废弃的 API，且对 ≥0x10000 的字符处理有坑（详见健壮性报告）。
+
+## 5. 配额写满时的行为
+jsdom 无配额限制（写了 4.5 MB 仍成功），但**真实浏览器会抛 `QuotaExceededError`**。当前 `lsSet()` 的实现是：
+```js
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
+```
+→ **异常被静默吞掉**：配额写满 / 隐私模式禁用 storage 时，玩家会以为存档成功，下一次打开却回到标题页，且**不会有任何提示**。这是目前最需要修的健壮性缺口（详见 robustness-review.md R-02）。

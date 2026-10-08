@@ -1,0 +1,32 @@
+{
+  "fault": "forceend-restore",
+  "desc": "把最终结局 id 改回 end_dead（模拟 S-04 被回退）",
+  "n": "60",
+  "cases": "REG-05",
+  "assertions": [
+    {
+      "case": "REG-05",
+      "pass": false,
+      "name": "走 ENDINGS 判定的比例（守卫 · S-04 后恒 100%，见 F-02）",
+      "detail": "实测 0 · 目标 >= 0.60"
+    },
+    {
+      "case": "REG-05",
+      "pass": false,
+      "name": "单次采样触达的正式结局种类占 ENDINGS 总数的比例（签字须 N=300）",
+      "detail": "实测 0 · 目标 >= 0.70"
+    },
+    {
+      "case": "REG-05",
+      "pass": true,
+      "name": "（参考）触达种类数 / ENDINGS 总数",
+      "detail": "0 / 16"
+    },
+    {
+      "case": "REG-05",
+      "pass": false,
+      "name": "forceEnd id（end_elder/end_ill/end_dead）不应再作为最终结局",
+      "detail": "end_dead×60"
+    }
+  ]
+}

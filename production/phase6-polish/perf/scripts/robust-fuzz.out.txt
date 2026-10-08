@@ -1,0 +1,101 @@
+# 健壮性 / 安全压力测试 · cangame v5.5.0
+生成时间：2026-10-08T03:22:10.051Z
+
+## A. 极端数值注入
+注入值    | 抛错次数 | 脏文本首次出现         
+-------+------+-----------------
+NaN    | 0    | HP → NaN        
++Inf   | 0    | MONEY → Infinity
+-Inf   | 0    | MONEY → Infinity
+1e308  | 0    | —               
+-1e308 | 0    | —               
+null   | 0    | —               
+undef  | 0    | HP → NaN        
+string | 0    | MONEY → NaN     
+  ✗ **R-05** 极端数值会让 UI 显示 NaN/Infinity/undefined —— NaN 时 HP → NaN；+Inf 时 MONEY → Infinity；-Inf 时 MONEY → Infinity；undef 时 HP → NaN；string 时 MONEY → NaN
+
+## B. 除零与空集合路径
+场景                      | 结果  
+------------------------+-----
+loan.years=0            | ✓ 通过
+loan.left=0             | ✓ 通过
+stock.cost=0            | ✓ 通过
+property 空列表            | ✓ 通过
+family.assets=0         | ✓ 通过
+career=null 时 renderJob | ✓ 通过
+parents=null            | ✓ 通过
+classmates 空            | ✓ 通过
+love.candidates 空       | ✓ 通过
+credit=null             | ✓ 通过
+
+## C. 旧存档字段迁移（逐个字段删除后 migrateState 能否补回）
+删除字段         | 结果      
+-------------+---------
+edu          | ✓ 迁移后可渲染
+love         | ✓ 迁移后可渲染
+classmates   | ✓ 迁移后可渲染
+exes         | ✓ 迁移后可渲染
+children     | ✓ 迁移后可渲染
+friends      | ✓ 迁移后可渲染
+parents      | ✓ 迁移后可渲染
+family       | ✓ 迁移后可渲染
+market       | ✓ 迁移后可渲染
+career       | ✓ 迁移后可渲染
+loans        | ✓ 迁移后可渲染
+ill          | ✓ 迁移后可渲染
+achievements | ✓ 迁移后可渲染
+socialTouch  | ✓ 迁移后可渲染
+uniTouch     | ✓ 迁移后可渲染
+goodTouch    | ✓ 迁移后可渲染
+spouse       | ✓ 迁移后可渲染
+spouseName   | ✓ 迁移后可渲染
+log          | ✓ 迁移后可渲染
+queue        | ✓ 迁移后可渲染
+credit       | ✓ 迁移后可渲染
+flags        | ✓ 迁移后可渲染
+pet          | ✓ 迁移后可渲染
+grief        | ✓ 迁移后可渲染
+talents      | ✓ 迁移后可渲染
+pet          | ✓ 迁移后可渲染
+
+> `SAVE_VERSION = 2` 写进了 `state.v`(是)，但全文检索**没有被任何地方读取/比较**——版本号目前是死字段，迁移完全靠 `migrateState` 的逐字段兜底。
+
+## D. localStorage 不可用（隐私模式 / 禁用 Cookie）
+  ✓ autosave() 在 localStorage 抛 SecurityError 时未崩溃（try/catch 生效）
+  ✓ R-03b 所有 localStorage 调用点都在 try/catch 内
+  localStorage 调用点清单：行 43, 49, 1966
+
+## E. 玩家输入姓名的注入面
+  ✓ R-04 姓名注入未突破属性边界
+  jsdom 实测：注入 `onload` 属性后 __PWNED = **0**（jsdom 会编译内联 handler，浏览器行为同路径但未经真机验证 → 结论为「属性突破已确认，执行面待浏览器实测」）
+
+根因：`esc()` 只转义 `& < >`，**不转义引号**；而它被用在双引号属性里（`aria-label="${esc(name)}"`、`title="${esc(...)}"`）。
+输入框 `#inputName` 的 `maxlength=10` 且不校验字符 → 10 个字符足以构造 ``" onload=x`（11 字符，刚好超一位，但 `"/onload=` 这类变体仍可能存在，且**孩子姓氏直接继承 `state.name[0]`**）。
+
+## F. 崩溃兜底的覆盖盲区
+脚本加载顺序：
+- `window.addEventListener("error")` 注册在 **undefined** 里，也就是最后一个脚本。
+场景                          | 横幅显示  | 提示文案                                      
+----------------------------+-------+-------------------------------------------
+① data.js 语法错误（CDN 截断/缓存损坏） | ✗ 未显示 | —                                         
+② data.js 顶层运行时抛错           | ✗ 未显示 | —                                         
+③ ui.js 语法错误（兜底自己坏了）        | ✗ 未显示 | —                                         
+④ 【对照】ui.js 加载成功后的运行时抛错     | ✓ 显示  | ⚠️ 脚本出错了：模拟点击里的崩溃　请刷新页面；若反复出现，请清空浏览器缓存后再试。
+
+补充观察：data.js 一旦失败，后续脚本会抛 `ReferenceError: Cannot access 'JOBS' before initialization` —— 这是 top-level `const` 的 **TDZ（暂时性死区）**：跨文件只能靠加载顺序保证，编译器不给任何保护。
+
+## G. 存档码导出/导入 round-trip
+用例            | Base64 长度 | 结果  
+--------------+-----------+-----
+纯中文           | 32        | ✓ 一致
+emoji（含非 BMP） | 32        | ✓ 一致
+混合            | 40        | ✓ 一致
+> round-trip 本身没坏，但 `unescape/escape` 是 Annex B 遗留 API（已废弃于 ES 规范），依赖 `%uXXXX` 非标准扩展处理 > U+FFFF 字符。建议换成 `TextEncoder` / `ArrayBuffer` 方案（见优化方案 O-08）。
+
+
+## 汇总
+发现问题 4 项：
+- R-05 极端数值会让 UI 显示 NaN/Infinity/undefined
+- R-07 ① data.js 语法错误（CDN 截断/缓存损坏）
+- R-07 ② data.js 顶层运行时抛错
+- R-07 ③ ui.js 语法错误（兜底自己坏了）

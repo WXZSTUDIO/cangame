@@ -11,12 +11,26 @@ const MARKET_META = {
   growthDamp: 0.75 // 股票年化阻尼（寿命延长后复利年限变多，需下调以维持平衡）
 };
 
-/* ---------- 年代价格指数（1985 = 1.0） ---------- */
+/* ---------- 年代价格指数（1985 = 1.0） ----------
+ * ⚠ C1（v6.0 数值重铸）：2025 之后 5 段改写，2016 及以前**完全不动**。
+ *   出处 `housing-decision.md` §6.2 —— 这不是抬绝对值，而是**抬 2025 之后的年化斜率**：
+ *     2025→2065 年化 0.93% → **2.98%**；典型持有期（2015 买 / 2065 卖）1.70% → **3.55%**，
+ *     与新增的现金 CPI（2.6%）对齐，让房子回到「抗通胀的保值资产」这一中国玩家的直觉位。
+ *   2015 房价仍为 4.2–4.3（**不动**）→ 买房门可保。
+ *
+ * 🔴 **改这张表必须同步改 `CAREER_MULT.era.table`**（career.js）—— 两张表的 knots 必须对齐，
+ *   且 `era.table` 要按 `era-wage-table.md` §6.1 重新推导（当前用的是「变体 B」）。
+ *   只改房价不改薪资 → 买房门立刻失效。
+ */
 const HOUSE_INDEX = [
   [1985, 1.0], [1990, 1.9], [1995, 2.1], [1997, 2.2], [1999, 1.95],
   [2002, 2.6], [2006, 3.6], [2008, 3.9], [2010, 3.7], [2013, 3.6],
-  [2016, 4.3], [2018, 5.2], [2020, 6.2], [2022, 7.4], [2025, 6.9],
-  [2028, 7.6], [2035, 8.6], [2045, 9.4], [2065, 10.0]
+  [2016, 4.3], [2018, 5.2], [2020, 6.2], [2022, 7.4],
+  [2025, 7.4],   // was 6.9 —— 仅补回 2022→2025 建模的回调，不额外抬高
+  [2028, 8.1],   // was 7.6
+  [2035, 10.0],  // was 8.6
+  [2045, 13.5],  // was 9.4
+  [2065, 24.0]   // was 10.0 —— 与 CPI_INDEX(2060: 6.10) 同向，房子 = 抗通胀资产
 ];
 
 const CAR_INDEX = [
@@ -303,11 +317,14 @@ function marketTick(state) {
   const lines = [];
 
   // 股票
+  const newsBias = m.newsBias || 0;   // v6：新闻/事件情绪（去年事件 → 今年行情）
+  const houseBias = m.houseBias || 0;
+  m.newsBias = 0; m.houseBias = 0;
   STOCKS.forEach(s => {
     m.prev[s.id] = m.prices[s.id];
     let p = m.prices[s.id];
     // DAMP: 寿命延长到 100+ 后复利年限变多，年化整体下调以维持原有平衡
-    let k = s.growth * MARKET_META.growthDamp + (shock ? shock.k * (s.sector.indexOf('指数') >= 0 ? 0.6 : 1) : 0) + gauss() * s.vol;
+    let k = s.growth * MARKET_META.growthDamp + (shock ? shock.k * (s.sector.indexOf('指数') >= 0 ? 0.6 : 1) : 0) + gauss() * s.vol + newsBias;
     p = Math.round(Math.max(p * 0.22, p * (1 + k)));
     m.prices[s.id] = p;
     const h = m.hist[s.id];
@@ -317,7 +334,7 @@ function marketTick(state) {
 
   // 房产与资产的额外漂移（均值回归，避免长期单边暴涨）
   HOUSES.forEach(h => {
-    const d = (m.drift[h.id] || 0) * 0.86 + hs * 0.35 + gauss() * h.vol * 0.35;
+    const d = (m.drift[h.id] || 0) * 0.86 + hs * 0.35 + houseBias * 0.5 + gauss() * h.vol * 0.35;
     m.drift[h.id] = Math.max(-0.45, Math.min(1.0, d));
   });
   GOODS.forEach(g => {
@@ -526,3 +543,66 @@ function marketSummary(state) {
     net: netWorth(state)
   };
 }
+
+/* =========================================================
+ * v6.0.0 扩展包：商业地产 / 新能源与赛车 / 顶奢载具
+ *  - 商业不动产走 HOUSES 通道（tag: '商业'），共用涨跌算法
+ *  - 顶奢载具走 GOODS 通道（lux: true），持有期间在 luxTick 中给隐藏加成
+ * ========================================================= */
+
+/* ---------------- 商业不动产 ---------------- */
+HOUSES.push(
+  { id: 'h_mall_city', name: '社区底商旺铺', base: 300000000,
+    growth: 0.058, vol: 0.09, upkeep: 0.012, rent: 0.068, cha: 6, net: 5, minYear: 2000,
+    desc: '奶茶店、快递驿站、宠物店……六家租客的经营范围，就是你的一条小商业街。', tag: '商业' },
+  { id: 'h_tower_office', name: '甲级写字楼整层', base: 1500000000,
+    growth: 0.06, vol: 0.11, upkeep: 0.014, rent: 0.072, cha: 10, net: 12, minYear: 2008,
+    desc: '电梯里挤满了工牌。他们中的每一个人，每月都在给你的账户打钱。', tag: '商业' },
+  { id: 'h_island_priv', name: '私人海岛（度假开发）', base: 6000000000,
+    growth: 0.072, vol: 0.13, upkeep: 0.018, rent: 0.045, cha: 18, net: 20, minYear: 2018,
+    desc: '四十分钟的船程，一座岛。你的名字出现在海图的备注栏里。', tag: '顶级' }
+);
+
+/* ---------------- 新能源与赛车 ---------------- */
+CARS.push(
+  { id: 'car_ev_suv', name: '新势力纯电 SUV', base: 80000000,
+    dep: 0.10, upkeep: 0.05, cha: 7, net: 3, minYear: 2023,
+    desc: '冰箱、彩电、大沙发。加油站再也不用进了，服务区的充电桩排不排队看命。' },
+  { id: 'car_ev_gt', name: '国产纯电超跑', base: 260000000,
+    dep: 0.11, upkeep: 0.08, cha: 14, net: 4, minYear: 2025,
+    desc: '零百两秒级。发布会的掌声，一半属于你车尾那个字母。', tag: '新能源' },
+  { id: 'car_race_k1', name: '卡丁车（竞赛级）', base: 18000000,
+    dep: 0.14, upkeep: 0.20, cha: 4, minYear: 1995, race: 1,
+    desc: '所有 F1 冠军的起点，都是这种屁股贴地的小东西。', tag: '赛车' },
+  { id: 'car_race_rally', name: '拉力赛车（N4 组）', base: 95000000,
+    dep: 0.13, upkeep: 0.22, cha: 9, minYear: 2002, race: 2,
+    desc: '砂石、雪地、夜路。副驾的路书念得越快，你心里越稳。', tag: '赛车' },
+  { id: 'car_race_gt', name: 'GT3 竞速赛车', base: 380000000,
+    dep: 0.12, upkeep: 0.25, cha: 13, net: 2, minYear: 2012, race: 3,
+    desc: '耐力赛的后半夜，车灯是赛道上唯一的萤火。', tag: '赛车' },
+  { id: 'car_race_f1', name: '方程式赛车（顶级组别）', base: 1200000000,
+    dep: 0.10, upkeep: 0.30, cha: 20, net: 6, minYear: 2020, race: 4,
+    desc: '五个缸体在两万转嘶吼。全世界的镜头都对准你，你只看得见下一个弯。', tag: '赛车' },
+  { id: 'car_fly', name: '陆空两用飞行汽车', base: 880000000,
+    dep: 0.12, upkeep: 0.20, cha: 18, net: 8, minYear: 2028, lux: true,
+    desc: '堵车的时候，你按下了起飞键。交管部门为这一刻吵了十年。', tag: '顶奢' }
+);
+
+/* ---------------- 顶奢载具（GOODS 通道 · 持有有隐藏加成） ---------------- */
+GOODS.push(
+  { id: 'g_yacht', name: '豪华游艇', base: 700000000,
+    growth: -0.01, vol: 0.06, upkeep: 0.06, cha: 16, net: 10, minYear: 2010, lux: true,
+    perk: { CHA: 2, MOOD: 3, NET: 1 },
+    desc: '甲板上的香槟会，谈成的不止一单生意。船真正的作用，在水面以下。', tag: '顶奢' },
+  { id: 'g_sub', name: '私人潜艇', base: 550000000,
+    growth: -0.02, vol: 0.05, upkeep: 0.07, cha: 12, net: 6, minYear: 2016, lux: true,
+    perk: { CUR: 3, MOOD: 2 },
+    desc: '下潜四十米，世界只剩声呐的滴答。有些秘密，只适合在水下说。', tag: '顶奢' },
+  { id: 'g_jet', name: '私人公务机', base: 1600000000,
+    growth: -0.015, vol: 0.07, upkeep: 0.08, cha: 20, net: 16, minYear: 2012, lux: true,
+    perk: { CHA: 2, NET: 2, FAME: 2 },
+    desc: '时间是这个星球上最贵的东西，而你是少数买得起的人。', tag: '顶奢' }
+);
+
+/* 顶奢持有清单：给 luxTick 用 */
+const LUX_ITEMS = ['g_yacht', 'g_sub', 'g_jet', 'car_fly'];

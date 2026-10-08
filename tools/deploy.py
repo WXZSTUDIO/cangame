@@ -33,6 +33,8 @@ PUBLISH = [
     'assets/school.js',
     'assets/career.js',
     'assets/love.js',
+    'assets/pet.js',
+    'assets/legacy.js',
     'assets/loan.js',
     'assets/ui.js',
 ]

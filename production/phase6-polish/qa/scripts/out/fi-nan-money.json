@@ -1,0 +1,26 @@
+{
+  "fault": "nan-money",
+  "desc": "50 岁起 stats.MONEY = NaN（模拟脏入参污染数值链）",
+  "n": "60",
+  "cases": "REG-00",
+  "assertions": [
+    {
+      "case": "REG-00",
+      "pass": true,
+      "name": "1000 局零崩溃",
+      "detail": "崩溃 0 / 1002"
+    },
+    {
+      "case": "REG-00",
+      "pass": false,
+      "name": "无 NaN / Infinity 泄漏进 stats / netWorth / score",
+      "detail": "脏局 864 / 1002"
+    },
+    {
+      "case": "REG-00",
+      "pass": true,
+      "name": "可复现性：同种子两次构造的人生摘要逐字节一致（此条红了，上面所有红绿都不可信）",
+      "detail": "1aac7dcf:31026 / 1aac7dcf:31026"
+    }
+  ]
+}

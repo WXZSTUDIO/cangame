@@ -224,9 +224,13 @@ function socialAct(state, kind, idx) {
     const f = state.friends && state.friends[idx];
     if (!f) { delete touch[key]; return { ok: false }; }
     f.affinity = clamp(f.affinity + randInt(4, 7), 0, 100);
-    s.NET += 2; s.LOVE += 2; s.STRESS -= 2;
+    /* S-01 ③ 去重边界：socialAct 是「维护一段具体关系」，RELAX_ACTS 才是「系统性减压」。
+     * 朋友项与 r_friends（老友饭局，−12）功能重叠，故降权为轻量维护：STRESS −2 → −1，
+     * 文案也从「聚了聚」改为「发条消息」，明确它不是减压手段。
+     * ⚠ spec 原文写的是「−3 → −1」，实测现值是 −2 —— spec 的输入值有误，按意图取 −1。 */
+    s.NET += 2; s.LOVE += 2; s.STRESS -= 1;
     const t = FRIEND_TYPES.find(x => x.key === f.key);
-    pushLog(state, `【相聚】你和 ${f.name}（${t ? t.label : '朋友'}）聚了聚。有些关系，不走动就真的远了。`, 'muted');
+    pushLog(state, `【问候】你给 ${f.name}（${t ? t.label : '朋友'}）发了条消息。他回得很快，虽然只聊了几句。`, 'muted');
   } else { delete touch[key]; return { ok: false }; }
   applyEffects(state, {}); // 触发数值夹取
   return { ok: true };
@@ -544,6 +548,9 @@ function createGame(opt) {
     childCount: 0,
     grandCount: 0,
     pet: null,
+    pets: [],
+    horse: null,
+    prison: 0,
     family: initFamilyFin(family.id, startYear),
     parents: parents,
     friends: makeFriends(),
@@ -593,6 +600,23 @@ function createGame(opt) {
 /* ---------- 旧存档迁移（v4.x → v5.x） ---------- */
 function migrateState(state) {
   if (!state || !state.stats) return state;
+  /* ---- IMP-01 · R-01：这两个字段被漏兜，缺了会在渲染第一行就抛 TypeError ----
+   * log   缺 → `log.map` of undefined（推流渲染第一行）
+   * flags 缺 → `flags.past_life` of undefined（出身/前世判定）
+   * 必须放在最前面：下面第 600 行起就有 `state.flags.orphan` 在用 flags。
+   * 默认值照 mkState() 的形状给，不要拍脑袋填。 */
+  if (!Array.isArray(state.log)) state.log = [];
+  if (!Array.isArray(state.queue)) state.queue = [];
+  if (!state.flags || typeof state.flags !== 'object') state.flags = { parents_alive: true };
+  if (state.flags.parents_alive === undefined) state.flags.parents_alive = true;
+  /* ---- v6.0：宠物数组 / 监狱 / 遗嘱 / 市场情绪兜底 ---- */
+  if (!Array.isArray(state.pets)) {
+    state.pets = (state.pet && state.pet.alive) ? [state.pet] : [];
+  }
+  if (state.pets.length && !state.pet) state.pet = state.pets[0];
+  if (state.prison === undefined) state.prison = 0;
+  if (state.horse === undefined) state.horse = null;
+  if (state.market && state.market.newsBias === undefined) { state.market.newsBias = 0; state.market.houseBias = 0; }
   if (!state.edu) {
     state.edu = { mid: null, gao: null, hs: null, uni: null, eduLevel: 0, study: 0, gradAge: null, major: null, salaryK: 1 };
   }
@@ -610,6 +634,8 @@ function migrateState(state) {
   }
   if (!state.love) state.love = { candidates: [], partner: null, met: [] };
   if (state.goodTouch == null) state.goodTouch = {};
+  // v6.0 S-01 ③：减压行动的年度额度。老存档没有这个字段 → 视为今年没用过
+  if (state.relaxUsedYear == null) state.relaxUsedYear = 0;
   // v5.5：孩子要有名字（老存档只记了数量，按现有年龄倒推补齐）
   if (state.children == null) state.children = [];
   if ((state.childCount || 0) > state.children.length) {
@@ -785,10 +811,8 @@ function illnessTick(state) {
     if (ill.stage >= 4 && s.HP < 45) {
       const p = clamp(0.15 + Math.max(0, 40 - s.HP) / 60, 0.12, 0.6);
       if (chance(p)) {
-        forceEnd(state, {
-          id: 'end_ill', rank: 'D', title: '病逝',
-          text: `${fmtYear(state)} 年，${state.age}岁，你没能撑过去。${ref.name}拖了 ${ill.years} 年——你总说「等忙完这一阵就去」。`
-        });
+        // 走 ENDINGS 正式判定，病名与病程作为死因的补充信息传进去
+        endBy(state, 'end_ill', { illness: ref.name, years: ill.years });
         return ill;
       }
     }
@@ -864,6 +888,11 @@ function applyEffects(state, eff, silent) {
     if (s[k] === undefined) { s[k] = 0; }
     s[k] += v;
   }
+  // v6.0：新闻/事件的市场情绪（newsK→股市、houseK→楼市），由 marketTick 消费后清零
+  if (eff.newsK && state.market) state.market.newsBias = (state.market.newsBias || 0) + eff.newsK;
+  if (eff.houseK && state.market) state.market.houseBias = (state.market.houseBias || 0) + eff.houseK;
+  // 事件效果里带的职称（eff.job）统一走 setJob()，孤儿职称会被映射回阶梯
+  if (eff.job) setJob(state, eff.job);
   s.HP = clamp(s.HP, 0, 120);
   s.STRESS = clamp(s.STRESS, 0, 120);
   s.INT = clamp(s.INT, 0, 200); s.STR = clamp(s.STR, 0, 200);
@@ -1009,7 +1038,8 @@ function eventChoices(state, ev) {
   if (state.age < 13) return null; // 童年叙事事件保持单按钮
   const base = ev.eff || {};
   const hasMoney = typeof base.MONEY === 'number' && base.MONEY !== 0;
-  const risk3 = Object.assign(scaleEff(base, 1.7, 1.35), { STRESS: (base.STRESS || 0) + 4 });
+  const risk3 = Object.assign(scaleEff(base, RISK_TUNE.GAIN_K, RISK_TUNE.LOSS_K),
+    { STRESS: (base.STRESS || 0) + RISK_TUNE.STRESS_ADD });
   const T = choiceTexts(state, ev);
   return [
     {
@@ -1037,6 +1067,12 @@ function riskLabel(r) {
 }
 
 function pickEvents(state) {
+  /* 监狱系统：服刑期间只走监狱事件池，外面的世界暂停 */
+  if (state.prison > 0) {
+    const pool = EVENTS.filter(ev => ev.id.indexOf('pr_') === 0 && matchEvent(state, ev));
+    if (!pool.length) return [];
+    return [pool[randInt(0, pool.length - 1)]];
+  }
   const pool = EVENTS.filter(ev => matchEvent(state, ev));
   if (!pool.length) return [];
   const lucky = !!state.flags.lucky;
@@ -1044,6 +1080,10 @@ function pickEvents(state) {
   pool.forEach(ev => {
     let w = ev.w || 5;
     if (lucky) w *= 1.35;
+    if (ev.fest) w *= 2.6;               // 节日主题：节日期间高频出现
+    // 年龄段高频池：老年偏健康/家庭、青年偏职场/恋爱（按事件标签粗调）
+    if (state.age >= 60 && ev.elderly) w *= 2.2;
+    if (state.age <= 30 && ev.youth) w *= 1.6;
     weighted.push({ ev, w });
   });
   const count = state.age <= 12 ? 1 : (chance(0.35) ? 2 : 1);
@@ -1054,6 +1094,13 @@ function pickEvents(state) {
     const e = era[randInt(0, era.length - 1)].ev;
     picked.push(e);
     weighted.splice(weighted.findIndex(x => x.ev === e), 1);
+  }
+  // 节日事件：每年最多一个，60% 概率出现（fest 池本身权重已加成）
+  const fests = weighted.filter(x => x.ev.fest);
+  if (fests.length && chance(0.6)) {
+    const f = fests[randInt(0, fests.length - 1)].ev;
+    picked.push(f);
+    weighted.splice(weighted.findIndex(x => x.ev === f), 1);
   }
   for (let i = picked.length; i < count && weighted.length; i++) {
     const total = weighted.reduce((a, b) => a + b.w, 0);
@@ -1367,6 +1414,60 @@ function doGoodDeed(state, id) {
   return { ok: true, name: d.name };
 }
 
+/* ---------- 主动减压：压力必须有出口，否则「棘轮」这个比喻就成真了（S-01 ③） ----------
+ *
+ * 与 doGoodDeed 的关键差别：**三条共享一个年度额度**（relaxUsedYear），
+ * 而善事是「每件各一次」（goodTouch）。理由是若各一次，理论年减压 −38，
+ * 叠加恢复公式会把 STRESS 打到 0，压力系统直接失去意义；共享额度下理论最优 −16，
+ * 且玩家必须在「社交 / 身体 / 专业帮助」之间做选择 —— 这个选择本身就是设计内容。
+ *
+ * ⚠ 年度额度用 `relaxUsedYear === state.age` 判定，**不需要在 yearBase 里重置**。
+ *   这与 inboundYear / socialTouch / goodTouch 的既有写法一致：年龄每 +1 自动失效。
+ *   （spec 落地清单写的是「每年重置为 0」，那是等价的另一种写法；我取与代码库一致的那种，
+ *     少一处状态维护就少一处漏改。）
+ */
+
+/* 取当前年龄下生效的分支：r_court 55 岁起切成公园太极/广场舞，且免费 */
+function relaxBranch(r, age) {
+  if (r.lateAge != null && age >= r.lateAge) {
+    return {
+      desc: r.descLate || r.desc,
+      eff: r.lateEff || r.eff,
+      cost: r.lateCost != null ? r.lateCost : (r.cost || 0)
+    };
+  }
+  return { desc: r.desc, eff: r.eff, cost: r.cost || 0 };
+}
+
+function doRelaxAct(state, id) {
+  const r = RELAX_ACTS.find(x => x.id === id);
+  if (!r) return { ok: false, msg: '没有这件事' };
+  if (state.finished || state.alive === false) return { ok: false, msg: '这一世已经结束了' };
+  if (state.age < (r.minAge || 0)) return { ok: false, msg: `${r.minAge} 岁以后才做得到` };
+  if (state.relaxUsedYear === state.age) return { ok: false, msg: '今年已经放过自己一次了' };
+  const b = relaxBranch(r, state.age);
+  if (b.cost && (state.stats.MONEY || 0) < b.cost) return { ok: false, msg: '钱不够' };
+  // 条件门槛（NET ≥ 20 才叫得出八个人）—— 不满足时给的是叙事文案，不是「条件不足」
+  if (r.cond && r.cond.min) {
+    for (const k in r.cond.min) {
+      if ((state.stats[k] || 0) < r.cond.min[k]) return { ok: false, msg: r.condMsg || '现在还做不到' };
+    }
+  }
+  /* ⚠ 顺序：先记账、后扣款、最后才生效。
+   * 反过来写（先扣钱再记额度）在目前没有 early return 时不会被利用，
+   * 但只要将来有人在中间插一个 return，就会变成「扣了钱没记额度」→ 一年无限刷。
+   * 按「禁止项守在源头」的原则，额度必须先落。tools/_verify-relax.js 的 RA-8 守着这个顺序。 */
+  state.relaxUsedYear = state.age;
+  if (b.cost) state.stats.MONEY -= b.cost;
+  applyEffects(state, b.eff);
+  if (r.flags && r.flags.length) {
+    state.flags = state.flags || {};
+    r.flags.forEach(f => { state.flags[f] = true; });
+  }
+  pushLog(state, `【减压】${r.name}。${b.desc}${b.cost ? `（花了 ${fmtMoney(b.cost)}）` : ''}`, 'money');
+  return { ok: true, name: r.name, cost: b.cost };
+}
+
 /* 每年最多一次「有人来找你」，避免刷屏 */
 function inboundTick(state) {
   if (state.age < 7) return;
@@ -1410,7 +1511,18 @@ function autoEmploy(state) {
 }
 
 /* ---------- 年度基础结算 ---------- */
-/* 年支出（工作页与结算共用同一套口径，避免两处不一致） */
+/* 年支出（工作页与结算共用同一套口径，避免两处不一致）
+ *
+ * ⚠ A-07 硬连带 4b：支出必须与收入**同一条年代曲线**（`kEra_eff`），否则「谁先落谁先炸」。
+ *   收入随年代涨、支出固定 30M → 1980–2002 出身玩家约 **45% 年度结余为负**（实测，
+ *   与 design-strategist 的独立推演一致）。
+ *   同缩放后：`年结余 = kEra_eff × (名义收入 − 名义支出)` ——
+ *   「收入/支出」比值回到与今天完全一致，`norm` 只影响「结余 / 房价」这一个比值。
+ *
+ * ⚠ 这里调用的是 `eraK(state)`（career.js 的**函数声明**）。
+ *   engine.js 在 career.js 之前加载，但函数声明会挂到全局对象，运行时调用没问题；
+ *   写成顶层 const 就会踩 TDZ。
+ */
 function livingCost(state) {
   const j = JOBS[state.job] || { cost: 12000000 };
   let cost = j.cost || 0;
@@ -1418,11 +1530,22 @@ function livingCost(state) {
   if (state.flags.married) cost += 12000000;
   if (state.childCount) cost += state.childCount * 6000000;
   if (state.flags.divorced && state.childCount) cost += state.childCount * 3000000; // 抚养费
-  return cost;
+  return Math.round(cost * (typeof eraK === 'function' ? eraK(state) : 1));
 }
 
 function yearBase(state) {
   const s = state.stats;
+  // v6 监狱：服刑结算——收入中断在收支段处理；刑满当年出狱
+  if (state.prison > 0) {
+    state.prison -= 1;
+    s.STR += 1; s.WILL += 1; s.MOOD = (s.MOOD || 60) - 3; s.STRESS = (s.STRESS || 0) + 5;
+    if (state.prison === 0) {
+      state.flags.ex_prisoner = true;
+      state.job = '无业';
+      state.noAutoJobYear = state.age; // 出狱当年不自动塞工作，让玩家自己决定
+      pushLog(state, '【出狱】铁门在身后打开。世界换了几轮，手机屏幕变大了，你口袋里只有一张释放证明和一张车票。', 'warn');
+    }
+  }
   // 自然成长 + 人生指标自然培养
   if (state.age <= 12) {
     s.INT += rand(1, 3); s.STR += rand(1, 2); s.HP += 2;
@@ -1481,7 +1604,30 @@ function yearBase(state) {
 
   // 压力伤害
   if (s.STRESS > 70) { s.HP -= Math.round((s.STRESS - 70) / 6); }
-  s.STRESS = Math.max(0, s.STRESS - 7);
+
+  /* 压力恢复（S-01 方案 D）：固定 −7 → 「固定 + 比例 + 失控阻尼」
+   *
+   * 原公式 S_{t+1} = S_t + I − 7 是**无稳态的线性衰减**：只要年流入 I > 7，
+   * 压力就一路涨到 120 上限撞死。这是「激进流平均寿命 36.9 岁、熄灭率 67%」的根因。
+   *
+   * 新公式给系统一个稳态：
+   *     I ≤ 30.4  →  S* = (I − 22) / 0.12        ← 与今天**逐点相同**
+   *     I >  30.4 →  S* = (I − 4.5) / 0.37       ← 只压失控尾巴
+   * （B = 22 = 7 固定恢复 + 12 减压行动 + 3 自住房）
+   *
+   * ⚠ 函数形式必须是 hinge（分段线性），**不能**用 S² 之类的平滑项：
+   *   团队要保住的核心性质是「阈值以下完全不动」，只有 hinge 能精确做到；
+   *   任何平滑项都会在阈值以下引入额外恢复，等于重犯「方案 A 用全局参数修局部失控」的错。
+   *   代价是 S = 70 处斜率不连续 —— 这不会造成病态：恢复量对 S 单调递增，
+   *   故 S_{t+1} − S_t 对 S 单调递减 → 不动点唯一且稳定，不会振荡。
+   *
+   * ⚠ 三个参数中只有 DAMP_Q 未定稿，按 stress-respec.md §3.7.3 的
+   *   q = clamp((I_P75 − 34)/30, 0, 0.35) 待 quality-lead 实测后覆盖；
+   *   RECOVER_K = 0.12 与 DAMP_T = 70 已定稿，不再改动。 */
+  const _sOver = Math.max(0, s.STRESS - STRESS_TUNE.DAMP_T);
+  s.STRESS = Math.max(0, s.STRESS - (STRESS_TUNE.RECOVER_FLAT
+    + s.STRESS * STRESS_TUNE.RECOVER_K
+    + _sOver * STRESS_TUNE.DAMP_Q));
 
   // 病重时的自动就医只是一个兜底：真得了病要走疾病事件（不治会一路恶化）
   if (!state.ill && s.HP < 28 && s.MONEY >= 60000000 && state.age >= 20) {
@@ -1537,8 +1683,9 @@ function yearBase(state) {
     } else if (state.career) {
       income = careerIncome(state);
     } else {
-      income = Math.round(j.salary * (1 + s.INT / 400) * (1 + s.NET / 800));
+      income = freelanceIncome(state);   // 散工口径，见 career.js 的 CAREER_MULT.freelance
     }
+    if (state.prison > 0) income = 0; // v6：服刑期间收入中断
     const cost = livingCost(state);
     const net = income - cost;
     s.MONEY += net;
@@ -1562,10 +1709,7 @@ function yearBase(state) {
       * (1 + Math.max(0, 60 - s.HP) / 22)
       * (1 + Math.max(0, 50 - (s.MOOD === undefined ? 60 : s.MOOD)) / 60);
     if (chance(risk)) {
-      forceEnd(state, {
-        id: 'end_elder', rank: 'B', title: '安然离世',
-        text: `你在 ${fmtYear(state)} 年 闭上了眼睛。儿孙环绕，窗外是你看了一辈子的那棵树。这一生，值了。`
-      });
+      endBy(state, 'end_elder');
     }
   }
 }
@@ -1608,6 +1752,11 @@ function step(state) {
   inboundTick(state);   // 别人也会主动来找你
   familyTick(state);
   illnessTick(state);
+  prisonTick(state);    // v6 监狱系统：案发 / 宣判
+  petTick(state);       // v6 宠物生态：喂养 / 寿命 / 流浪 / 赛马变老
+  luxTick(state);       // v6 顶奢载具隐藏加成
+  raceSeasonTick(state); // v6 赛车线年度赛季
+  flirtTick(state);     // v6 搭讪系统：毕业后的街头偶遇
   if (state.finished) return { type: 'end' };
   loanTick(state);
   checkAchievements(state);
@@ -1871,7 +2020,7 @@ function majorCatCn(cat) { return MAJOR_CAT_CN[cat] || cat || '通用'; }
 function majorCareerHint(m) { return MAJOR_CAREER_HINT[MAJOR_LABEL[m]] || '各行各业都要'; }
 
 function resolveEvent(state, ev, choiceIndex) {
-  state.used.push(ev.id);
+  if (!ev.fest) state.used.push(ev.id); // 节日事件（fest）每年可重复，不进 once 池
   const list = eventChoices(state, ev);
   let eff = ev.eff || {};
   let extra = '';
@@ -1902,9 +2051,9 @@ function resolveEvent(state, ev, choiceIndex) {
   // 慎重处理会错过机会：不触发事件的身份/Flag 变化
   if (!(ch && ch.skipFlags)) {
     if (ev.flags) applyFlags(state, ev.flags);
-    if (ev.job) state.job = ev.job;
+    if (ev.job) setJob(state, ev.job);
   }
-  if (ch && ch.job) state.job = ch.job;
+  if (ch && ch.job) setJob(state, ch.job);
 
   applyEffects(state, eff);
   pushLog(state, `[${fmtYear(state)} 年 · ${state.age}岁] ${ev.text}${extra}`, 'story');
@@ -1917,12 +2066,12 @@ function resolveEvent(state, ev, choiceIndex) {
     const win = chance(g.p);
     const res = win ? (g.win || {}) : (g.lose || {});
     applyEffects(state, res);
-    if (win && g.winJob) state.job = g.winJob;
+    if (win && g.winJob) setJob(state, g.winJob);
     if (win && g.winFlags) applyFlags(state, g.winFlags);
     if (!win && g.loseFlag) applyFlags(state, [g.loseFlag]);
     // win/lose 对象内联的 flags / job 也要生效（如收购成功接任董事长、赌输丢掉工作）
     if (res.flags) applyFlags(state, res.flags);
-    if (res.job) state.job = res.job;
+    if (res.job) setJob(state, res.job);
     const rd = describeEffects(res);
     pushLog(state, ` 【${win ? '赌赢了' : '赌输了'} · ${Math.round(g.p * 100)}%】${rd.join('，') || '什么也没发生'}`,
       win ? 'money' : 'warn');
@@ -2092,7 +2241,7 @@ function resolveEvent(state, ev, choiceIndex) {
     if (ch && ch.flags && ch.flags.indexOf('kaoyan_try') >= 0) {
       if (chance(ev.kaoyanP || 0.4)) {
         e.eduLevel = 5;
-        e.salaryK = Math.max(e.salaryK || 1, 1.45);
+        e.salaryK = Math.max(e.salaryK || 1, KAOYAN_FLOOR);
         e.gradAge = state.age + 3;
         state.job = '大学生';
         state.flags.kaoyan_ok = true;
@@ -2120,7 +2269,7 @@ function resolveEvent(state, ev, choiceIndex) {
     if (ch && ch.flags && ch.flags.indexOf('kaoyan_again') >= 0) {
       if (chance(ev.kaoyanP || 0.35)) {
         e.eduLevel = 5;
-        e.salaryK = Math.max(e.salaryK || 1, 1.45);
+        e.salaryK = Math.max(e.salaryK || 1, KAOYAN_FLOOR);
         e.gradAge = state.age + 3;
         state.job = '大学生';
         state.flags.kaoyan_ok = true;
@@ -2200,22 +2349,55 @@ function resolveInvest(state, choice) {
 function checkDeath(state) {
   if (state.stats.HP <= 0 && state.alive) {
     state.alive = false;
-    forceEnd(state, {
-      id: 'end_dead', rank: 'D', title: '熄灭',
-      text: `你在 ${fmtYear(state)} 年 倒下了。医生说是过劳。你最后的念头是：那栋楼，还没画完。`
-    });
+    endBy(state, 'end_dead');
   }
 }
 
-function forceEnd(state, ending) {
+/* ---------- 结局判定：全项目唯一入口（IMP-01 · S-04） ----------
+ * 以前有两条互不相通的路径：
+ *   ① finish()   → ENDINGS.find() 正式判定（16 条结局）
+ *   ② forceEnd() → 直接写「某某死法」的自定义 ending，一条正式判定都不走
+ * 死亡占了全部结局的 88% 以上，等于 16 条结局在绝大多数局里根本不参与。
+ * 现在合并成一条：**死亡也先走 ENDINGS.find()，死因只作为叠加层**。
+ *
+ * 产物形状：{ id, baseId, cause, rank, title, text }
+ *  · baseId / id  = ENDINGS 判出来的「这一生是什么」（如 end_normal）
+ *  · cause        = 死因 id（end_elder / end_ill / end_dead），正常收尾为 null
+ *  · title        = 「普通的人生 · 安然离世」这样两段式
+ *  ⚠ 返回的是 ENDINGS 条目的副本，不再把共享对象直接挂到 state 上。 */
+function endingFor(state) {
+  return ENDINGS.find(e => e.cond(state)) || ENDINGS[ENDINGS.length - 1];
+}
+
+function resolveEnding(state, causeId, ctx) {
+  const base = endingFor(state);
+  const cause = causeId ? (DEATH_CAUSES.find(c => c.id === causeId) || null) : null;
+  return {
+    id: base.id,
+    baseId: base.id,
+    cause: cause ? cause.id : null,
+    rank: base.rank,
+    title: cause ? base.title + ' · ' + cause.label : base.title,
+    text: cause ? cause.text(state, ctx) + '　' + base.text : base.text
+  };
+}
+
+/* 带死因的收尾（原 forceEnd 的三个调用点改走这里） */
+function endBy(state, causeId, ctx) {
   state.finished = true;
   state.alive = false;
+  const ending = resolveEnding(state, causeId, ctx);
   state.ending = ending;
   // 死亡类结局也要有评分/评级，便于结算页与存档保持一致
   state.score = scoreOf(state);
   state.rank = grade(state.score);
   pushLog(state, `【结局】${ending.title} — ${ending.text}`, 'end');
+  return ending;
 }
+
+/* 兼容旧名：保留 forceEnd 是为了不打断外部（如音频接入方案里的埋点描述）。
+ * ⚠ 语义已变：第二个参数现在是「死因 id 字符串」，不再是自定义 ending 对象。 */
+function forceEnd(state, causeId, ctx) { return endBy(state, causeId, ctx); }
 
 /* ---------- 结局 ---------- */
 function worthOf(state) {
@@ -2250,10 +2432,198 @@ function scoreOf(state) {
 function finish(state) {
   state.alive = false;
   state.finished = true;
-  const ending = ENDINGS.find(e => e.cond(state)) || ENDINGS[ENDINGS.length - 1];
+  const ending = resolveEnding(state, null);   // 同一条判定路径，只是没有死因
   state.ending = ending;
   state.score = scoreOf(state);
   state.rank = grade(state.score);
   pushLog(state, `【${fmtYear(state)} 年 · 人生终章】${ending.title}`, 'end');
   pushLog(state, ending.text, 'end');
+  return ending;
+}
+
+/* =========================================================
+ * v6.0.0 引擎挂钩：监狱 / 顶奢 / 赛车 / 搭讪 / 走亲访友送礼 / 图书馆
+ * 依赖：pet.js（petTick 在 step 中调用，此处不重复）
+ * ========================================================= */
+
+/* ---------- 监狱系统 ---------- */
+/* crime_suspect 旗子由违法事件产生；案发 → 宣判 → 服刑（pickEvents 切监狱池，收入中断） */
+function prisonTick(state) {
+  const f = state.flags;
+  if (f.crime_suspect) {
+    delete f.crime_suspect;
+    if (chance(0.45)) {
+      state.prison = randInt(1, 3);
+      state.career = null;
+      state.job = '服刑中';
+      state.courtMsg = true;
+      pushLog(state, `【宣判】那天早上，手铐比想象中凉。证据链完整，律师摇头。你被判 ${state.prison} 年。`, 'warn');
+      applyEffects(state, { FAME: -10, STRESS: 12, MOOD: -12 });
+    } else if (chance(0.6)) {
+      pushLog(state, '【风声】那件事最后不了了之。你把相关的人脉悄悄清理了一遍，夜里还是会惊醒。', 'muted');
+      applyEffects(state, { STRESS: 5 });
+    } else {
+      f.crime_suspect = true; // 悬而未决，明年再审
+    }
+  }
+  /* 服刑最后一年在 yearBase 结算出狱（见 yearBase 尾部 v6 段） */
+}
+
+/* ---------- 顶奢载具隐藏加成（游艇 / 潜艇 / 公务机 / 飞行汽车） ----------
+ * 明面是消费品，暗面是社交杠杆：每年按 perk 给属性，8% 概率带来「饭局机会」变现 */
+function luxTick(state) {
+  if (typeof LUX_ITEMS === 'undefined' || !state.market || !state.market.props) return;
+  let perks = {};
+  let hasLux = false;
+  // 汇总 perk（车在 CARS，货在 GOODS）
+  state.market.props.forEach(p => {
+    let ref = null;
+    if (p.kind === 'car') ref = (typeof CARS !== 'undefined') ? CARS.find(x => x.id === p.id) : null;
+    else if (p.kind === 'good') ref = (typeof GOODS !== 'undefined') ? GOODS.find(x => x.id === p.id) : null;
+    if (ref && ref.lux && ref.perk) {
+      hasLux = true;
+      for (const k in ref.perk) perks[k] = (perks[k] || 0) + ref.perk[k];
+    }
+  });
+  if (!hasLux) return;
+  const s = state.stats;
+  for (const k in perks) { if (s[k] !== undefined) s[k] += perks[k]; }
+  if (chance(0.08)) {
+    const deal = randInt(30000000, 260000000);
+    s.MONEY += deal;
+    s.NET = (s.NET || 0) + 2;
+    pushLog(state, `【顶奢局】游艇（或机舱）里的那顿饭，聊成了一笔 ${fmtMoney(deal)} 的生意。船票和机票，从来不只是交通费。`, 'money');
+  }
+}
+
+/* ---------- 赛车线年度赛季 ----------
+ * 拥有赛车（CARS 里带 race 等级）才有比赛；等级越高奖金池越大 */
+function raceSeasonTick(state) {
+  if (!state.market || !state.market.props) return;
+  let best = 0;
+  state.market.props.forEach(p => {
+    if (p.kind !== 'car') return;
+    const ref = (typeof CARS !== 'undefined') ? CARS.find(x => x.id === p.id) : null;
+    if (ref && ref.race) best = Math.max(best, ref.race);
+  });
+  if (!best || state.age < 16 || state.prison > 0) return;
+  if (!chance(0.5)) return;
+  const s = state.stats;
+  const winP = clamp(0.10 + best * 0.05 + (s.STR || 0) / 500, 0.08, 0.55);
+  const prize = [0, 12000000, 40000000, 120000000, 400000000][best];
+  if (chance(winP)) {
+    s.MONEY += prize;
+    s.FAME = (s.FAME || 0) + 3 + best * 2;
+    state.flags.race_win = true;
+    pushLog(state, `【赛车】${['', '卡丁车', '拉力', 'GT 耐力赛', '方程式'][best]}分站冠军！奖金 ${fmtMoney(prize)}。领奖台上的香槟，喷得比油钱还多。`, 'money');
+  } else if (chance(0.06)) {
+    s.HP -= randInt(3, 9);
+    s.MOOD = (s.MOOD || 60) - 4;
+    pushLog(state, '【赛车】弯道失控，车转了两圈停在缓冲区。你从驾驶舱爬出来，腿是软的。人没事，就是最大的胜利。', 'warn');
+  } else {
+    s.MOOD = (s.MOOD || 60) + 2;
+    pushLog(state, '【赛车】这个赛季成绩中游。车队的工程师说：调校再好一点，能上领奖台。', 'muted');
+  }
+}
+
+/* ---------- 搭讪系统（毕业后全年龄段） ----------
+ * 单身且非在校生时，每年有概率在街上遇到心动的人：魅力决定搭讪成功率 */
+function flirtTick(state) {
+  if (state.age < 22 || state.age > 75) return;
+  if (isEnrolled(state)) return;
+  if (state.flags.married || state.flags.dating) return;
+  if (state.prison > 0) return;
+  if (!chance(0.30)) return;
+  const s = state.stats;
+  const lv = loveInit(state);
+  // 街头偶遇生成新对象，魅力高的人能要到场联系方式
+  const l = makeLover(state, 'street');
+  if (!l) return;
+  const p = clamp(0.25 + s.CHA / 150, 0.2, 0.85);
+  if (chance(p)) {
+    lv.candidates.push(l);
+    s.CHA = (s.CHA || 0) + 1;
+    s.MOOD = (s.MOOD || 60) + 4;
+    pushLog(state, `【搭讪】街角的书店门口，你和 ${l.name} 同时伸手拿了同一本书。你开口了——这次没有结巴。要到了联系方式。`, 'muted');
+  } else {
+    s.MOOD = (s.MOOD || 60) - 2;
+    s.WILL = (s.WILL || 0) + 1;
+    pushLog(state, `【搭讪】你在咖啡店门口鼓起勇气叫住了 ${l.name}，但对方戴着耳机没有停下。没关系，下一个街口还有下一个人。`, 'muted');
+  }
+}
+
+/* ---------- 走亲访友送礼（GIFT_CATALOG · 价格显著影响关系值） ----------
+ * who: 'father' | 'mother' | 'spouse' | 'child' | 'friend'（friend 带 idx）
+ * 一年每人限送一次；礼越重涨得越多，但太贵重也会让人觉得「生分」 */
+function familyGift(state, who, giftId, idx) {
+  if (!state || state.finished) return { ok: false, msg: '' };
+  const g = (typeof GIFT_CATALOG !== 'undefined') ? GIFT_CATALOG.find(x => x.id === giftId) : null;
+  if (!g) return { ok: false, msg: '没有这件礼物' };
+  const s = state.stats;
+  const touch = state.giftTouch = state.giftTouch || {};
+  const key = who + (idx != null ? ':' + idx : '');
+  if (touch[key] === state.age) return { ok: false, msg: '今年已经送过了' };
+  if (s.MONEY < g.cost) return { ok: false, msg: '这份礼太重了，钱包撑不住' };
+  s.MONEY -= g.cost;
+  touch[key] = state.age;
+  const gain = randInt(g.gain[0], g.gain[1]);
+  let name = '';
+  if (who === 'father' || who === 'mother') {
+    const p = parentOf(state, who);
+    if (!p || !p.alive) { delete touch[key]; return { ok: false, msg: '已经不在了' }; }
+    p.affinity = clamp((p.affinity || 50) + gain, 0, 100);
+    name = (who === 'father' ? '父亲 ' : '母亲 ') + p.name;
+    s.LOVE = (s.LOVE || 0) + 2; s.SEC = (s.SEC || 0) + 1;
+  } else if (who === 'spouse') {
+    const married = !!state.flags.married;
+    const lv = loveInit(state);
+    const l = married ? state.spouse : lv.partner;
+    if (!l || l.alive === false) { delete touch[key]; return { ok: false, msg: '身边没有那个人' }; }
+    l.affinity = clamp((l.affinity || 60) + gain + 2, 0, 100);
+    name = l.name;
+    s.LOVE = (s.LOVE || 0) + 3; s.MOOD = (s.MOOD || 60) + 3;
+  } else if (who === 'child') {
+    if (!state.childCount) { delete touch[key]; return { ok: false, msg: '你还没有孩子' }; }
+    s.LOVE = (s.LOVE || 0) + 3; s.GROW = (s.GROW || 0) + 2;
+    name = '孩子们';
+  } else if (who === 'friend') {
+    const fr = state.friends && state.friends[idx];
+    if (!fr) { delete touch[key]; return { ok: false, msg: '没有这位朋友' }; }
+    fr.affinity = clamp(fr.affinity + gain, 0, 100);
+    name = fr.name;
+    s.NET = (s.NET || 0) + 2;
+  } else { delete touch[key]; return { ok: false, msg: '' }; }
+  pushLog(state, `【送礼】你给 ${name} 备了${g.name}。${g.desc}（好感 +${gain}）`, 'muted');
+  applyEffects(state, {});
+  return { ok: true, gain };
+}
+
+/* ---------- 图书馆系统 ----------
+ * 一年一次：泡图书馆 → 智力成长；智力够高会触发「超级大脑」电视赛邀请 */
+function libraryStudy(state) {
+  if (!state || state.finished) return { ok: false, msg: '' };
+  if (state.prison > 0) return { ok: false, msg: '高墙里只有监狱图书室' };
+  const touch = state.socialTouch = state.socialTouch || {};
+  if (touch.library === state.age) return { ok: false, msg: '今年已经泡过图书馆了' };
+  touch.library = state.age;
+  const s = state.stats;
+  s.INT = (s.INT || 0) + randInt(2, 4);
+  s.WILL = (s.WILL || 0) + 1;
+  s.CUR = (s.CUR || 0) + 2;
+  s.STRESS = Math.max(0, (s.STRESS || 0) - 3);
+  pushLog(state, '【图书馆】你占了靠窗的老位置，读完了一直想读的那本书。闭馆音乐响起时，天已经黑透了。', 'muted');
+  // 超级大脑大赛：智力门槛 70，答对率跟智力走
+  if (s.INT >= 70 && chance(0.25)) {
+    const p = clamp((s.INT - 60) / 60, 0.15, 0.8);
+    if (chance(p)) {
+      s.MONEY += 60000000;
+      s.FAME = (s.FAME || 0) + 10;
+      state.flags.superbrain_win = true;
+      pushLog(state, '【超级大脑】电视台的邀请函是真的。直播里你顶住了压力答完最后一题，奖杯和 3333 万奖金一起递了过来。', 'money');
+      return { ok: true, superbrain: true };
+    }
+    pushLog(state, '【超级大脑】你也上了那档节目，可惜在一道天文题上卡了壳。全国人民记住了你的遗憾，也记住了你的名字。', 'muted');
+    s.FAME = (s.FAME || 0) + 3;
+  }
+  return { ok: true };
 }
