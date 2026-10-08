@@ -319,12 +319,17 @@ function marketTick(state) {
   // 股票
   const newsBias = m.newsBias || 0;   // v6：新闻/事件情绪（去年事件 → 今年行情）
   const houseBias = m.houseBias || 0;
-  m.newsBias = 0; m.houseBias = 0;
+  const techK = m.techK || 0;         // v6.1：科技浪潮（去年事件 → 今年科技板块整体行情）
+  const tip = m.tip || null;          // v6.1：圈内消息（只影响一只股票——消息有可能是假的）
+  m.newsBias = 0; m.houseBias = 0; m.techK = 0; m.tip = null;
+  const TECH_SECTORS = ['半导体', 'AI', '通信', '新能源'];
   STOCKS.forEach(s => {
     m.prev[s.id] = m.prices[s.id];
     let p = m.prices[s.id];
     // DAMP: 寿命延长到 100+ 后复利年限变多，年化整体下调以维持原有平衡
     let k = s.growth * MARKET_META.growthDamp + (shock ? shock.k * (s.sector.indexOf('指数') >= 0 ? 0.6 : 1) : 0) + gauss() * s.vol + newsBias;
+    if (techK && TECH_SECTORS.indexOf(s.sector) >= 0) k += techK;
+    if (tip && tip.id === s.id) k += tip.k;
     p = Math.round(Math.max(p * 0.22, p * (1 + k)));
     m.prices[s.id] = p;
     const h = m.hist[s.id];

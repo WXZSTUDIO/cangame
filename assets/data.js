@@ -2292,3 +2292,128 @@ const VACATIONS = [
   { id: 'vac_europe', name: '欧洲深度一个月', icon: '🏰', cost: 90000000,
     eff: { STRESS: -30, HP: 6, MOOD: 14, CUR: 4, INT: 2, CHA: 2 }, desc: '卢浮宫的下午、阿尔卑斯的小镇。见过世界之后，很多事就小事了。' }
 ];
+
+/* =========================================================
+ * v6.1.0 · 时代浪潮事件（按年份解锁新赛道）+ 银发事件池
+ * ========================================================= */
+const EVENTS_WAVE = [
+  /* ---- 科技大爆炸时代 ---- */
+  { id: 'w_crypto', yearMin: 2018, yearMax: 2042, w: 7, youth: true, elderly: true,
+    text: '【浪潮】网上有个戴墨镜的年轻人天天喊「财富自由」。一种叫虚拟货币的东西，去年涨了四倍，上个月腰斩了一次，这周又翻倍了。交易所的 APP 排名第一。',
+    choices: [
+      { text: ' · 全仓杀入：富贵险中求', risk: 3, eff: {}, gamble: { p: 0.42, win: { MONEY: 26000000, MOOD: 12 }, lose: { MONEY: -9000000, MOOD: -18, STRESS: 10 } } },
+      { text: ' · 定投一成仓：当个虔诚的信徒', risk: 2, eff: { MONEY: -2000000, CUR: 3 }, gamble: { p: 0.62, win: { MONEY: 6000000, CUR: 2 }, lose: { MONEY: -1500000 } } },
+      { text: ' · 不碰：看不懂的钱不赚', risk: 1, eff: { SEC: 3, WILL: 2 } }
+    ] },
+  { id: 'w_ai', yearMin: 2028, w: 8, elderly: true, youth: true,
+    text: '【浪潮】AI 把写字楼翻了个底朝天。咖啡店里人人都在聊智能体、算力、大模型。有人三个月做出了十亿估值，也有人的公司一夜之间变成了「落后的生产力」。',
+    choices: [
+      { text: ' · 押上积蓄做 AI 应用', risk: 3, eff: { MONEY: -15000000, STRESS: 10 }, gamble: { p: 0.36, win: { MONEY: 120000000, FAME: 12, NET: 8 }, lose: { MONEY: -8000000, MOOD: -10 } } },
+      { text: ' · 进大厂 AI 部门打工，稳稳地站在浪里', risk: 1, eff: { INT: 3, NET: 3, MONEY: 3000000 } },
+      { text: ' · 用 AI 给自己提效，不创业也不内卷', risk: 1, eff: { INT: 4, STRESS: -4 } }
+    ] },
+  { id: 'w_tsunami', yearMin: 1990, w: 3,
+    text: '【海啸】隔洋传来的坏消息一夜之间砸到了每张报纸头条：全球金融海啸。楼盘售楼处灯火通明——是打折的灯。股市的曲线像跳楼的人坠落时划出的弧线。',
+    choices: [
+      { text: ' · 现金为王，谁劝也不动', risk: 1, eff: { SEC: 4, STRESS: 4, newsK: -20, houseK: -30 } },
+      { text: ' · 别人恐惧我贪婪：抄底楼市与蓝筹', risk: 3, eff: { MONEY: -20000000, newsK: 14, houseK: 8, WILL: 4 }, gamble: { p: 0.5, win: { MONEY: 45000000, NET: 5 }, lose: { MONEY: -12000000, MOOD: -12 } } },
+      { text: ' · 减仓自保，先让家里人安心', risk: 2, eff: { newsK: -8, houseK: -18, MOOD: 3, STRESS: -6 } }
+    ] },
+  { id: 'w_techboom', yearMin: 2005, w: 3,
+    text: '【黑天鹅 · 喜】某实验室凌晨两点发了一篇论文，三天后整个科技板块疯了。半导体、AI、新能源全线暴涨，交易软件的服务器挤到崩溃。',
+    choices: [
+      { text: ' · 这波科技行情，吃下', risk: 2, eff: { techK: 0.85, MOOD: 6 } },
+      { text: ' · 涨成这样，落袋为安先', risk: 1, eff: { techK: 0.3, SEC: 3 } }
+    ] },
+  { id: 'w_techcrash', yearMin: 2005, w: 3,
+    text: '【黑天鹅 · 灾】吹了很久的「技术泡沫」今天破了。科技股集体跳水，市值蒸发以万亿计。财经频道的主播语速快得像在逃命。',
+    choices: [
+      { text: ' · 技术的终局没变，越跌越买', risk: 3, eff: { techK: -0.45, MONEY: -5000000, WILL: 3 }, gamble: { p: 0.55, win: { MONEY: 30000000, NET: 3 }, lose: { MONEY: -8000000 } } },
+      { text: ' · 清仓科技股，钱不能陪着一起殉葬', risk: 1, eff: { techK: -0.6, SEC: 4, STRESS: 5 } }
+    ] },
+  /* ---- 赛博 / 未来时代 ---- */
+  { id: 'w_bodymod', yearMin: 2058, w: 8, elderly: true,
+    text: '【未来】私立诊所的海报印着「细胞重编程 · 器官再生 · 表观遗传逆转」。衰老第一次被官方定义为「可治疗的疾病」——标价也印得很诚实。',
+    choices: [
+      { text: ' · 做全套基因修复与再生疗程', risk: 2, eff: { MONEY: -180000000, HP: 18, MOOD: 10, FAME: 3 } },
+      { text: ' · 只做基础保养套餐', risk: 1, eff: { MONEY: -30000000, HP: 8 } },
+      { text: ' · 生老病死是自然，不掺这些', risk: 1, eff: { ETH: 3, WILL: 3, MOOD: 2 } }
+    ] },
+  { id: 'w_space', yearMin: 2075, w: 6, elderly: true, youth: true,
+    text: '【未来】近地轨道旅游正式民用化。发射中心排起了队，朋友圈里一半人在晒失重自拍，另一半在转发「票价」。',
+    choices: [
+      { text: ' · 买一张近地轨道票，上去看看', risk: 2, eff: { MONEY: -80000000, MOOD: 18, CUR: 6, FAME: 5, HP: -2 } },
+      { text: ' · 先买张候补票排着', risk: 1, eff: { MONEY: -8000000, MOOD: 4 } },
+      { text: ' · 地球挺好，哪儿也不去', risk: 1, eff: { MOOD: 2 } }
+    ] }
+];
+EVENTS.push.apply(EVENTS, EVENTS_WAVE);
+
+/* ---- 银发事件池（60+ 高频：夕阳红不是等死，是另一段人生） ---- */
+const EVENTS_ELDERLY = [
+  { id: 'e_gateball', age: [60, 105], w: 9, elderly: true,
+    text: '【门球】社区门球队缺人，队长把球杆塞进你手里：「就缺你这根定海神针。」全市联赛下个月开打。',
+    choices: [
+      { text: ' · 入队，练他个昏天黑地', risk: 2, eff: { MOOD: 8, HP: 4, STR: 2 }, gamble: { p: 0.4, win: { MONEY: 8000000, FAME: 4, MOOD: 8 }, lose: { MOOD: 3 } } },
+      { text: ' · 只打野球，不掺比赛', risk: 1, eff: { MOOD: 6, HP: 3 } },
+      { text: ' · 婉拒：这腰经不起弯', risk: 1, eff: { MOOD: 1 } }
+    ] },
+  { id: 'e_taichi', age: [60, 105], w: 8, elderly: true,
+    text: '【太极】公园的陈师傅说要收你做徒弟：「你这骨架，是练太极的料。」市里每年还有全球太极拳锦标赛——对，太极拳也有「全球锦标赛」。',
+    choices: [
+      { text: ' · 拜师，晨练不辍', risk: 1, eff: { HP: 6, WILL: 3, MOOD: 4, STR: 2 } },
+      { text: ' · 报名锦标赛，去会会天下高手', risk: 2, eff: { HP: 3 }, gamble: { p: 0.32, win: { FAME: 6, MONEY: 12000000, MOOD: 10 }, lose: { MOOD: 2, WILL: 2 } } },
+      { text: ' · 站边上跟着比划比划就好', risk: 1, eff: { HP: 3, MOOD: 2 } }
+    ] },
+  { id: 'e_sunsetmeet', age: [60, 105], w: 7, elderly: true, ban: ['married'],
+    text: '【夕阳红】老年大学的手工课上，有人总坐在你旁边。今天TA递来一张纸条，字写得很端正：「下周的合唱班，缺个男中音/女低音，来吗？」',
+    choices: [
+      { text: ' · 去合唱班，也去看看这个人', risk: 2, eff: { MOOD: 10, LOVE: 4, CHA: 1 } },
+      { text: ' · 只去合唱班，歌是真好听', risk: 1, eff: { MOOD: 6, HP: 2 } },
+      { text: ' · 婉拒：一个人的日子也挺好', risk: 1, eff: { WILL: 2, MOOD: 1 } }
+    ] },
+  { id: 'e_silveruni', age: [60, 105], w: 8, elderly: true,
+    text: '【老年大学】招生处的年轻姑娘问你报什么专业。课程表上有书法、摄影、智能手机、还有一门「短视频创作」。你恍惚了一下——这辈子还能再选一次专业？',
+    choices: [
+      { text: ' · 报短视频创作，当银发博主', risk: 2, eff: { MOOD: 8, FAME: 3, INT: 2 }, gamble: { p: 0.25, win: { FAME: 8, MONEY: 20000000, MOOD: 8 }, lose: { MOOD: 3 } } },
+      { text: ' · 报书法与摄影，修身养性', risk: 1, eff: { INT: 3, MOOD: 6, CUR: 3 } },
+      { text: ' · 都试试，学费反正不贵', risk: 1, eff: { MOOD: 5, INT: 2, MONEY: -1000000 } }
+    ] },
+  { id: 'e_grandstory', age: [60, 105], w: 7, elderly: true, grand: true,
+    text: '【孙辈】小家伙放学回来趴在你腿边：「爷爷奶奶，再讲讲你年轻时候的事嘛。」你讲了讲那年考上大学、第一次发的工资、还有那场说走就走的旅行。',
+    choices: [
+      { text: ' · 把最得意的都讲给TA听', risk: 1, eff: { MOOD: 8, ETH: 2, LOVE: 3 } },
+      { text: ' · 讲完故事，再把当年的教训也讲了', risk: 1, eff: { MOOD: 5, ETH: 4, WILL: 2 } },
+      { text: ' · 讲到一半带TA去吃了顿好的', risk: 1, eff: { MOOD: 7, LOVE: 4, MONEY: -800000 } }
+    ] },
+  { id: 'e_silvertrip', age: [62, 105], w: 8, elderly: true,
+    text: '【旅居】老朋友发来组队邀请：「云南住三个月，大理的院子都看好了，去不去？」你看着日历——这辈子的日历，从来没有像现在这么空过。',
+    choices: [
+      { text: ' · 收拾行李，一住三个月', risk: 1, eff: { MOOD: 14, HP: 4, CUR: 4, MONEY: -12000000 } },
+      { text: ' · 去一个月，住完就回', risk: 1, eff: { MOOD: 8, CUR: 2, MONEY: -5000000 } },
+      { text: ' · 家里挺好，视频里看他们的照片', risk: 1, eff: { MOOD: 2 } }
+    ] }
+];
+EVENTS.push.apply(EVENTS, EVENTS_ELDERLY);
+
+/* ---- 太空度假（2075+ 民用化后解锁） ---- */
+VACATIONS.push(
+  { id: 'vac_space', name: '近地轨道三日游', icon: '🚀', cost: 80000000, minYear: 2075,
+    eff: { STRESS: -35, MOOD: 20, CUR: 6, FAME: 4, HP: -2 }, desc: '舷窗外，日出每九十分钟一次。你在失重里想起小时候攒钱买的塑料火箭。' },
+  { id: 'vac_livestay', name: '大理旅居一个月', icon: '⛰', cost: 6000000,
+    eff: { STRESS: -26, MOOD: 10, HP: 5, CUR: 3 }, desc: '院子、洱海、晒不完的太阳。邻居问你做什么工作的，你说「退休的」。' }
+);
+
+/* ---- v6.1 新成就 ---- */
+ACHIEVEMENTS.push(
+  { id: 'a_trust', icon: '🏦', name: '家族信托', desc: '设立家族信托，让血脉世代不受穷',
+    cond: s => !!(s.flags && s.flags.trust_founder) },
+  { id: 'a_cryo', icon: '🧊', name: '穿越者', desc: '冷冻休眠后在未来苏醒',
+    cond: s => !!(s.flags && s.flags.cryonaut) },
+  { id: 'a_prof', icon: '🎓', name: '银发教授', desc: '退休后受聘客座教授',
+    cond: s => (s.profYear || 0) > 0 },
+  { id: 'a_club', icon: '🥂', name: '圈层名流', desc: '加入任何一个顶级圈层',
+    cond: s => (s.clubs || []).length > 0 },
+  { id: 'a_fund', icon: '❤️', name: '泽被后世', desc: '创办个人慈善基金会',
+    cond: s => !!(s.flags && s.flags.foundation) }
+);

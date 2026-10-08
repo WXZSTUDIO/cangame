@@ -107,3 +107,199 @@ function applyRebirthBoost(state) {
   pushLog(state, '【前世记忆】你带着一点说不清的熟悉感醒来。有些坑，你好像在哪一世已经踩过。（智力 +3 · 意志 +3）', 'story');
   return true;
 }
+
+/* =========================================================
+ * v6.1.0 · 家族系统：家族信托 / 门阀声望 / 冷冻休眠
+ * 跨局持久化走 localStorage（vm 测试沙箱自动降级为内存）。
+ * ========================================================= */
+let _KV_MEM = {};
+function kvGet(k) {
+  try { const v = localStorage.getItem(k); if (v != null) return JSON.parse(v); } catch (e) { }
+  return _KV_MEM[k] !== undefined ? JSON.parse(_KV_MEM[k]) : null;
+}
+function kvSet(k, v) {
+  const s = JSON.stringify(v);
+  _KV_MEM[k] = s;
+  try { localStorage.setItem(k, s); } catch (e) { }
+}
+
+const FAM_KEY = 'cangame_family_v1';
+function famVault() {
+  const v = kvGet(FAM_KEY);
+  return (v && typeof v === 'object') ? v : { prestige: 0, gen: 0, trust: null, cryo: null, perk: null };
+}
+function famSave(v) { kvSet(FAM_KEY, v); }
+
+/* ---------------- 家族信托 ----------------
+ * 富裕世代锁定一部分资金进「永不取出的保险柜」。
+ * 本金取不出来——但只要姓这个姓，每一代都能按本金 0.6% 领年度给付，
+ * 败家子也饿不死，家族香火不断。 */
+const TRUST_MIN_NET = 50000000;   // 净资产 0.5 亿起可设
+const TRUST_MIN_IN = 20000000;    // 单次存入下限 2000 万
+
+function trustInfo() { return famVault().trust; }
+
+function canSetupTrust(state) {
+  return !!state && !state.finished && state.age >= 40 && netWorth(state) >= TRUST_MIN_NET;
+}
+
+function setupTrust(state, amount) {
+  if (!canSetupTrust(state)) return { ok: false, msg: `年满 40 岁、净资产 ${fmtMoney(TRUST_MIN_NET)} 以上才能设立家族信托` };
+  amount = Math.round(amount);
+  const net = Math.max(0, netWorth(state));
+  if (!(amount >= TRUST_MIN_IN) || amount > net * 0.6) {
+    return { ok: false, msg: `本金需在 ${fmtMoney(TRUST_MIN_IN)} 与净资产六成之间` };
+  }
+  state.stats.MONEY -= amount;
+  const v = famVault();
+  v.trust = { money: ((v.trust && v.trust.money) || 0) + amount, founder: state.name, sinceYear: fmtYear(state) };
+  famSave(v);
+  state.flags.trust_founder = true;
+  pushLog(state, `【家族信托】你在信托合同上签了字。${fmtMoney(amount)} 从此锁进家族的保险柜——它不再属于你，它属于这个姓。`, 'story');
+  return { ok: true };
+}
+
+/* 年度信托给付：未成年由监护人代领一半 */
+function trustTick(state) {
+  const t = famVault().trust;
+  if (!t || !t.money || !state || state.finished || state.prison > 0) return;
+  if (state.age < 6) return;
+  let pay = Math.round(t.money * 0.006);
+  if (state.age < 18) pay = Math.round(pay * 0.5);
+  if (pay <= 0) return;
+  state.stats.MONEY += pay;
+  state.flags.trust_beneficiary = true;
+  if (state.age === 6 || state.age === 18 || chance(0.3)) {
+    pushLog(state, `【信托】家族办公室的转账准时到账：${fmtMoney(pay)}。` +
+      (state.age < 18 ? '这笔钱由监护人代管，但条款上印着你的名字。' : '信托条款的第一条写着：只要还姓这个姓，就饿不死。'), 'money');
+  }
+}
+
+/* ---------------- 门阀声望（Legacy Tier） ----------------
+ * 每一代的成就换算成声望点，局外永久保留；
+ * 出生时可以花声望点买「投胎特权」。 */
+const RANK_PTS = { S: 120, A: 80, B: 45, C: 20, D: 6 };
+const RICH_FAMILIES = ['qiaojuan', 'chaiqian', 'yiliao', 'tizhinei', 'keyan', 'jiaoshi'];
+const PRESTIGE_PERKS = [
+  { id: 'perk_rich', icon: '🍼', name: '含着金汤匙', cost: 60, desc: '下一世必定出生在侨眷 / 拆迁 / 医生世家这类殷实人家' },
+  { id: 'perk_stat', icon: '🧬', name: '天资卓越', cost: 30, desc: '下一世先天资质 +8（智力 / 体魄 / 魅力 / 意志）' },
+  { id: 'perk_talent', icon: '🎴', name: '命格有余', cost: 20, desc: '下一世天赋点 +6（10 → 16）' },
+  { id: 'perk_cash', icon: '🧧', name: '出生红包', cost: 10, desc: '下一世出生时家里塞给你一笔启动资金' }
+];
+
+/* 一代人生结束（结局页）调用：把成就折成声望点 */
+function settlePrestige(state) {
+  if (!state) return 0;
+  const v = famVault();
+  let pts = RANK_PTS[state.rank] || 6;
+  const peakNet = (state.peak && (state.peak.NET || state.peak.MONEY)) || 0;
+  pts += Math.min(60, Math.floor(Math.log10(Math.max(1, peakNet / 10000000)) * 8));
+  pts += (state.achievements || []).length * 4;
+  if (state.flags.astronaut) pts += 30;
+  if (state.flags.superbrain_win) pts += 15;
+  if (state.flags.trust_founder) pts += 10;
+  if (state.flags.foundation) pts += 8;
+  if (state.flags.cryonaut) pts += 20;
+  if (state.career && state.career.lv >= 5) pts += 10;
+  pts = Math.min(200, Math.round(pts));
+  v.prestige += pts;
+  famSave(v);
+  return pts;
+}
+
+function buyPerk(id) {
+  const p = PRESTIGE_PERKS.find(x => x.id === id);
+  if (!p) return { ok: false, msg: '没有这个特权' };
+  const v = famVault();
+  if (v.perk === id) return { ok: false, msg: '这个特权已经买好，等着下一世生效' };
+  if (v.perk) return { ok: false, msg: '已有一个待生效的特权（一次只能带一个进产房）' };
+  if (v.prestige < p.cost) return { ok: false, msg: `声望点不够（还差 ${p.cost - v.prestige} 点）` };
+  v.prestige -= p.cost;
+  v.perk = id;
+  famSave(v);
+  return { ok: true };
+}
+
+function takeBirthPerk() {
+  const v = famVault();
+  const p = v.perk || null;
+  v.perk = null;
+  famSave(v);
+  return p;
+}
+
+/* 出生页展示用：当前声望与待生效特权 */
+function prestigeInfo() {
+  const v = famVault();
+  return { prestige: v.prestige || 0, gen: v.gen || 0, perk: v.perk || null, trust: v.trust || null, cryo: v.cryo || null };
+}
+
+/* ---------------- 冷冻休眠（Cryonics） ----------------
+ * 绝症 / 病危且现金充足：清算全部资产支付巨额费用，把整个人冻起来。
+ * 冷冻消耗一代；等 2 代之后医学进步，可以「解冻苏醒」重新接管家族。 */
+const CRYO_COST = 300000000;   // 3 亿冷冻费
+const CRYO_THAW_GENS = 2;      // 冷冻 2 代后可唤醒
+
+function canCryo(state) {
+  return !!state && !state.finished && state.age >= 25 &&
+    ((state.ill && state.ill.stage >= 3) || (state.stats.HP || 0) < 15) &&
+    state.stats.MONEY >= CRYO_COST;
+}
+
+function prepareCryo(state) {
+  if (!canCryo(state)) {
+    return { ok: false, msg: `需要：绝症或病危 · 现金 ${fmtMoney(CRYO_COST)} · 年满 25 岁` };
+  }
+  const carry = Math.max(0, Math.round(netWorth(state) * 0.8));
+  const v = famVault();
+  v.cryo = {
+    name: state.name, gender: state.gender,
+    money: carry,
+    frozenYear: fmtYear(state), frozenAge: state.age,
+    stats: { INT: state.stats.INT, STR: state.stats.STR, CHA: state.stats.CHA, WILL: state.stats.WILL, ETH: state.stats.ETH },
+    thawGen: (v.gen || 0) + CRYO_THAW_GENS + 1
+  };
+  v.gen = (v.gen || 0) + 1; // 冷冻本身算一代
+  famSave(v);
+  state.stats.MONEY = 0;
+  finish(state);
+  state.ending = {
+    id: 'cryo', rank: state.rank, title: '冷冻休眠',
+    text: `${fmtYear(state)} 年，你在同意书上签了字。液氮舱合拢的瞬间，你听见医生说：睡吧，让未来替你治病。你把整个家族托付给了时间和下一代。`
+  };
+  pushLog(state, '【冷冻】舱门合拢。温度一点点往下走，你的心跳从每分钟七十次，走向每分钟零次。', 'story');
+  return { ok: true };
+}
+
+function cryoReady() {
+  const v = famVault();
+  return !!(v.cryo && (v.gen || 0) >= v.cryo.thawGen);
+}
+
+/* 新局创建后调用：若是冷冻人苏醒，覆盖人物设定 */
+function applyCryoRevive(state) {
+  const v = famVault();
+  if (!v.cryo || (v.gen || 0) < v.cryo.thawGen) return false;
+  const c = v.cryo;
+  v.cryo = null;
+  famSave(v);
+  state.name = c.name;
+  state.gender = c.gender;
+  state.startYear = 2005;                       // 一觉醒来，世界已经是新一代人的
+  state.age = Math.max(32, (c.frozenAge || 40) - 10);
+  if (c.stats) {
+    state.stats.INT = c.stats.INT; state.stats.STR = c.stats.STR;
+    state.stats.CHA = c.stats.CHA; state.stats.WILL = c.stats.WILL;
+    state.stats.ETH = c.stats.ETH;
+  }
+  state.stats.MONEY = c.money;
+  state.stats.HP = 55;
+  state.stats.MOOD = 50;
+  state.job = '苏醒者';
+  state.ill = null;                              // 当年的不治之症，如今社区医院就能治
+  state.flags.cryonaut = true;
+  state.log = [];
+  pushLog(state, `【解冻】舱门打开时，护士用一种你听不懂的口音说：欢迎回来。你冻进去那年是 ${c.frozenYear} 年——现在，你当年的病，一支针剂就能治。`, 'story');
+  pushLog(state, `【家族】托管账户里的 ${fmtMoney(c.money)} 静静滚了几十年复利，等你回来签字。`, 'money');
+  return true;
+}

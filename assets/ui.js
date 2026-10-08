@@ -226,17 +226,54 @@ function renderTitle() {
 function startCreate() {
   TALENT_POOL = rollTalents(12);
   SELECTED = [];
-  CREATE_POINTS = 10;
+  // v6.1：门阀特权威 talent 点时，这一世天赋点 16
+  const pendPerk = (typeof prestigeInfo === 'function') ? prestigeInfo().perk : null;
+  CREATE_POINTS = pendPerk === 'perk_talent' ? 16 : 10;
   TALENT_ALL = false;
   const ta = $('btnTalentAll'); if (ta) ta.textContent = '📖 浏览全部';
   const tq = $('talentSearch'); if (tq) tq.value = '';
   const pref = lsGet(LS.pref) || {};
   $('inputName').value = pref.name || randomName(pref.gender || 'M');
   document.querySelectorAll('[name=gender]').forEach(r => r.checked = (r.value === (pref.gender || 'M')));
+  renderPrestige();
   renderFamilies();
   renderTalents();
   renderPriorities();
   showScreen('screen-create');
+}
+
+/* ---------- v6.1 出生页 · 门阀声望面板 ---------- */
+function renderPrestige() {
+  const box = $('prestigePanel');
+  if (!box || typeof prestigeInfo !== 'function') return;
+  const info = prestigeInfo();
+  const perkObj = (typeof PRESTIGE_PERKS !== 'undefined' && info.perk) ? PRESTIGE_PERKS.find(p => p.id === info.perk) : null;
+  let cryoHtml = '';
+  if (info.cryo) {
+    const ready = (typeof cryoReady === 'function') && cryoReady();
+    const wait = Math.max(0, (info.cryo.thawGen || 0) - (info.gen || 0));
+    cryoHtml = `<div class="rel-sub" style="margin-top:8px">🧊 冷冻舱：<b>${esc(info.cryo.name)}</b> 自 ${info.cryo.frozenYear} 年沉睡。` +
+      (ready ? '医学已经攻克当年的绝症——<b>点「出生 ▸」，以 TA 的身份醒来</b>。'
+        : `还需再传 ${wait} 代人，医学才能治好当年的病。`) + `</div>`;
+  }
+  box.innerHTML = `
+    <div class="prestige-head"><b>🏛 门阀 · 第 ${info.gen + 1} 代</b>
+      <span class="prestige-pts">✦ ${info.prestige} 声望</span></div>
+    <div class="rel-sub" style="margin-top:2px">每一代人的成就都会折成家族声望（永久保留），在投胎前兑换成下一世的先天特权。</div>
+    ${info.perk && perkObj ? `<div class="rel-sub">✅ 待生效：${perkObj.icon} ${esc(perkObj.name)} —— 本局出生即生效</div>` : ''}
+    <div class="perk-grid">${PRESTIGE_PERKS.map(p => {
+      const owned = info.perk === p.id;
+      const poor = info.prestige < p.cost;
+      return `<button class="perk ${owned ? 'bought' : ''}" ${(owned || poor || info.perk) ? 'disabled' : ''} onclick="uiBuyPerk('${p.id}')">${p.icon} ${p.name} · ${p.cost}点<i>${esc(p.desc)}</i></button>`;
+    }).join('')}</div>
+    ${info.trust ? `<div class="rel-sub" style="margin-top:8px">🏦 家族信托本金 <b>${fmtMoney(info.trust.money)}</b>（${esc(info.trust.founder)} 设立于 ${info.trust.sinceYear} 年）· 这一代每年都能领给付</div>` : ''}
+    ${cryoHtml}`;
+}
+function uiBuyPerk(id) {
+  const r = buyPerk(id);
+  if (!r.ok) { toast(r.msg || '换不了'); return; }
+  toast('特权已就位——本局出生时生效');
+  renderPrestige();
 }
 
 function randomName(gender) {
@@ -338,13 +375,36 @@ function rerollTalents() {
 function confirmCreate() {
   const name = ($('inputName').value || '').trim() || randomName();
   const gender = (document.querySelector('[name=gender]:checked') || {}).value || 'M';
-  const familyId = $('familyList').dataset.pick || FAMILIES[0].id;
+  let familyId = $('familyList').dataset.pick || FAMILIES[0].id;
   const priority = $('priorityList').dataset.pick || 'balance';
+  // v6.1 门阀声望：出生特权在投胎前结算
+  const perk = (typeof takeBirthPerk === 'function') ? takeBirthPerk() : null;
+  if (perk === 'perk_rich' && typeof RICH_FAMILIES !== 'undefined') {
+    familyId = RICH_FAMILIES[randInt(0, RICH_FAMILIES.length - 1)];
+  }
   lsSet(LS.pref, { name, gender });
   STATE = createGame({ name, gender, familyId, priority, talents: SELECTED.slice() });
+  if (perk === 'perk_stat') {
+    applyEffects(STATE, { INT: 8, STR: 8, CHA: 8, WILL: 8, HP: 8 }, true);
+    pushLog(STATE, '【门阀】族谱的第一页写着：这一支的血脉，天生底子就好。（六维先天 +8）', 'story');
+  }
+  if (perk === 'perk_cash') {
+    STATE.stats.MONEY += 8000000;
+    pushLog(STATE, '【门阀】满月酒那天，家里的老人塞给你一张存折：这是给孩子未来用的。', 'money');
+  }
+  // v6.1 冷冻人苏醒：新局直接覆盖成冷冻者本人
+  if (typeof cryoReady === 'function' && cryoReady()) {
+    applyCryoRevive(STATE);
+  }
   // v6 传承 / 重生：新局落定后注入继承包或前世记忆
   if (typeof applyRebirthBoost === 'function') applyRebirthBoost(STATE);
   if (typeof applyHeirBoost === 'function') applyHeirBoost(STATE);
+  // v6.1 世代计数：每开一局算一代（信托给付 / 冷冻解冻 / 门阀传承都用它）
+  if (typeof famVault === 'function') {
+    const v = famVault();
+    v.gen = (v.gen || 0) + 1;
+    famSave(v);
+  }
   markDirty();
   enterGame();
 }
@@ -381,7 +441,18 @@ function ageAvatar(age, gender) {
 
 function renderStats() {
   const s = STATE.stats;
-  $('hudAvatar').textContent = ageAvatar(STATE.age, STATE.gender);
+  // v6.1 真人头像：14 岁以上用精灵图，幼年走 emoji
+  const hudAva = $('hudAvatar');
+  if (STATE.age >= 14) {
+    hudAva.textContent = '';
+    hudAva.classList.add('photo');
+    const st = avaStyle(STATE.name, STATE.gender).split(':');
+    hudAva.style.backgroundPosition = st[1];
+  } else {
+    hudAva.classList.remove('photo');
+    hudAva.style.backgroundPosition = '';
+    hudAva.textContent = ageAvatar(STATE.age, STATE.gender);
+  }
   $('hudName').textContent = `${STATE.name} · ${STATE.gender === 'M' ? '男' : '女'} · ${STATE.familyName.split(' ')[0]}`;
   $('hudAge').textContent = `${STATE.age} / ${END_AGE}岁 · ${fmtYear(STATE)} 年 · ${STATE.job || defaultJob(STATE.age)}`;
   $('hudCash').textContent = fmtMoney(s.MONEY);
@@ -672,9 +743,28 @@ function portraitSVG(name, gender, age, opt) {
     `</svg>`;
 }
 
-/* 包装成可放进 rel-ava 的方块 */
+/* 包装成可放进 rel-ava 的方块
+ * v6.1 真人照片头像：14 岁以上用精灵图（见 avaIndex），幼年仍走 SVG 画像（照片里没有小孩） */
 function personAvatar(name, gender, age, cls, opt) {
+  if (age == null || age >= 14) {
+    return `<span class="rel-ava pic photo ${cls || ''}" style="${avaStyle(name, gender)}"></span>`;
+  }
   return `<span class="rel-ava pic ${cls || ''}">${portraitSVG(name, gender, age, opt)}</span>`;
+}
+
+/* ---------- v6.1 真人头像精灵图（assets/avatars.jpg · 10 列 × 4 行） ----------
+ * 上两行是女（0-19），下两行是男（20-39）。
+ * 同一个人一辈子同一张脸：按 hash(名字|性别) 确定性取格，不需要写进存档。 */
+const AVA_COLS = 10, AVA_ROWS = 4, AVA_FACES = 20;
+function avaIndex(name, gender) {
+  const h = hashStr(String(name || '?') + '|' + (gender === 'F' ? 'F' : 'M'));
+  return (h % AVA_FACES) + (gender === 'F' ? 0 : AVA_FACES);
+}
+function avaStyle(name, gender) {
+  const idx = avaIndex(name, gender);
+  const col = idx % AVA_COLS, row = Math.floor(idx / AVA_COLS) % AVA_ROWS;
+  /* background-size 1000% 400% 时，position 百分比 = col/(cols-1)、row/(rows-1) */
+  return `background-position:${(col * 100 / (AVA_COLS - 1)).toFixed(2)}% ${(row * 100 / (AVA_ROWS - 1)).toFixed(2)}%`;
 }
 
 /* ---------- 视图切换 ---------- */
@@ -1254,11 +1344,12 @@ function renderRelView() {
     // 度假
     VACATIONS.forEach(v => {
       const poor = v.cost > STATE.stats.MONEY;
+      const locked = v.minYear && fmtYear(STATE) < v.minYear;
       cards.push({
         ava: v.icon, cls: '', name: v.name,
-        sub: `${esc(v.desc)} → 压力 ${v.eff.STRESS} · 花费 ${fmtMoney(v.cost)}${vacUsed ? ' · 今年度过了' : ''}`,
+        sub: `${esc(v.desc)} → 压力 ${v.eff.STRESS} · 花费 ${fmtMoney(v.cost)}${locked ? ` · ${v.minYear} 年后解锁` : ''}${vacUsed ? ' · 今年度过了' : ''}`,
         key: null,
-        multi: (vacUsed || poor || inPrison) ? `<span class="rel-act dis">${inPrison ? '服刑中' : (vacUsed ? '今年度过了' : '钱不够')}</span>`
+        multi: (vacUsed || poor || inPrison || locked) ? `<span class="rel-act dis">${inPrison ? '服刑中' : (locked ? `${v.minYear} 年后` : (vacUsed ? '今年度过了' : '钱不够'))}</span>`
           : `<button class="rel-act" onclick="uiVacation('${v.id}')">出发</button>`
       });
     });
@@ -1282,6 +1373,91 @@ function renderRelView() {
       });
     } else if (STATE.age >= 50) {
       cards.push({ ava: '🖋', cls: '', name: '遗嘱', sub: `${WILL_MIN_AGE - STATE.age > 0 ? `还有 ${WILL_MIN_AGE - STATE.age} 年满 60。` : ''}到了年纪（或病危时）可以来立遗嘱。`, key: null });
+    }
+    /* ---------- v6.1 家族信托 ---------- */
+    if (typeof canSetupTrust === 'function') {
+      const ti = trustInfo();
+      if (ti) {
+        cards.push({ ava: '🏦', cls: 'green', name: `家族信托 · ${fmtMoney(ti.money)}`,
+          sub: `${esc(ti.founder)} 设立于 ${ti.sinceYear} 年。本金永远锁死，每一代按 0.6% 领年度给付——败家子也饿不死。`, key: null });
+      } else if (canSetupTrust(STATE)) {
+        const net = Math.max(0, netWorth(STATE));
+        const mkAmt = r => Math.round(net * r);
+        cards.push({ ava: '🏦', cls: '', name: '设立家族信托',
+          sub: `把一部分钱锁进取不出来的保险柜，换子孙后代每年一笔「饿不死的工资」（本金 0.6%）。净资产 ${fmtMoney(net)}。`, key: null,
+          multi: [0.2, 0.35, 0.5].map(r => `<button class="rel-act" onclick="uiTrust(${mkAmt(r)})">存 ${fmtMoney(mkAmt(r))}</button>`).join('') });
+      }
+    }
+    /* ---------- v6.1 圈层系统 ---------- */
+    if (typeof CLUBS !== 'undefined' && STATE.age >= 18 && STATE.prison === 0) {
+      CLUBS.forEach(c => {
+        const joined = (STATE.clubs || []).indexOf(c.id) >= 0;
+        const joinable = clubJoinable(STATE, c.id);
+        cards.push({ ava: c.icon, cls: joined ? 'green' : '', name: c.name + (joined ? '<span class="club-badge">会员</span>' : ''),
+          sub: `${esc(c.desc)} 年费 ${fmtMoney(c.fee)}。${joined ? '圈层的消息，比新闻快一年。' : (joinable ? '身家够了，可以递申请了。' : '门槛未到（身家 / 身份）。')}`, key: null,
+          multi: joined ? '<span class="rel-act dis">今年年费已缴</span>'
+            : (joinable ? `<button class="rel-act" onclick="uiClubJoin('${c.id}')">入会 ${fmtMoney(c.fee)}</button>` : '<span class="rel-act dis">门槛未到</span>') });
+      });
+    }
+    /* ---------- v6.1 银发经济（第二春） ---------- */
+    if (STATE.age >= 50) {
+      const profOff = STATE.profYear === STATE.age;
+      const bookOff = STATE.bookYear === STATE.age;
+      const inPrison = STATE.prison > 0;
+      cards.push({ ava: '🎓', cls: profOff ? 'amber' : '', name: '客座教授',
+        sub: `回大学讲一门课（本科 / 智力 70）。课酬按资历与智力结算。${profOff ? ' · 今年讲过了' : ''}`, key: null,
+        multi: (STATE.age >= 60 && !profOff && !inPrison && ((STATE.edu.eduLevel || 0) >= 3 || (STATE.stats.INT || 0) >= 70))
+          ? '<button class="rel-act" onclick="uiSilver(\'prof\')">去讲课</button>'
+          : `<span class="rel-act dis">${inPrison ? '服刑中' : (profOff ? '今年讲过了' : (STATE.age < 60 ? '60 岁起' : '资历不够'))}</span>` });
+      cards.push({ ava: '📖', cls: bookOff ? 'amber' : '', name: '写自传',
+        sub: `把这一生写在纸上。版税按巅峰身家与成就结算。${bookOff ? ' · 今年写过了' : ''}`, key: null,
+        multi: (STATE.age >= 60 && !bookOff && !inPrison)
+          ? '<button class="rel-act" onclick="uiSilver(\'book\')">动笔</button>'
+          : `<span class="rel-act dis">${inPrison ? '服刑中' : (bookOff ? '今年写过了' : '60 岁起')}</span>` });
+      cards.push({ ava: '❤️', cls: STATE.flags.foundation ? 'green' : '', name: STATE.flags.foundation ? '慈善基金会 · 运作中' : '创办慈善基金会',
+        sub: STATE.flags.foundation ? '第一批教室已经盖起来了。声望与道德，比利息涨得快。' : `一次性出资 ${fmtMoney(FUND_COST)}。道德 +12 · 声望 +12 · 门阀声望加成。`, key: null,
+        multi: STATE.flags.foundation ? '<span class="rel-act dis">基金会运作中</span>'
+          : ((STATE.age >= 50 && !inPrison && STATE.stats.MONEY >= FUND_COST) ? '<button class="rel-act" onclick="uiSilver(\'fund\')">注资创办</button>'
+            : `<span class="rel-act dis">${inPrison ? '服刑中' : (STATE.age < 50 ? '50 岁起' : '钱不够')}</span>`) });
+    }
+    /* ---------- v6.1 养老服务 ---------- */
+    if (STATE.age >= 55 && typeof RETIRE_PLANS !== 'undefined') {
+      RETIRE_PLANS.forEach(rp => {
+        const locked = rp.minYear && fmtYear(STATE) < rp.minYear;
+        const cur = STATE.retirePlan === rp.id;
+        cards.push({ ava: rp.icon, cls: cur ? 'green' : '', name: rp.name,
+          sub: `${esc(rp.desc)} 年费 ${fmtMoney(rp.fee)}${locked ? ` · ${rp.minYear} 年后解锁` : ''}`, key: null,
+          multi: cur ? '<span class="rel-act dis">已入住</span>'
+            : (locked ? `<span class="rel-act dis">${rp.minYear} 年后</span>`
+              : `<button class="rel-act" onclick="uiRetire('${rp.id}')">入住</button>`) });
+      });
+    }
+    /* ---------- v6.1 先进医疗 ---------- */
+    if (STATE.age >= 40 && (STATE.ill || (STATE.stats.HP || 0) < 45)) {
+      const hasGene = STATE.medGeneYear === STATE.age;
+      const hasOrgan = STATE.medOrganYear === STATE.age;
+      cards.push({ ava: '🧬', cls: hasGene ? 'amber' : '', name: '海外基因修复',
+        sub: '顶级私人医院的细胞重编程疗程：健康 +15。三年内只做一次。', key: null,
+        multi: hasGene ? '<span class="rel-act dis">今年做过了</span>'
+          : `<button class="rel-act" ${STATE.stats.MONEY >= 80000000 ? '' : 'disabled'} onclick="uiMedical('gene')">疗程 ${fmtMoney(80000000)}</button>` });
+      cards.push({ ava: '🫀', cls: hasOrgan ? 'amber' : '', name: STATE.ill ? `器官更换（针对：${STATE.ill.name}）` : '器官更换体检',
+        sub: STATE.ill ? '换掉报废的零件，大病直接痊愈，健康 +10。' : '目前没有需要更换的器官。', key: null,
+        multi: hasOrgan ? '<span class="rel-act dis">今年做过了</span>'
+          : (STATE.ill ? `<button class="rel-act" ${STATE.stats.MONEY >= 150000000 ? '' : 'disabled'} onclick="uiMedical('organ')">手术 ${fmtMoney(150000000)}</button>`
+            : '<span class="rel-act dis">暂无必要</span>') });
+    }
+    /* ---------- v6.1 冷冻休眠 ---------- */
+    if (typeof canCryo === 'function') {
+      const info = (typeof prestigeInfo === 'function') ? prestigeInfo() : null;
+      if (info && info.cryo) {
+        cards.push({ ava: '🧊', cls: 'amber', name: `冷冻舱 · ${esc(info.cryo.name)}`,
+          sub: `自 ${info.cryo.frozenYear} 年沉睡（当年 ${info.cryo.frozenAge} 岁）。第 ${info.cryo.thawGen} 代之后可唤醒。`, key: null });
+      }
+      if (canCryo(STATE)) {
+        cards.push({ ava: '🧊', cls: '', name: '冷冻休眠',
+          sub: `清算全部资产的八成入舱，支付 ${fmtMoney(CRYO_COST)} 冷冻费。两代人之后医学攻克绝症，可苏醒接管家族。`, key: null,
+          multi: '<button class="rel-act danger" onclick="uiCryo()">签字冷冻</button>' });
+      }
     }
     // 人生重来
     cards.push({
@@ -1532,6 +1708,63 @@ function uiRebirth() {
     prepareRebirth();
     startCreate();
   });
+}
+
+/* ---------- v6.1 家族 / 圈层 / 银发 / 医疗 ---------- */
+function uiTrust(amt) {
+  const r = setupTrust(STATE, amt);
+  if (!r.ok) { toast(r.msg || '设不了'); return; }
+  afterAct('家族信托设立');
+}
+function uiClubJoin(id) {
+  const r = clubJoin(STATE, id);
+  if (!r.ok) { toast(r.msg || '进不去'); return; }
+  afterAct('新会员');
+}
+function uiSilver(kind) {
+  const r = kind === 'prof' ? silverProfessor(STATE)
+    : kind === 'book' ? silverBook(STATE)
+      : silverFund(STATE);
+  if (!r.ok) { toast(r.msg || '现在不行'); return; }
+  afterAct(kind === 'prof' ? '课酬到账' : kind === 'book' ? '版税到账' : '基金会成立');
+}
+function uiRetire(id) {
+  const r = setRetirePlan(STATE, id);
+  if (!r.ok) { toast(r.msg || '住不了'); return; }
+  afterAct('搬家了');
+}
+function uiMedical(kind) {
+  if (!STATE || STATE.finished) return;
+  const s = STATE.stats;
+  if (kind === 'gene') {
+    if (STATE.medGeneYear === STATE.age) { toast('今年做过了'); return; }
+    if (s.MONEY < 80000000) { toast('钱不够'); return; }
+    s.MONEY -= 80000000;
+    STATE.medGeneYear = STATE.age;
+    applyEffects(STATE, { HP: 15, MOOD: 6 });
+    pushLog(STATE, '【基因修复】苏黎世的私人诊所，仪器读数一条条变绿。医生说：您的生物学年龄，比身份证上年轻十岁。', 'money');
+  } else if (kind === 'organ') {
+    if (STATE.medOrganYear === STATE.age) { toast('今年做过了'); return; }
+    if (!STATE.ill) { toast('目前没有需要更换的器官'); return; }
+    if (s.MONEY < 150000000) { toast('钱不够'); return; }
+    s.MONEY -= 150000000;
+    STATE.medOrganYear = STATE.age;
+    const name = STATE.ill.name;
+    STATE.ill = null;
+    applyEffects(STATE, { HP: 10, MOOD: 8 });
+    pushLog(STATE, `【器官更换】${name} 的那部分被换成了培养舱里的新器官。主刀医生说：恭喜，这笔钱花得比任何投资都值。`, 'money');
+  }
+  afterAct('手术很成功');
+}
+function uiCryo() {
+  uiConfirm('冷冻休眠',
+    `清算全部资产的八成入舱，支付 ${fmtMoney(CRYO_COST)} 冷冻费，在液氮里睡到医学能治好你的那天。<br><b>这一局就此结束；两代人之后，可以在出生页以你的名字苏醒。</b><br>确定签字吗？`,
+    '签字冷冻', () => {
+      const r = prepareCryo(STATE);
+      if (!r.ok) { toast(r.msg || '冻不了'); return; }
+      autosaveNow();
+      renderEnd();
+    });
 }
 
 function uiSocialAll(kind) {
@@ -1903,6 +2136,13 @@ function renderEnd() {
     <div><span>智力 / 意志</span><b>${Math.round(s.INT)} / ${Math.round(s.WILL)}</b></div>
     <div><span>道德 / 心情</span><b>${Math.round(s.ETH || 0)} / ${Math.round(s.MOOD || 0)}</b></div>
     <div><span>享年</span><b>${STATE.age}岁 · ${fmtYear(STATE)} 年</b></div>`;
+  // v6.1 门阀声望：一代落幕，折算声望点（永久保留，下一代投胎前可用）
+  if (typeof settlePrestige === 'function' && STATE.prestigeGained == null) {
+    STATE.prestigeGained = settlePrestige(STATE);
+  }
+  if (STATE.prestigeGained > 0) {
+    $('endStats').innerHTML += `<div><span>家族声望</span><b>✦ +${STATE.prestigeGained}</b></div>`;
+  }
   const got = STATE.achievements || [];
   let achHtml = '';
   if (typeof ACHIEVEMENTS !== 'undefined') {

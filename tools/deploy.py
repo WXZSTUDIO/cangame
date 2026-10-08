@@ -27,6 +27,7 @@ PUBLISH = [
     'index.html',
     'README.md',
     'assets/style.css',
+    'assets/avatars.jpg',
     'assets/data.js',
     'assets/market.js',
     'assets/engine.js',

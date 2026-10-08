@@ -551,6 +551,12 @@ function createGame(opt) {
     pets: [],
     horse: null,
     prison: 0,
+    clubs: [],
+    retirePlan: null,
+    profYear: 0,
+    bookYear: 0,
+    medGeneYear: 0,
+    medOrganYear: 0,
     family: initFamilyFin(family.id, startYear),
     parents: parents,
     friends: makeFriends(),
@@ -617,6 +623,14 @@ function migrateState(state) {
   if (state.prison === undefined) state.prison = 0;
   if (state.horse === undefined) state.horse = null;
   if (state.market && state.market.newsBias === undefined) { state.market.newsBias = 0; state.market.houseBias = 0; }
+  /* ---- v6.1：圈层 / 养老 / 银发经济兜底 ---- */
+  if (state.clubs == null) state.clubs = [];
+  if (state.retirePlan === undefined) state.retirePlan = null;
+  if (state.profYear === undefined) state.profYear = 0;
+  if (state.bookYear === undefined) state.bookYear = 0;
+  if (state.medGeneYear === undefined) state.medGeneYear = 0;
+  if (state.medOrganYear === undefined) state.medOrganYear = 0;
+  if (state.market && state.market.techK === undefined) state.market.techK = 0;
   if (!state.edu) {
     state.edu = { mid: null, gao: null, hs: null, uni: null, eduLevel: 0, study: 0, gradAge: null, major: null, salaryK: 1 };
   }
@@ -891,6 +905,8 @@ function applyEffects(state, eff, silent) {
   // v6.0：新闻/事件的市场情绪（newsK→股市、houseK→楼市），由 marketTick 消费后清零
   if (eff.newsK && state.market) state.market.newsBias = (state.market.newsBias || 0) + eff.newsK;
   if (eff.houseK && state.market) state.market.houseBias = (state.market.houseBias || 0) + eff.houseK;
+  // v6.1：科技浪潮情绪（techK→半导体/AI/通信/新能源板块）
+  if (eff.techK && state.market) state.market.techK = (state.market.techK || 0) + eff.techK;
   // 事件效果里带的职称（eff.job）统一走 setJob()，孤儿职称会被映射回阶梯
   if (eff.job) setJob(state, eff.job);
   s.HP = clamp(s.HP, 0, 120);
@@ -1757,6 +1773,9 @@ function step(state) {
   luxTick(state);       // v6 顶奢载具隐藏加成
   raceSeasonTick(state); // v6 赛车线年度赛季
   flirtTick(state);     // v6 搭讪系统：毕业后的街头偶遇
+  trustTick(state);     // v6.1 家族信托：年度给付（败家子也饿不死）
+  retireTick(state);    // v6.1 养老服务：年费与照护
+  clubTick(state);      // v6.1 圈层：年费 / 赞助商 / 内幕消息 / 联合投资
   if (state.finished) return { type: 'end' };
   loanTick(state);
   checkAchievements(state);
@@ -2627,3 +2646,172 @@ function libraryStudy(state) {
   }
   return { ok: true };
 }
+
+/* =========================================================
+ * v6.1.0 引擎挂钩：银发经济 / 养老服务 / 圈层系统
+ * ========================================================= */
+
+/* ---------- 养老服务（58 岁起可入住，按档位年费+属性） ----------
+ * 扣不起年费自动退宿——晚年也要面对账本 */
+const RETIRE_PLANS = [
+  { id: 'ret_home', name: '居家养老', icon: '🏠', fee: 3000000, eff: { HP: 2, MOOD: 2 }, desc: '请一位住家阿姨，老屋里的日子照旧过。' },
+  { id: 'ret_community', name: '社区养老院', icon: '🏘', fee: 12000000, eff: { HP: 4, MOOD: 5 }, desc: '楼下就是活动室，老伙计们凑一桌就是一天。' },
+  { id: 'ret_lux', name: '顶奢颐养中心', icon: '🏦', fee: 60000000, eff: { HP: 7, MOOD: 8, CHA: 1 }, desc: '江景套房、私人医生、米其林主厨的老年餐桌。' },
+  { id: 'ret_space', name: '轨道养老站', icon: '🛰', fee: 400000000, minYear: 2075, eff: { HP: 10, MOOD: 12, FAME: 3 }, desc: '头顶是缓缓转动的星河。在这里老去的人，是人类的第一批。' }
+];
+
+function setRetirePlan(state, id) {
+  if (!state || state.finished) return { ok: false, msg: '' };
+  if (state.age < 58) return { ok: false, msg: '58 岁起才能入住养老机构' };
+  const p = RETIRE_PLANS.find(x => x.id === id);
+  if (!p) return { ok: false, msg: '没有这个养老服务' };
+  if (p.minYear && fmtYear(state) < p.minYear) return { ok: false, msg: `${p.minYear} 年之后才有这个技术` };
+  if (state.retirePlan === id) return { ok: false, msg: '已经住在这里了' };
+  if (state.stats.MONEY < p.fee) return { ok: false, msg: '首付不够' };
+  state.retirePlan = id;
+  pushLog(state, `【养老】你搬进了${p.name}。${p.desc}`, 'muted');
+  return { ok: true };
+}
+
+function retireTick(state) {
+  if (!state.retirePlan) return;
+  const p = RETIRE_PLANS.find(x => x.id === state.retirePlan);
+  if (!p || state.age < 58) { state.retirePlan = null; return; }
+  if (state.stats.MONEY < p.fee) {
+    state.retirePlan = null;
+    applyEffects(state, { MOOD: -8, HP: -3 });
+    pushLog(state, '【养老】账上的钱付不起这个月的养老账单。你收拾了行李，从中心搬了出来。', 'warn');
+    return;
+  }
+  state.stats.MONEY -= p.fee;
+  applyEffects(state, p.eff);
+}
+
+/* ---------- 银发再就业（60+ 的第二春，每年各一次） ---------- */
+
+/* 客座教授：学历或智力够高的老人，回大学讲课 */
+function silverProfessor(state) {
+  if (!state || state.finished) return { ok: false, msg: '' };
+  if (state.age < 60) return { ok: false, msg: '60 岁以后再来' };
+  if (prisonCheck(state)) return { ok: false, msg: '高墙里没有讲台' };
+  if ((state.edu.eduLevel || 0) < 3 && (state.stats.INT || 0) < 70) return { ok: false, msg: '需要本科学历或智力 70 以上' };
+  if (state.profYear === state.age) return { ok: false, msg: '今年已经讲过课了' };
+  state.profYear = state.age;
+  const pay = Math.round((2000000 + (state.stats.INT || 0) * 60000) * (1 + (state.edu.eduLevel || 0) * 0.25));
+  state.stats.MONEY += pay;
+  state.stats.FAME = (state.stats.FAME || 0) + 2;
+  state.stats.MOOD = (state.stats.MOOD || 60) + 3;
+  pushLog(state, `【客座教授】商学院请你讲了一学期的「人生的账」。课酬 ${fmtMoney(pay)}，但台下那些眼睛亮起来的年轻人，才是真正的报酬。`, 'money');
+  return { ok: true };
+}
+
+/* 写自传：把一生的故事卖成版税（按巅峰净资产与成就结算） */
+function silverBook(state) {
+  if (!state || state.finished) return { ok: false, msg: '' };
+  if (state.age < 60) return { ok: false, msg: '故事还不够下酒，60 岁再写' };
+  if (prisonCheck(state)) return { ok: false, msg: '高墙里只写得出忏悔录' };
+  if (state.bookYear === state.age) return { ok: false, msg: '今年已经写过了' };
+  state.bookYear = state.age;
+  const peakNet = (state.peak && (state.peak.NET || state.peak.MONEY)) || 0;
+  const royalty = Math.round(clamp(peakNet * 0.003, 2000000, 80000000) + (state.achievements || []).length * 1500000);
+  state.stats.MONEY += royalty;
+  state.stats.FAME = (state.stats.FAME || 0) + 3;
+  state.stats.MOOD = (state.stats.MOOD || 60) + 5;
+  pushLog(state, `【自传】你花了一年把这一生写在纸上。首印五十万册，版税 ${fmtMoney(royalty)}。有读者说：这本书比成功学好读，比小说疼。`, 'money');
+  return { ok: true };
+}
+
+/* 慈善基金会：一次性大额出资，买不来的道德与声望 */
+const FUND_COST = 100000000;
+function silverFund(state) {
+  if (!state || state.finished) return { ok: false, msg: '' };
+  if (state.flags.foundation) return { ok: false, msg: '基金会已经跑起来了' };
+  if (state.age < 50) return { ok: false, msg: '50 岁以后再说——做慈善不急于一时，但得先有得捐' };
+  if (state.stats.MONEY < FUND_COST) return { ok: false, msg: `需要现金 ${fmtMoney(FUND_COST)}` };
+  if (prisonCheck(state)) return { ok: false, msg: '高墙里做不了慈善' };
+  state.stats.MONEY -= FUND_COST;
+  state.flags.foundation = true;
+  applyEffects(state, { ETH: 12, FAME: 12, MOOD: 8 });
+  pushLog(state, '【基金会】以你名字命名的慈善基金会成立了。第一批款项打向了山区的一百间教室。发布会上你没提钱，只说了句「该还的」。', 'story');
+  return { ok: true };
+}
+
+/* ---------- 圈层系统（俱乐部 / 商会） ----------
+ * 入会看身家与身份，年费自动扣；扣不起会被「劝退」。
+ * 圈层每年有专属事件：赞助商 / 内幕消息（可能是假的）/ 联合投资。 */
+const CLUBS = [
+  { id: 'club_race', name: '赛车手俱乐部', icon: '🏁', fee: 8000000, desc: '技师、调校师、赞助商。轮胎还热着，酒就端上来了。' },
+  { id: 'club_yacht', name: '游艇会', icon: '🛥', fee: 30000000, desc: '甲板上的话题只有两个：船，和下一笔大钱。' },
+  { id: 'club_chamber', name: '商会', icon: '🏛', fee: 15000000, desc: '乡贤、行长、老钱。圆桌上的座位按身家排。' }
+];
+
+function clubJoinable(state, id) {
+  if (!state || state.finished) return false;
+  const net = netWorth(state);
+  if (id === 'club_race') {
+    const hasRace = (state.market && state.market.props || []).some(p => {
+      if (p.kind !== 'car') return false;
+      const ref = (typeof CARS !== 'undefined') ? CARS.find(x => x.id === p.refId) : null;
+      return !!(ref && ref.race);
+    });
+    return state.age >= 18 && (hasRace || !!(state.career && ['racer_k', 'racer_pro', 'jockey'].indexOf(state.career.id) >= 0));
+  }
+  if (id === 'club_yacht') return state.age >= 25 && net >= 300000000;
+  if (id === 'club_chamber') return state.age >= 25 && net >= 80000000;
+  return false;
+}
+
+function clubJoin(state, id) {
+  const c = CLUBS.find(x => x.id === id);
+  if (!c) return { ok: false, msg: '' };
+  if ((state.clubs || []).indexOf(id) >= 0) return { ok: false, msg: '你已经是会员了' };
+  if (!clubJoinable(state, id)) return { ok: false, msg: '圈层的门槛还没够到（身家 / 身份不够）' };
+  if (state.stats.MONEY < c.fee) return { ok: false, msg: `入会费 ${fmtMoney(c.fee)} 不够` };
+  state.clubs = state.clubs || [];
+  state.clubs.push(id);
+  state.stats.MONEY -= c.fee;
+  state.stats.NET = (state.stats.NET || 0) + 3;
+  pushLog(state, `【圈层】你交了 ${fmtMoney(c.fee)} 入会费，${c.name}的名册上多了你的名字。${c.desc}`, 'story');
+  return { ok: true };
+}
+
+function clubTick(state) {
+  if (!state.clubs || !state.clubs.length || state.prison > 0) return;
+  // 年费：扣不起则被劝退
+  state.clubs = state.clubs.filter(id => {
+    const c = CLUBS.find(x => x.id === id);
+    if (!c) return false;
+    if (state.stats.MONEY < c.fee) {
+      pushLog(state, `【圈层】会费拖了一期又一期，秘书处「非常遗憾」地暂停了你的会员资格。人走茶凉，茶还没凉透。`, 'warn');
+      return false;
+    }
+    state.stats.MONEY -= c.fee;
+    return true;
+  });
+  state.clubs.forEach(id => {
+    const s = state.stats;
+    if (id === 'club_race' && chance(0.35)) {
+      const deal = randInt(20000000, 100000000);
+      s.MONEY += deal;
+      s.FAME = (s.FAME || 0) + 2;
+      pushLog(state, `【赞助商】俱乐部的老朋友把涂装位卖了：车身印上对方的 logo，赞助费 ${fmtMoney(deal)} 到账。你从此跑的不是车，是广告位。`, 'money');
+    } else if (id === 'club_yacht' && chance(0.3)) {
+      // 内幕消息：指定一只股票明年的行情。22% 概率消息是假的——圈层也会割圈层
+      const stk = STOCKS.filter(x => x.sector.indexOf('指数') < 0);
+      const t = stk[randInt(0, stk.length - 1)];
+      const wrong = chance(0.22);
+      state.market.tip = { id: t.id, name: t.name, k: wrong ? -(randInt(30, 55) / 100) : (randInt(25, 70) / 100), wrong: wrong };
+      pushLog(state, `【内幕】香槟过三巡，有人压低声音：「${t.name}，里面有动作，明年这个时候见分晓。」你端着杯子没说话，把这句话咽了下去。`, 'muted');
+    } else if (id === 'club_chamber' && chance(0.25)) {
+      const put = Math.round(clamp(s.MONEY * 0.15, 10000000, 500000000));
+      if (put >= 10000000) {
+        s.MONEY -= put;
+        state.investments.push({ name: '商会联合体项目', amount: put, yearsLeft: 2, base: 1.55, vol: 0.6, kind: 'venture' });
+        pushLog(state, `【联合投资】圆桌上的几个老钱凑了个盘子，你按身家出了 ${fmtMoney(put)}。商会会长说：这次的项目，亏了算大家的，赚了……也是大家的。`, 'money');
+      }
+    }
+  });
+}
+
+/* 监狱检查的小工具：服刑中禁止对外活动 */
+function prisonCheck(state) { return (state.prison || 0) > 0; }
