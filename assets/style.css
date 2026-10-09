@@ -543,13 +543,13 @@ body{
 /* ---- 真人头像（10 列 × 4 行精灵图：0-19 女 / 20-39 男；position 由 js 计算） ---- */
 .rel-ava.photo{
   padding:0;overflow:hidden;
-  background-image:url("avatars.jpg?v=6.2.1");
+  background-image:url("avatars.jpg?v=6.2.2");
   background-size:1000% 400%;background-repeat:no-repeat;
   box-shadow:0 0 0 2.5px #fff, 0 6px 14px rgba(176,52,158,.18);
 }
 .hud-avatar.photo{
   font-size:0;border-color:#fff;
-  background-image:url("avatars.jpg?v=6.2.1");
+  background-image:url("avatars.jpg?v=6.2.2");
   background-size:1000% 400%;background-repeat:no-repeat;
 }
 
@@ -579,3 +579,23 @@ body{
   color:var(--pink-d);background:var(--gold-l);
   border-radius:6px;padding:0 4px;font-weight:900;
 }
+
+/* ---- v6.2.2 一生碑文（大结局叙事生成器） ---- */
+.epitaph-box{
+  margin:14px 0 6px;padding:16px 18px 14px;
+  background:linear-gradient(160deg,#FFF9EC,#F7EEDC);
+  border:2px solid #C9B79C;border-radius:16px;
+  box-shadow:0 4px 14px rgba(160,130,80,.16);
+  position:relative;
+}
+.epitaph-tag{
+  display:inline-block;font-size:11px;font-weight:900;letter-spacing:2px;
+  color:#8A744E;background:#F0E4C8;border:1.5px solid #C9B79C;
+  border-radius:999px;padding:2px 12px;margin-bottom:10px;
+}
+.epitaph-text{
+  font-family:"Songti SC","SimSun","Noto Serif SC",serif;
+  font-size:14px;line-height:1.95;color:#4A4234;
+  text-align:justify;letter-spacing:.4px;
+}
+.epitaph-text::first-letter{font-size:20px;color:#8A6A34;font-weight:700}

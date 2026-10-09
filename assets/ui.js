@@ -2226,6 +2226,16 @@ function renderEnd() {
   $('endRank').className = 'rank rank-' + rank;
   $('endTitle').textContent = e.title;
   $('endText').textContent = e.text;
+  // v6.2.2 一生碑文：动态生成的大结局叙事（死亡结算时已写入 state.epitaph）
+  let epBox = $('endEpitaphBox');
+  if (!epBox) {
+    $('endText').insertAdjacentHTML('afterend', '<div id="endEpitaphBox" class="epitaph-box"></div>');
+    epBox = $('endEpitaphBox');
+  }
+  const ep = STATE.epitaph || (typeof lifeEpitaph === 'function' ? lifeEpitaph(STATE) : '');
+  epBox.innerHTML = ep
+    ? `<div class="epitaph-tag">🕯 碑文 · 平生</div><p class="epitaph-text">${esc(ep)}</p>`
+    : '';
   $('endScore').textContent = score + ' / 100';
   const s = STATE.stats;
   const edu = STATE.edu || {};
