@@ -418,7 +418,9 @@ function propValue(state) {
   return m.props.reduce((a, p) => a + (p.value || 0), 0);
 }
 function netWorth(state) {
-  return Math.round(state.stats.MONEY + propValue(state) + stockValue(state) - (state.market ? state.market.debt : 0));
+  // v6.4：配偶名下资产（扣掉 TA 的婚前债务）也是这个家的净资产
+  const hh = (typeof householdNet === 'function') ? householdNet(state) : 0;
+  return Math.round(state.stats.MONEY + propValue(state) + stockValue(state) + hh - (state.market ? state.market.debt : 0));
 }
 
 /* ---------- 交易 ---------- */

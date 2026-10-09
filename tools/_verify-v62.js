@@ -282,6 +282,7 @@ console.log('== 9. 象限四：生育窗口 / 精力 ==');
 
   // 职业精力冲突
   const s2 = mk({}); s2.age = 30; A.marketMigrate(s2);
+  s2.stats.LOY = 40;   // v6.4：口碑下限改为 0，先垫一个基数才能看出受损
   s2.career = { id: 'astronaut', level: 1, years: 2, joinedAge: 28 };
   s2.clubs = ['club_race'];
   const loy0 = s2.stats.LOY;

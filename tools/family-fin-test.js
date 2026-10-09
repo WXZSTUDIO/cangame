@@ -58,6 +58,7 @@ console.log('\n== 3. 父母离世 → 继承三选一 ==');
 function makeAdult(familyId) {
   const st = createGame({ name: 't', gender: 'M', familyId: familyId, startYear: 1985, talents: [] });
   st.age = 45; st.job = '会社员';
+  st.siblings = [];   // v6.3：遗产按存活手足人头分产，本用例只测「无人分产」的情形
   st.family = initFamilyFin(familyId, 1985);
   return st;
 }

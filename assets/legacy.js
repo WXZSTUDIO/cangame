@@ -306,7 +306,7 @@ function applyCryoRevive(state) {
     state.stats.ETH = c.stats.ETH;
   }
   state.stats.MONEY = c.money;
-  state.stats.HP = 55;
+  state.stats.HP = 46;
   state.stats.MOOD = 50;
   state.job = '苏醒者';
   state.ill = null;                              // 当年的不治之症，如今社区医院就能治

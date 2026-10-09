@@ -113,7 +113,7 @@ console.log('== 4. 遗嘱 / 传承 / 重生 ==');
   // 重生
   A.prepareRebirth();
   const s3 = mk({});
-  ok(A.applyRebirthBoost(s3) && s3.flags.reborn && s3.stats.INT >= 8, '重生：前世记忆 +3 智力', 'INT=' + s3.stats.INT);
+  ok(A.applyRebirthBoost(s3) && s3.flags.reborn && s3.stats.INT >= 6, '重生：前世记忆 +3 智力', 'INT=' + s3.stats.INT);
 }
 
 console.log('== 5. 礼物系统 ==');

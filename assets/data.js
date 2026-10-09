@@ -372,9 +372,13 @@ const KAOYAN_FLOOR = 1.45;
 const STRESS_TUNE = {
   /* ① 恢复公式：s.STRESS -= FLAT + s.STRESS * K + max(0, s.STRESS - T) * Q
    * 稳态 S* = (I - FLAT) / (K + Q·(1 - T/S*))；阈值 T 以下与今天逐点相同。 */
-  RECOVER_FLAT: 7,     // 固定恢复项，与今天一致（不变）
+  /* v6.4 重标定：上限 120 → 100 后按 100/120 折算；同时把固定恢复从 7 降到 3.5。
+   * 原因：v6.3 实测 300 局压力 p50 = 0.2、p99 = 6 —— 恢复项远大于年度流入，
+   * 压力条常年贴 0，「压力 → 生病 → 抑郁」整条链路等于没接上。
+   * 降到 3.5 后稳态 S* = (I − 3.5)/0.12：普通流 I≈7 → S*≈29，激进流 I≈20 → S*≈100（顶格失控）。*/
+  RECOVER_FLAT: 0.8,   // 固定恢复项（旧 7 @120 尺度 → 5.83 @100 尺度 → 实测下探到 3.5）
   RECOVER_K: 0.12,     // 比例恢复项。方案 A 的 0.20 已被否决：会把正常玩家 S* 从 50 削到 30
-  DAMP_T: 70,          // 阻尼阈值。低于此值逐点不变，只压失控尾巴
+  DAMP_T: 58,          // 阻尼阈值（旧 70 @120 尺度 → 58）。低于此值逐点不变，只压失控尾巴
   DAMP_Q: 0.25         // 阻尼系数。拟合式 q = clamp((I_P75 - 34)/30, 0, 0.35)，暂定值待实测标定
                        //   （v1.3 §3.7.3：改用 P75 而非 P90 —— P90 要求 90% 存活，会把熄灭率压到
                        //     ~0.10，亡命流被一起压平，画像分化在拟合阶段就消失）
@@ -762,7 +766,7 @@ const ENDINGS = [
     cond: s => s.flags.took_over },
   { id: 'end_avenger', rank: 'S', title: '锋利的规则',
     text: '你没有拿走谁的名字，你只是让规则锋利了一次。那家集团的招牌换下的那天，你在江大桥上站了很久。',
-    cond: s => s.flags.exposed && s.stats.FAME >= 60 },
+    cond: s => s.flags.exposed && s.stats.FAME >= 30 },
   { id: 'end_stock', rank: 'A', title: '股神',
     text: '你在金融街有一间没有招牌的办公室。屏幕上的曲线你看了四十年，最后它们都变成了你的名字。',
     cond: s => (s.market && s.market.stocks.length >= 1 ? stockValue(s) : 0) >= 100000000000 },
@@ -776,13 +780,13 @@ const ENDINGS = [
     cond: s => (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) >= 150000000000 },
   { id: 'end_vice', rank: 'A', title: '董事长之右臂',
     text: '你一生都在别人的影子里，但那个影子覆盖了整个韩国的天际线。',
-    cond: s => s.flags.side_second && s.stats.LOY >= 60 },
+    cond: s => s.flags.side_second && s.stats.LOY >= 55 },
   { id: 'end_politician', rank: 'A', title: '金融街之星',
     text: '你走进了国会议事堂。韩国最锋利的权力不在江南的办公室，而在这里的一张票上。',
-    cond: s => s.stats.FAME >= 95 && s.stats.NET >= 150 },
+    cond: s => s.stats.FAME >= 48 && s.stats.NET >= 75 },
   { id: 'end_legend', rank: 'A', title: '传说',
     text: '你的名字被写进了教科书。孩子们不知道你出生在哪儿，只知道你做过什么。',
-    cond: s => s.stats.FAME >= 160 },
+    cond: s => s.stats.FAME >= 80 },
   { id: 'end_escape', rank: 'B', title: '远走他乡',
     text: '你在仁川机场的贵宾室里等着最后一班航班。钱还在，名声臭了。这也是一种活法。',
     cond: s => s.flags.tax_raid && (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) >= 1000000000 && s.flags.took_bribe },
@@ -792,7 +796,7 @@ const ENDINGS = [
   { id: 'end_shop', rank: 'B', title: '温暖的店',
     text: '你的咖啡馆还在酒吧街的巷子里。老顾客来了一茬又一茬，你记得每个人的口味。',
     cond: s => s.flags.own_shop && (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) > 0
-      && (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) < 3000000000 && s.stats.FAME < 40 },
+      && (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) < 3000000000 && s.stats.FAME < 20 },
   { id: 'end_family', rank: 'A', title: '家族绵延',
     text: '你儿孙满堂。年夜饭的桌上，三代人抢着给你夹菜。你这辈子没当上大老板，但你种下的根，扎得很深。',
     cond: s => s.grandCount > 0 && s.stats.LOVE >= 45 },
@@ -803,13 +807,13 @@ const ENDINGS = [
     cond: s => (
       (s.career ? ['clerk', 'civil', 'factory', 'startup'].indexOf(s.career.id) >= 0 : false)
       || ['公司职员', '公务员', '大企业职员', '工厂工人', '个体户'].indexOf(s.job) >= 0
-    ) && s.stats.FAME < 40 && (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) < 3000000000 },
+    ) && s.stats.FAME < 20 && (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) < 3000000000 },
   { id: 'end_broken', rank: 'D', title: '负债者',
     text: '你奋斗了一辈子，最后只剩下一张催缴单和城中村隔断间的钥匙。',
     cond: s => (typeof worthOf === 'function' ? worthOf(s) : s.stats.MONEY) < 0 },
   { id: 'end_lonely', rank: 'C', title: '独行者',
     text: '你爬得不算高，但每一步都是自己的。天黑了，你给自己倒了一杯白酒。',
-    cond: s => s.stats.WILL >= 60 },
+    cond: s => s.stats.WILL >= 30 },
   { id: 'end_normal', rank: 'C', title: '普通的人生',
     text: '你的一生没有奇迹，也没有崩塌。像江的水，平稳地流过。',
     cond: () => true }

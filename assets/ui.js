@@ -952,6 +952,7 @@ function renderJobView() {
         <div class="job-cell"><i>口碑 / 人脉 / 声望</i><b>${Math.round(s.LOY)} / ${Math.round(s.NET)} / ${Math.round(s.FAME)}</b></div>
         <div class="job-cell"><i>征信分</i><b style="color:${STATE.credit < 60 ? 'var(--red)' : 'inherit'}">${Math.round(STATE.credit == null ? 100 : STATE.credit)}</b></div>
         ${m.debt > 0 ? `<div class="job-cell"><i>房贷车贷（年息 ${(rateAt(fmtYear(STATE)) * 100).toFixed(1)}%）</i><b style="color:var(--red)">-${fmtMoney(m.debt)}</b></div>` : ''}
+        ${spouseAssetCell(STATE)}
       </div>
       ${talHtml ? `<div class="job-sec">持有天赋</div><div class="job-talents">${talHtml}</div>` : ''}
     </div>
@@ -991,6 +992,23 @@ function hpText(v) {
 }
 
 /* 家庭账簿卡（人际 → 家人 顶部） */
+/* ---------- v6.4.0 配偶资产 / 负债：两处展示共用同一口径 ---------- */
+function spouseFinLine(state) {
+  const h = state.household;
+  const sp = state.spouse;
+  if (!h || !sp || sp.alive === false) return '';
+  const parts = [`名下资产 ${fmtMoney(h.spAssets || 0)}`, `年收入 ${fmtMoney(h.spIncome || 0)}`];
+  if (h.spDebt > 0) parts.push(`婚前债务 ${fmtMoney(h.spDebt)}`);
+  if ((h.joint || 0) > 0) parts.push(`婚后共同积累 ${fmtMoney(h.joint)}`);
+  return parts.join(' · ') + '。';
+}
+function spouseAssetCell(state) {
+  const h = state.household;
+  if (!h || !state.flags.married || (state.spouse && state.spouse.alive === false)) return '';
+  const net = (h.spAssets || 0) - (h.spDebt || 0);
+  return `<div class="job-cell"><i>配偶名下（含婚前债）</i><b style="color:${net < 0 ? 'var(--red)' : 'inherit'}">${net < 0 ? '-' : ''}${fmtMoney(Math.abs(net))}</b></div>`;
+}
+
 function familyLedgerCard() {
   if (STATE.flags.orphan) return '';
   const fin = STATE.family || { assets: 0, debt: 0 };
@@ -1045,6 +1063,8 @@ function renderRelView() {
     extra = `<div class="of-btns" style="padding:0 4px 10px">
       <button class="btn small" onclick="uiSocialAll('family')">🔁 一键陪家里人各一次</button>
     </div>`;
+    /* v6.4.0：别人眼里的你——面板上看不见的东西 */
+    extra += publicImageHtml(STATE);
     extra += familyLedgerCard() + familyRecentLog();
     /* v6.3.0 家族图谱：三代人一眼看完 */
     extra += familyTreeHtml();
@@ -1073,7 +1093,8 @@ function renderRelView() {
       cards.push(sp.alive
         ? {
           avaSvg: personAvatar(sp.name, oppG, sp.age, 'green'), name: sp.name,
-          sub: `${sp.age}岁 · 感情 ${Math.round(sp.affinity || 60)}%。携手走过半生的人。`, key: 'spouse',
+          /* v6.4：结婚是两个人的账簿合成一本，配偶带过来的资产/负债要看得见 */
+          sub: `${sp.age}岁 · 感情 ${Math.round(sp.affinity || 60)}%。${spouseFinLine(STATE) || '携手走过半生的人。'}`, key: 'spouse',
           multi: `<button class="rel-act" onclick="uiSpouse(0)">陪伴</button>
             <button class="rel-act" onclick="uiSpouse(1)">约会 ${fmtMoney(Math.round(LOVE_META.dateCost * 0.7))}</button>
             <button class="rel-act" onclick="uiSpouse(2)">送礼 ${fmtMoney(Math.round(LOVE_META.giftCost * 0.6))}</button>`
@@ -1257,7 +1278,10 @@ function renderRelView() {
       cards.push({
         avaSvg: personAvatar(l.name, l.gender, l.age, married ? 'amber' : (isDating ? 'green' : '')),
         name: l.name,
+        /* v6.4：处得够久才看得清对方家底——认识两天就报资产，那不是恋爱是尽调 */
         sub: `<b>${stageTxt}</b> · ${loverLabel(l)} · 好感 <b>${Math.round(l.affinity)}%</b>` +
+          `${(l.affinity >= 45 && l.fin) ? ` · <span class="rel-fin">家底 ${fmtMoney(l.fin.assets)}` +
+            `${l.fin.debt > 0 ? ` / 负债 ${fmtMoney(l.fin.debt)}` : ''} / 年收入 ${fmtMoney(l.fin.income)}</span>` : ''}` +
           `${l.pregnant ? (l.illegitPreg ? ' · <b style="color:var(--red)">⚠ 怀了你的孩子（婚外）</b>' : ' · ⚠ 怀孕了') : ''}` +
           `${l.hiddenChild ? ' · 有个养在外面的孩子' : ''}` +
           `${(married && !l.secret) ? ' · <b style="color:var(--red)">婚外</b>' : ''}${l.secret ? ' · <b style="color:var(--red)">偷情中</b>' : ''}` +
@@ -1478,7 +1502,7 @@ function renderRelView() {
       const inPrison = STATE.prison > 0;
       cards.push({ ava: '🎓', cls: profOff ? 'amber' : '', name: '客座教授',
         sub: `回大学讲一门课（本科 / 智力 70）。课酬按资历与智力结算。${profOff ? ' · 今年讲过了' : ''}`, key: null,
-        multi: (STATE.age >= 60 && !profOff && !inPrison && ((STATE.edu.eduLevel || 0) >= 3 || (STATE.stats.INT || 0) >= 70))
+        multi: (STATE.age >= 60 && !profOff && !inPrison && ((STATE.edu.eduLevel || 0) >= 3 || (STATE.stats.INT || 0) >= 35))
           ? '<button class="rel-act" onclick="uiSilver(\'prof\')">去讲课</button>'
           : `<span class="rel-act dis">${inPrison ? '服刑中' : (profOff ? '今年讲过了' : (STATE.age < 60 ? '60 岁起' : '资历不够'))}</span>` });
       cards.push({ ava: '📖', cls: bookOff ? 'amber' : '', name: '写自传',
@@ -2240,6 +2264,18 @@ function renderEnd() {
   epBox.innerHTML = ep
     ? `<div class="epitaph-tag">🕯 碑文 · 平生</div><p class="epitaph-text">${esc(ep)}</p>`
     : '';
+  /* v6.4.0：盖棺定论——别人眼里的你，也该在最后一页看见 */
+  if (typeof publicImage === 'function') {
+    let imBox = $('endImageBox');
+    if (!imBox) {
+      epBox.insertAdjacentHTML('afterend', '<div id="endImageBox"></div>');
+      imBox = $('endImageBox');
+    }
+    const im = publicImage(STATE);
+    imBox.innerHTML = publicImageHtml(STATE)
+      + `<div class="epitaph-tag" style="margin-top:12px">🗣 盖棺定论</div>
+         <p class="epitaph-text">你这一生，在别人嘴里的总分是 <b>${im.score}</b>（${esc(im.label)}）。${esc(im.headline)}</p>`;
+  }
   $('endScore').textContent = score + ' / 100';
   const s = STATE.stats;
   const edu = STATE.edu || {};

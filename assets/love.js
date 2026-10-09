@@ -47,10 +47,13 @@ function makeLover(state, src) {
   const bg = MATCH_BACKGROUNDS[randInt(0, MATCH_BACKGROUNDS.length - 1)];
   const look = clamp(Math.round(rand(35, 90)), 5, 100);
   const aff = src === '同学' ? randInt(18, 34) : randInt(12, 28);
+  const age = clamp(state.age + randInt(-4, 4), 16, 70);
   return {
     name: randomPersonName(gender),
     gender: gender,
-    age: clamp(state.age + randInt(-4, 4), 16, 70),
+    age: age,
+    /* v6.4：这个人不是一张空名片 —— TA 有自己的资产、负债和收入 */
+    fin: (typeof makeSpouseFin === 'function') ? makeSpouseFin(state, bg.key, age) : null,
     look: look,
     charm: clamp(Math.round(rand(30, 90)), 5, 100),
     tp: tp.key, bg: bg.key, src: src || '偶遇',
@@ -299,7 +302,7 @@ function meetByMatchmaker(state) {
   const l = makeLover(state, '相亲');
   // 相亲对象质量与你的条件挂钩：钱、名望、道德都会影响
   const worth = netWorth ? netWorth(state) : state.stats.MONEY;
-  const q = clamp(Math.round((state.stats.CHA * 0.4 + state.stats.FAME * 0.3 + Math.sqrt(Math.max(0, worth) / 1e8) * 6 + state.stats.ETH * 0.2) / 2), 10, 95);
+  const q = clamp(Math.round((state.stats.CHA * 0.4 + state.stats.FAME * 0.6 + Math.sqrt(Math.max(0, worth) / 1e8) * 6 + state.stats.ETH * 0.2) / 2), 10, 95);
   l.look = clamp(Math.round((l.look + q) / 2), 10, 98);
   l.charm = clamp(Math.round((l.charm + q) / 2), 10, 98);
   l.affinity = randInt(26, 42);
@@ -419,7 +422,7 @@ function loveIntimate(state, idx, safe) {
     return { ok: true, pregnant: false, affair: true, caught: false };
   }
 
-  const p = safe ? LOVE_META.safePregnant : (LOVE_META.pregnantBase + (l.look / 400) + (state.stats.CHA / 500));
+  const p = safe ? LOVE_META.safePregnant : (LOVE_META.pregnantBase + (l.look / 400) + (state.stats.CHA / 250));
   if (chance(p)) {
     l.pregnant = true;
     return { ok: true, pregnant: true, lover: l };
@@ -483,6 +486,10 @@ function divorce(state, reason) {
   const want = Math.round(Math.max(0, worth) * rand(0.25, 0.4));
   const paid = Math.min(want, Math.max(0, state.stats.MONEY));
   state.stats.MONEY -= paid;
+  // v6.4：家庭账簿清算——共同积累对半分，婚前财产与婚前债务各归各
+  const hset = (typeof settleHouseholdOnDivorce === 'function')
+    ? settleHouseholdOnDivorce(state, reason === '不忠' || reason === '家暴' || !!(state.flags && state.flags.exposed))
+    : null;
   state.childCount = keep;
   if (state.children && state.children.length > keep) state.children.length = keep;
   delete state.flags.married;
@@ -500,8 +507,12 @@ function divorce(state, reason) {
   applyEffects(state, { LOVE: -22, SEC: -14, MOOD: -10, STRESS: 14, ETH: -8, FAME: -6, HP: -4 });
   pushLog(state, `【离婚】你和 ${sp.name} 把证换成了另一本${reason ? '（' + reason + '）' : ''}。` +
     `分走了 ${fmtMoney(paid)}${lost ? `，${lost} 个孩子跟着对方走了` : ''}。房子空了一半，你花了很久才习惯。`, 'warn');
+  if (hset) {
+    pushLog(state, `【清算】婚后共同积累 ${fmtMoney(hset.joint)}，你拿回 ${fmtMoney(hset.got)}；` +
+      `${sp.name} 婚前的资产和 TA 名下那笔债，都跟着 TA 走了。`, 'money');
+  }
   if (typeof addGrief === 'function') addGrief(state, `和 ${sp.name} 离婚`, 10);
-  return { ok: true, paid: paid, lost: lost, ex: (state.exes || [])[0] };
+  return { ok: true, paid: paid, lost: lost, hset: hset, ex: (state.exes || [])[0] };
 }
 
 /* ---------- 分手：恋爱关系可以主动结束 ---------- */
@@ -667,7 +678,7 @@ function propose(state, idx) {
   const bg = MATCH_BACKGROUNDS.find(x => x.key === l.bg) || MATCH_BACKGROUNDS[0];
   const worth = (typeof netWorth === 'function') ? netWorth(state) : state.stats.MONEY;
   const need = bg.need * (1 + l.look / 220);
-  let p = 0.62 + (l.affinity - LOVE_META.marryAffinity) / 50 + state.stats.CHA / 320
+  let p = 0.62 + (l.affinity - LOVE_META.marryAffinity) / 50 + state.stats.CHA / 160
     + (worth >= need ? 0.26 : -0.14) + state.stats.ETH / 500
     + (state.flags.own_house ? 0.12 : 0);
   p = clamp(p, 0.12, 0.96);
@@ -688,11 +699,25 @@ function marry(state, l) {
   state.flags.married = true;
   state.flags.in_love = true;
   state.spouseName = l.name;
-  state.spouse = { name: l.name, age: l.age, affinity: l.affinity, alive: true, since: state.age, look: l.look, tp: l.tp, bg: l.bg };
+  const fin = (l && l.fin) || makeSpouseFin(state, l ? l.bg : 'mid', l ? l.age : state.age);
+  state.spouse = {
+    name: l.name, age: l.age, affinity: l.affinity, alive: true, since: state.age,
+    look: l.look, tp: l.tp, bg: l.bg, fin: fin
+  };
   delete state.flags.dating;
   lv.candidates = lv.candidates.filter(x => x !== l);
   applyEffects(state, { LOVE: 10, SEC: 8, WILL: 3, STRESS: 5, MONEY: -8000000 });
+
+  /* v6.4：结婚 = 两个人的账簿合成一本。婚前财产仍归各自，但从此一起过日子 */
+  const h = householdInit(state);
+  h.spAssets = fin.assets; h.spDebt = fin.debt; h.spIncome = fin.income;
+  h.spAssets0 = fin.assets; h.spDebt0 = fin.debt; h.joint = 0; h.since = state.age;
+  delete h.settled;
+
   pushLog(state, `【结婚】你和 ${l.name} 领了证。${state.age}，${fmtYear(state)}。从此人生不再是一个人的战场。`, 'money');
+  pushLog(state, `【两家并一家】${l.name} 带过来名下资产 ${fmtMoney(fin.assets)}` +
+    `${fin.debt > 0 ? `，以及一笔 ${fmtMoney(fin.debt)} 的婚前债务——法律上算 TA 自己的，可日子是两个人过` : '，没有负债'}` +
+    `。TA 一年挣 ${fmtMoney(fin.income)}。`, 'money');
   return { ok: true, spouse: state.spouse };
 }
 
@@ -765,6 +790,12 @@ function loveTick(state) {
       applyEffects(state, { LOVE: -18, SEC: -12 });
       if (typeof addGrief === 'function') addGrief(state, `${state.spouse.name} 走了`, 24);
       pushLog(state, `【永别】${state.spouse.name} 先你一步走了。你们说好要一起变老的。`, 'warn');
+      // v6.4：限定继承——遗产范围内还债，超出部分不用你扛
+      const hs = (typeof settleHouseholdOnDeath === 'function') ? settleHouseholdOnDeath(state) : null;
+      if (hs && (hs.estate > 0 || hs.debt > 0)) {
+        pushLog(state, `【继承】${state.spouse.name} 留下的账簿：遗产 ${fmtMoney(hs.estate)}，债务 ${fmtMoney(hs.debt)}。` +
+          (hs.limited ? '按限定继承，超出的部分你不用替 TA 还。' : '') + `你实际接手 ${fmtMoney(hs.got)}。`, 'money');
+      }
     } else {
       state.spouse.age += 1;
       // 婚姻是要经营的：一年到头不闻不问，感情会冷下来
@@ -825,7 +856,7 @@ function loveTick(state) {
 
 const CRISIS_META = {
   exposureBase: 0.09,     // 有秘密在身时的年度基础曝光率
-  fameK: 0.0024,          // 每点名望推高的曝光率（名人没有隐私）
+  fameK: 0.0048,          // 每点名望推高的曝光率（名人没有隐私）
   clubK: 0.045,           // 每个圈层（圈子里人多嘴杂）
   secretK: 0.05,          // 每段偷情关系
   childK: 0.06,           // 每个未认领的私生子（孩子在长大，纸包不住火）
@@ -1117,4 +1148,124 @@ function spouseBlacklist(state) {
     `圈子里没人再接你电话，商会撤销了你的席位，合作方在合同上按了手印又抽回去。\n` +
     `名望 ${before} → ${Math.round(state.stats.FAME || 0)}。你还活着，只是没人再提你的名字。`, 'warn');
   return { ok: true, cut: cut };
+}
+
+
+/* =========================================================
+ * v6.4.0 配偶资产 / 负债并入家庭
+ * ---------------------------------------------------------
+ * 以前结婚只是「多了一个人」：配偶没有钱、没有债、没有收入，
+ * 于是「娶了个家世显赫的人」和「娶了个家境一般的人」在账簿上
+ * 完全等价 —— 婚姻这件事在数值上是空的。
+ *
+ * 现在每个可婚对象在生成时就带着一份自己的资产负债表：
+ *   · 名下资产（婚前个人财产，离婚时 TA 带走）
+ *   · 婚前债务（法律上是个人债，但日子是两个人过 —— 用共同收入逐年还）
+ *   · 年收入（婚后按 55% 进家庭现金，剩下的 TA 自己支配）
+ * 婚后每年结算一次（spouseFinTick），离婚 / 身故各有清算规则。
+ * ========================================================= */
+const SPOUSE_FIN = {
+  poor: { assets: [0, 5000000], debtP: 0.34, debt: [1000000, 10000000], income: [2000000, 4000000] },
+  mid: { assets: [5000000, 25000000], debtP: 0.24, debt: [3000000, 20000000], income: [3500000, 6000000] },
+  rich: { assets: [30000000, 120000000], debtP: 0.20, debt: [10000000, 80000000], income: [5000000, 9000000] },
+  top: { assets: [150000000, 800000000], debtP: 0.18, debt: [30000000, 200000000], income: [8000000, 15000000] }
+};
+
+function makeSpouseFin(state, bgKey, age) {
+  const t = SPOUSE_FIN[bgKey] || SPOUSE_FIN.mid;
+  const scale = (typeof tableAt === 'function' && typeof FIN_SCALE !== 'undefined') ? tableAt(FIN_SCALE, fmtYear(state)) : 1;
+  // 年纪越大，攒下的越多；22 岁是基准，50 岁约为 1.8 倍
+  const ageK = clamp(0.55 + Math.max(0, (age || 24) - 22) * 0.035, 0.55, 1.9);
+  const assets = Math.round(rand(t.assets[0], t.assets[1]) * scale * ageK);
+  const debt = chance(t.debtP) ? Math.round(rand(t.debt[0], t.debt[1]) * scale) : 0;
+  const income = Math.round(rand(t.income[0], t.income[1]) * scale);
+  return { assets: assets, debt: debt, income: income, scale: scale };
+}
+
+/* 家庭账簿口径：
+ *  · spAssets 是配偶**名下**的资产 —— 不在你的现金里，但也是这个家的一部分，
+ *    算进净资产（离婚时 TA 带走，身故时按限定继承结给你）；
+ *  · joint 只是「婚后共同积累了多少」的流水账，钱早已进过现金，
+ *    **不能**再算一次净资产，否则就是重复计数。 */
+function householdNet(state) {
+  const h = state.household;
+  if (!h) return 0;
+  return Math.round((h.spAssets || 0) - (h.spDebt || 0));
+}
+function householdInit(state) {
+  if (state.household) return state.household;
+  state.household = { spAssets: 0, spDebt: 0, spIncome: 0, joint: 0, since: state.age, spAssets0: 0, spDebt0: 0 };
+  return state.household;
+}
+
+/* 婚后每一年的家庭财务结算 */
+function spouseFinTick(state) {
+  /* 老存档 / 事件直接塞进来的配偶没有账簿：按 TA 的家境补一份，别让婚姻在数值上是空的 */
+  if (!state.household && state.flags && state.flags.married && state.spouse && state.spouse.alive !== false) {
+    const fin = state.spouse.fin || makeSpouseFin(state, state.spouse.bg || 'mid', state.spouse.age || state.age);
+    state.spouse.fin = fin;
+    const h = householdInit(state);
+    h.spAssets = fin.assets; h.spDebt = fin.debt; h.spIncome = fin.income;
+    h.spAssets0 = fin.assets; h.spDebt0 = fin.debt; h.since = state.age;
+  }
+  const h = state.household;
+  if (!h) return null;
+  const sp = state.spouse;
+  if (!sp || sp.alive === false) return null;   // 人不在了，账先冻着（清算走离婚 / 继承）
+
+  h.spIncome = Math.round((h.spIncome || 0) * (1 + rand(0.01, 0.05)));   // 涨薪
+  let cash = Math.round((h.spIncome || 0) * 0.55);                       // 进家庭现金的部分
+  let repaid = 0;
+  // 婚前债务：法律上是 TA 自己的，但日子是两个人过 —— 从共同收入里挤
+  if (h.spDebt > 0 && cash > 0) {
+    repaid = Math.min(h.spDebt, Math.round(cash * 0.45));
+    h.spDebt -= repaid;
+    cash -= repaid;
+  }
+  h.joint = Math.round((h.joint || 0) + cash);          // 剩下的进共同储蓄
+  h.spAssets = Math.round((h.spAssets || 0) * 1.03);    // 名下资产随年代增值
+  if (cash > 0) state.stats.MONEY += cash;
+  h.lastIncome = cash; h.lastRepaid = repaid;
+
+  // 娘家 / 婆家：一年里可能发生的一件与钱有关的事
+  if (chance(0.07) && state.age >= 24) {
+    const bg = sp.bg || (sp.fin && sp.fin.bg) || 'mid';
+    if (bg === 'top' || bg === 'rich') {
+      const gift = Math.round((h.spAssets || 0) * rand(0.02, 0.06));
+      if (gift > 0) {
+        h.spAssets -= gift; h.joint += gift; state.stats.MONEY += gift;
+        pushLog(state, `【家里】岳家把一笔 ${fmtMoney(gift)} 转到了你们共同的账户上。${sp.name} 说：爸妈给的，别推。`, 'money');
+      }
+    } else if (h.spDebt > 0 && chance(0.35)) {
+      const boom = Math.round(h.spDebt * rand(0.2, 0.5));
+      h.spDebt += boom;
+      applyEffects(state, { STRESS: 7, MOOD: -5, LOVE: -3 });
+      pushLog(state, `【家里】${sp.name} 婚前那笔债出了岔子，滚到了 ${fmtMoney(h.spDebt)}。你们关着灯吵了一晚上。`, 'warn');
+    }
+  }
+  return { income: cash, repaid: repaid };
+}
+
+/* 离婚清算：婚前财产各归各，婚后共同积累对半分，婚前债务 TA 带走 */
+function settleHouseholdOnDivorce(state, fault) {
+  const h = state.household;
+  if (!h) return null;
+  const joint = Math.round(h.joint || 0);
+  // 有过错方少分（出轨被抓 / 家暴 之类）；无过错四六开
+  const mine = fault ? Math.round(joint * 0.35) : Math.round(joint * 0.5);
+  state.stats.MONEY += mine;
+  h.joint = 0; h.spAssets = 0; h.spDebt = 0; h.settled = state.age;
+  return { got: mine, joint: joint, tookDebt: 0 };
+}
+
+/* 配偶身故：限定继承 —— 只在遗产范围内承担债务 */
+function settleHouseholdOnDeath(state) {
+  const h = state.household;
+  if (!h) return null;
+  const estate = Math.round((h.spAssets || 0) + (h.joint || 0));
+  const debt = Math.round(h.spDebt || 0);
+  const net = Math.max(0, estate - Math.min(debt, estate));
+  state.stats.MONEY += net;
+  h.joint = 0; h.spAssets = 0; h.spDebt = 0; h.settled = state.age;
+  return { got: net, estate: estate, debt: debt, limited: debt > estate };
 }

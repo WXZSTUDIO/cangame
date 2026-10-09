@@ -167,15 +167,15 @@ function socialAct(state, kind, idx) {
     if (!p || !p.alive) { delete touch[key]; return { ok: false, msg: '已经不在了' }; }
     p.affinity = clamp((p.affinity || 50) + randInt(4, 8), 0, 100);
     const isF = kind === 'father';
-    s.LOVE += 3; s.SEC += 3; s.STRESS -= 4;
-    if (isF) { s.WILL += 2; s.INT += 1; } else { s.HP += 2; s.MOOD = (s.MOOD || 60) + 3; }
+    s.LOVE += 3; s.SEC += 3; s.STRESS -= 3.33;
+    if (isF) { s.WILL += 1; s.INT += 0.5; } else { s.HP += 1.67; s.MOOD = (s.MOOD || 60) + 3; }
     if (state.age >= 20) s.MONEY -= 400000;
     pushLog(state, isF
       ? `【父子】你和父亲 ${p.name} 喝了二两白酒。他话不多，只说：钱够不够用。`
       : `【母子】你陪母亲 ${p.name} 在厨房择菜。她说：人回来就好，还买什么东西。`, 'muted');
   } else if (kind === 'parents') {
     if (!state.flags.parents_alive) { delete touch[key]; return { ok: false, msg: '已经不在了' }; }
-    s.LOVE += 3; s.SEC += 3; s.STRESS -= 4;
+    s.LOVE += 3; s.SEC += 3; s.STRESS -= 3.33;
     if (state.age >= 20) s.MONEY -= 500000;
     pushLog(state, '【团聚】你回家陪父母吃了一顿饭。母亲说：人回来就好，还带什么东西。', 'muted');
   } else if (kind === 'spouse') {
@@ -193,16 +193,16 @@ function socialAct(state, kind, idx) {
       if (s.MONEY < c) { delete touch[key]; return { ok: false, msg: '钱不够约会' }; }
       s.MONEY -= c; spend = c;
       gain = randInt(9, 14) + Math.round(s.CHA / 16);
-      s.LOVE += 4; s.STRESS -= 6; s.MOOD = (s.MOOD || 60) + 4; s.SEC += 2;
+      s.LOVE += 4; s.STRESS -= 5; s.MOOD = (s.MOOD || 60) + 4; s.SEC += 2;
     } else if (mode === 'gift') {
       const c = Math.round(LOVE_META.giftCost * (married ? 0.6 : 1));
       if (s.MONEY < c) { delete touch[key]; return { ok: false, msg: '钱不够买礼物' }; }
       s.MONEY -= c; spend = c;
       gain = randInt(12, 17) + Math.round(s.CHA / 14);
-      s.LOVE += 4; s.CHA += 1; s.MOOD = (s.MOOD || 60) + 3;
+      s.LOVE += 4; s.CHA += 0.5; s.MOOD = (s.MOOD || 60) + 3;
     } else {
       gain = randInt(5, 9) + Math.round(s.CHA / 24);
-      s.LOVE += 3; s.STRESS -= 4; s.SEC += 2; s.MOOD = (s.MOOD || 60) + 3;
+      s.LOVE += 3; s.STRESS -= 3.33; s.SEC += 2; s.MOOD = (s.MOOD || 60) + 3;
     }
     touch.spouse = state.age; // 让年度结算知道：今年你经营过这段关系
     l.affinity = clamp((l.affinity || 60) + gain, 0, 100);
@@ -214,11 +214,11 @@ function socialAct(state, kind, idx) {
     return { ok: true, affinity: l.affinity };
   } else if (kind === 'child') {
     if (!state.childCount) { delete touch[key]; return { ok: false }; }
-    s.LOVE += 3; s.GROW += 2; s.STRESS -= 2;
+    s.LOVE += 3; s.GROW += 2; s.STRESS -= 1.67;
     pushLog(state, '【陪伴】你推掉了应酬，陪孩子待了一整天。孩子画了一幅画：这是你。', 'muted');
   } else if (kind === 'pet') {
     if (!state.pet || !state.pet.alive) { delete touch[key]; return { ok: false }; }
-    s.LOVE += 2; s.HP += 2; s.SEC += 1; s.MOOD = (s.MOOD || 60) + 2;
+    s.LOVE += 2; s.HP += 1.67; s.SEC += 1; s.MOOD = (s.MOOD || 60) + 2;
     pushLog(state, `【遛弯】你带着 ${state.pet.name} 在江边走了一圈。它很开心，你也是。`, 'muted');
   } else if (kind === 'friend') {
     const f = state.friends && state.friends[idx];
@@ -228,7 +228,7 @@ function socialAct(state, kind, idx) {
      * 朋友项与 r_friends（老友饭局，−12）功能重叠，故降权为轻量维护：STRESS −2 → −1，
      * 文案也从「聚了聚」改为「发条消息」，明确它不是减压手段。
      * ⚠ spec 原文写的是「−3 → −1」，实测现值是 −2 —— spec 的输入值有误，按意图取 −1。 */
-    s.NET += 2; s.LOVE += 2; s.STRESS -= 1;
+    s.NET += 1; s.LOVE += 2; s.STRESS -= 0.83;
     const t = FRIEND_TYPES.find(x => x.key === f.key);
     pushLog(state, `【问候】你给 ${f.name}（${t ? t.label : '朋友'}）发了条消息。他回得很快，虽然只聊了几句。`, 'muted');
   } else { delete touch[key]; return { ok: false }; }
@@ -534,7 +534,7 @@ function createGame(opt) {
     familyId: family.id,
     familyName: family.name,
     talents: opt.talents || [],
-    stats: { INT: 5, STR: 5, CHA: 5, WILL: 5, HP: 60, STRESS: 10, MONEY: 0, NET: 0, FAME: 0, LOY: 0,
+    stats: { INT: 3, STR: 3, CHA: 3, WILL: 3, HP: 50, STRESS: 8, MONEY: 0, NET: 0, FAME: 0, LOY: 0,
              CUR: 5, LOVE: 5, SEC: 5, AUTO: 5, GROW: 0, ETH: 60, MOOD: 60 },
     flags: { parents_alive: !isOrphan },
     job: '婴儿',
@@ -732,10 +732,10 @@ function illStageCn(n) {
 function illnessRisk(state) {
   const s = state.stats;
   let p;
-  if (s.HP < 25) p = 0.28;
-  else if (s.HP < 40) p = 0.15;
-  else if (s.HP < 55) p = 0.055;
-  else if (s.HP < 70) p = 0.018;
+  if (s.HP < 21) p = 0.28;
+  else if (s.HP < 33) p = 0.15;
+  else if (s.HP < 46) p = 0.055;
+  else if (s.HP < 58) p = 0.018;
   else p = 0.007;
   p *= 1 + Math.max(0, s.STRESS - 50) / 90;
   p *= 1 + Math.max(0, state.age - 55) / 90;
@@ -818,7 +818,7 @@ function illnessTick(state) {
     const ref = ILLNESS.find(x => x.id === ill.id) || ILLNESS[0];
     ill.years = (ill.years || 0) + 1;
     // 身体底子还行、又不是慢性病时，也有可能自己好转
-    if (!ill.chronic && ill.stage <= 2 && s.HP >= 52 && chance(0.3)) {
+    if (!ill.chronic && ill.stage <= 2 && s.HP >= 43 && chance(0.3)) {
       ill.stage -= 1;
       if (ill.stage <= 0) {
         state.ill = null;
@@ -835,7 +835,7 @@ function illnessTick(state) {
     pushLog(state, `【病】${ref.name} · 第 ${ill.years} 年 · ${illStageCn(ill.stage)}。健康 -${drain}。` +
       (ill.stage >= 3 ? '再这么拖下去，就真的来不及了。' : ''), 'warn');
     // 只有拖到危重、身体又真的撑不住时才会要命
-    if (ill.stage >= 4 && s.HP < 45) {
+    if (ill.stage >= 4 && s.HP < 38) {
       const p = clamp(0.15 + Math.max(0, 40 - s.HP) / 60, 0.12, 0.6);
       if (chance(p)) {
         // 走 ENDINGS 正式判定，病名与病程作为死因的补充信息传进去
@@ -905,15 +905,60 @@ function pushLog(state, text, type) {
   if (state.log.length > 400) state.log.shift();
 }
 
+/* =========================================================
+ * v6.4.0 属性尺度：所有数值上限统一 100
+ * ---------------------------------------------------------
+ *  旧尺度（v6.3 及以前）：
+ *    INT / STR / CHA / WILL / NET / FAME  0 – 200
+ *    HP / STRESS                          0 – 120
+ *    LOY                                 -50 – 150
+ *    CUR / LOVE / SEC / AUTO / GROW / ETH / MOOD  0 – 100
+ *
+ *  新尺度：一律 0 – 100。为了让「相对位置」不变（旧尺度下 p50 ≈ 满值的一半，
+ *  新尺度下也该是一半左右，而不是人人都顶格），成长量按 STAT_UNIT 缩放：
+ *    INT/STR/CHA/WILL/NET/FAME  ×0.5      （200 → 100）
+ *    HP/STRESS                  ×0.8333   （120 → 100）
+ *    LOY                        ×0.6667   （150 → 100）
+ *  所有门槛（职业 need / 事件 cond / 公式系数）已按同一比例重标定。
+ * ========================================================= */
+const STAT_CAP = {
+  INT: 100, STR: 100, CHA: 100, WILL: 100, HP: 100, STRESS: 100,
+  NET: 100, FAME: 100, LOY: 100, CUR: 100, LOVE: 100, SEC: 100,
+  AUTO: 100, GROW: 100, ETH: 100, MOOD: 100
+};
+const STAT_UNIT = {
+  INT: 100 / 200, STR: 100 / 200, CHA: 100 / 200, WILL: 100 / 200,
+  NET: 100 / 200, FAME: 100 / 200,
+  HP: 100 / 120, STRESS: 100 / 120,
+  LOY: 100 / 150
+};
+/* 老存档迁移：把旧尺度下的数值按比例折到 0–100 */
+function statCapMigrate(state) {
+  if (!state || !state.stats) return state;
+  const s = state.stats;
+  for (const k in STAT_UNIT) {
+    if (typeof s[k] !== 'number') continue;
+    if (s[k] > STAT_CAP[k] || (k === 'LOY' && s[k] < 0)) {
+      s[k] = k === 'LOY' ? Math.round(((s[k] + 50) / 200) * 100) : Math.round(s[k] * STAT_UNIT[k]);
+      s[k] = clamp(s[k], 0, STAT_CAP[k]);
+    }
+  }
+  for (const k in STAT_CAP) if (typeof s[k] === 'number') s[k] = clamp(s[k], 0, STAT_CAP[k]);
+  state._capV = 1;
+  return state;
+}
+
 /* ---------- 效果结算 ---------- */
 function applyEffects(state, eff, silent) {
+  if (state && state._capV !== 1 && state.stats) statCapMigrate(state);
   if (!eff) return;
   const s = state.stats;
   for (const k in eff) {
     const v = eff[k];
     if (typeof v !== 'number') continue;
     if (s[k] === undefined) { s[k] = 0; }
-    s[k] += v;
+    /* v6.4：成长量按新尺度缩放（见文件尾 STAT_UNIT 注释） */
+    s[k] += (k === 'MONEY') ? v : v * (STAT_UNIT[k] || 1);
   }
   // v6.0：新闻/事件的市场情绪（newsK→股市、houseK→楼市），由 marketTick 消费后清零
   if (eff.newsK && state.market) state.market.newsBias = clamp((state.market.newsBias || 0) + eff.newsK, -0.55, 0.80);
@@ -922,17 +967,20 @@ function applyEffects(state, eff, silent) {
   if (eff.techK && state.market) state.market.techK = clamp((state.market.techK || 0) + eff.techK, -0.65, 1.20);
   // 事件效果里带的职称（eff.job）统一走 setJob()，孤儿职称会被映射回阶梯
   if (eff.job) setJob(state, eff.job);
-  s.HP = clamp(s.HP, 0, 120);
-  s.STRESS = clamp(s.STRESS, 0, 120);
-  s.INT = clamp(s.INT, 0, 200); s.STR = clamp(s.STR, 0, 200);
-  s.CHA = clamp(s.CHA, 0, 200); s.WILL = clamp(s.WILL, 0, 200);
-  s.NET = clamp(s.NET, 0, 200); s.FAME = clamp(s.FAME, 0, 200);
-  s.LOY = clamp(s.LOY, -50, 150);
+  /* v6.4：所有属性上限统一 100。旧尺度（INT/FAME 等 200、HP/STRESS 120、
+   * LOY -50..150）下的成长量在上方已按 STAT_UNIT 缩放，这里只做封顶。 */
+  s.HP = clamp(s.HP, 0, STAT_CAP.HP);
+  s.STRESS = clamp(s.STRESS, 0, STAT_CAP.STRESS);
+  s.INT = clamp(s.INT, 0, STAT_CAP.INT); s.STR = clamp(s.STR, 0, STAT_CAP.STR);
+  s.CHA = clamp(s.CHA, 0, STAT_CAP.CHA); s.WILL = clamp(s.WILL, 0, STAT_CAP.WILL);
+  s.NET = clamp(s.NET, 0, STAT_CAP.NET); s.FAME = clamp(s.FAME, 0, STAT_CAP.FAME);
+  s.LOY = clamp(s.LOY, 0, STAT_CAP.LOY);
   s.CUR = clamp(s.CUR, 0, 100); s.LOVE = clamp(s.LOVE, 0, 100);
   s.SEC = clamp(s.SEC, 0, 100); s.AUTO = clamp(s.AUTO, 0, 100);
   s.GROW = clamp(s.GROW, 0, 100);
   s.ETH = clamp(s.ETH === undefined ? 60 : s.ETH, 0, 100);
   s.MOOD = clamp(s.MOOD === undefined ? 60 : s.MOOD, 0, 100);
+  for (const q in s) if (q !== 'MONEY' && typeof s[q] === 'number') s[q] = Math.round(s[q] * 100) / 100;
   s.MONEY = Math.round(s.MONEY);
   // 记录峰值
   if (s.MONEY > state.peak.MONEY) state.peak.MONEY = s.MONEY;
@@ -1576,7 +1624,7 @@ function yearBase(state) {
   // v6 监狱：服刑结算——收入中断在收支段处理；刑满当年出狱
   if (state.prison > 0) {
     state.prison -= 1;
-    s.STR += 1; s.WILL += 1; s.MOOD = (s.MOOD || 60) - 3; s.STRESS = (s.STRESS || 0) + 5;
+    s.STR += 0.5; s.WILL += 0.5; s.MOOD = (s.MOOD || 60) - 3; s.STRESS = (s.STRESS || 0) + 5;
     if (state.prison === 0) {
       state.flags.ex_prisoner = true;
       state.job = '无业';
@@ -1584,33 +1632,53 @@ function yearBase(state) {
       pushLog(state, '【出狱】铁门在身后打开。世界换了几轮，手机屏幕变大了，你口袋里只有一张释放证明和一张车票。', 'warn');
     }
   }
-  // 自然成长 + 人生指标自然培养
+  /* 自然成长 + 人生指标自然培养
+   * v6.4 重标定（上限统一 100 之后重做）：
+   *   · 智力/体魄 童年增长减半，否则 20 岁前就顶格，后半生没有张力；
+   *   · 体魄 36 岁后每年 −1 是旧尺度的残留（会把 STR 一路拖成负数，
+   *     实测 p50 = −1），改为 −0.35 / −0.5 并封底 0；
+   *   · 健康改成「壮年缓涨 → 60 岁后逐年下滑」，让衰老真的发生。 */
   if (state.age <= 12) {
-    s.INT += rand(1, 3); s.STR += rand(1, 2); s.HP += 2;
+    s.INT += rand(0.5, 1.5); s.STR += rand(0.5, 1.5); s.HP += 0.9;
     s.CUR += rand(1, 3); s.LOVE += rand(0, 2); s.SEC += rand(0, 2); s.AUTO += rand(0, 2); s.GROW += rand(1, 2);
   }
   else if (state.age <= 18) {
-    s.INT += rand(1, 2); s.CHA += rand(0, 2); s.STR += rand(0, 1);
+    s.INT += rand(0.5, 1.5); s.CHA += rand(0, 1.5); s.STR += rand(0, 1);
     s.CUR += rand(1, 2); s.LOVE += rand(0, 1); s.SEC += rand(0, 1); s.GROW += rand(0, 2);
   }
   else if (state.age <= 35) {
-    s.INT += rand(0, 1); s.HP += s.STRESS < 55 ? rand(0, 2) : rand(-1, 1);
+    s.INT += rand(0, 0.5); s.HP += s.STRESS < 46 ? rand(0, 1) : rand(-1, 0.5);
     s.GROW += rand(0, 2); s.AUTO += rand(0, 1);
   }
   else if (state.age <= 55) {
-    s.HP += s.STRESS < 45 ? rand(0, 1) : rand(-2, 0); s.STR += -1;
+    s.HP += s.STRESS < 38 ? rand(0, 0.8) : rand(-1.2, 0); s.STR -= 0.15;
     s.GROW += rand(0, 1); s.AUTO += rand(0, 1);
   }
   else {
-    s.HP += s.STRESS < 35 ? rand(0, 1) : rand(-2, 0); s.STR += -1;
+    // 衰老：60 岁后身体一年不如一年，这不是惩罚，是时间
+    const decay = state.age >= 85 ? 2.2 : (state.age >= 75 ? 1.4 : (state.age >= 60 ? 0.6 : 0));
+    s.HP += (s.STRESS < 29 ? rand(0, 0.5) : rand(-1.5, 0)) - decay;
+    s.STR -= 0.3;
     s.GROW += rand(0, 1);
   }
 
   // 擅长领域倾向（priority）
   if (state.priority === 'career') { s.INT += rand(0, 1); }
   else if (state.priority === 'relation') { s.LOVE += rand(0, 2); s.CHA += rand(0, 1); s.SEC += rand(0, 1); }
-  else if (state.priority === 'balance') { s.STRESS = Math.max(0, s.STRESS - 2); s.HP += 1; }
+  else if (state.priority === 'balance') { s.STRESS = Math.max(0, s.STRESS - 1.2); s.HP += 0.5; }
   else if (state.priority === 'success') { s.FAME += rand(0, 1); s.NET += rand(0, 1); }
+
+  /* v6.4：压力的年度流入过去几乎为零（300 局实测 p50 = 0.5），
+   * 「压力 → 生病 → 抑郁」这条链路等于没接上。补两个最真实的来源：
+   * 长期没有正经工作、以及资不抵债。 */
+  if (state.age >= 22) {
+    if (!state.career && state.job !== '退休' && state.prison <= 0) s.STRESS += 2.5;
+    if ((state.market && state.market.debt > 0) && worthOf(state) < 0) s.STRESS += 2;
+  }
+
+  /* v6.4：口碑（LOY）过去几乎只进不出又几乎从不增长 —— 实测 p50 = 0，
+   * 职业绩效公式里那一项常年等于 0。在职年份按工龄慢慢攒信誉。 */
+  if (state.career && state.age >= 22 && !state.prison) s.LOY += rand(0.2, 1.0);
 
   // 宠物陪伴
   if (state.pet && state.pet.alive) {
@@ -1631,17 +1699,20 @@ function yearBase(state) {
 
   // 心情：悲伤会压住人，时间会把人慢慢捞起来
   if (state.grief && state.age <= state.grief.until) {
-    s.MOOD -= 3; s.STRESS += 2;
+    s.MOOD -= 3; s.STRESS += 1.67;
   } else if (state.grief && state.age > state.grief.until) {
     pushLog(state, `【释怀】关于 ${state.grief.reason} 的那件事，你终于能平静地提起了。`, 'muted');
     state.grief = null;
   }
-  s.MOOD += rand(1, 4) + (s.LOVE > 60 ? 1 : 0) - (s.STRESS > 60 ? 2 : 0);
-  if (s.MOOD < 32) { s.HP -= 2; s.STRESS += 4; }
-  else if (s.MOOD > 78) { s.HP += 1; s.STRESS -= 1; }
+  /* v6.4：心情与关爱过去只涨不落，实测 p50 双双顶格 100（等于没有信息量）。
+   * 加一条向基线的回归项：好日子会把人拉回平静，低谷也会慢慢过去。 */
+  s.MOOD += (60 - (s.MOOD || 60)) * 0.22 + rand(-2, 3) + (s.LOVE > 60 ? 1 : 0) - (s.STRESS > 50 ? 2 : 0);
+  s.LOVE += (52 - (s.LOVE || 40)) * 0.16;
+  if (s.MOOD < 32) { s.HP -= 1.4; s.STRESS += 2.8; }
+  else if (s.MOOD > 78) { s.HP += 0.5; s.STRESS -= 0.7; }
 
   // 压力伤害
-  if (s.STRESS > 70) { s.HP -= Math.round((s.STRESS - 70) / 6); }
+  if (s.STRESS > 58) { s.HP -= Math.round((s.STRESS - 70) / 6); }
 
   /* 压力恢复（S-01 方案 D）：固定 −7 → 「固定 + 比例 + 失控阻尼」
    *
@@ -1668,10 +1739,10 @@ function yearBase(state) {
     + _sOver * STRESS_TUNE.DAMP_Q));
 
   // 病重时的自动就医只是一个兜底：真得了病要走疾病事件（不治会一路恶化）
-  if (!state.ill && s.HP < 28 && s.MONEY >= 60000000 && state.age >= 20) {
+  if (!state.ill && s.HP < 23 && s.MONEY >= 60000000 && state.age >= 20) {
     const fee = Math.min(Math.max(30000000, Math.round(s.MONEY * 0.12)), 500000000);
     s.MONEY -= fee;
-    s.HP += 14; s.STRESS -= 8;
+    s.HP += 11.67; s.STRESS -= 6.67;
     pushLog(state, `【体检住院】你在医院躺了两周，花了 ${fmtMoney(fee)}。医生说：再晚一个月就晚了。`, 'warn');
   }
 
@@ -1730,7 +1801,7 @@ function yearBase(state) {
     pushLog(state, `【${fmtYear(state)} 年】${state.job} · 收入 ${fmtMoney(income)}，支出 ${fmtMoney(cost)}，结余 ${net >= 0 ? '+' : ''}${fmtMoney(net)}`, 'money');
   }
   // 声望自然衰减
-  if (s.FAME > 0 && state.age > 30 && chance(0.3)) s.FAME -= 1;
+  if (s.FAME > 0 && state.age > 30 && chance(0.3)) s.FAME -= 0.5;
 
   // 净资产峰值
   const w = worthOf(state);
@@ -1750,6 +1821,21 @@ function yearBase(state) {
       endBy(state, 'end_elder');
     }
   }
+
+  // v6.4：年度封顶——自然成长里有不少绕开 applyEffects 的直接加减，
+  // 统一在这里收口，保证任何属性都不会越出 0–100（体魄尤其不能为负）
+  clampStats(state);
+}
+
+/* 把所有属性夹回 0 – STAT_CAP。绕过 applyEffects 的直接加减都靠这里兜底 */
+function clampStats(state) {
+  if (!state || !state.stats) return state;
+  const s = state.stats;
+  for (const k in STAT_CAP) {
+    if (typeof s[k] !== 'number' || !isFinite(s[k])) { if (k !== 'MONEY') s[k] = 0; continue; }
+    s[k] = clamp(s[k], 0, STAT_CAP[k]);
+  }
+  return state;
 }
 
 /* ---------- 事件推进 ---------- */
@@ -1961,7 +2047,7 @@ function scoutTick(state) {
   if (st !== 'mid' && st !== 'high') return;
   if (state.age < 13 || state.age > 18) return;
   const art = state.edu && state.edu.hs === 'hs_art';
-  const pretty = state.stats.CHA >= 52 || art;
+  const pretty = state.stats.CHA >= 26 || art;
   if (!pretty) return;
   // 长得越好看，被拦下的概率越高
   const p = clamp(0.10 + (state.stats.CHA - 45) * 0.012 + (art ? 0.18 : 0) + (state.flags.talent_pretty ? 0.12 : 0), 0.08, 0.55);
@@ -2179,6 +2265,14 @@ function resolveEvent(state, ev, choiceIndex) {
     if (state.spouse) state.spouse.alive = false;
     addGrief(state, `${state.spouseName || 'TA'} 走了`, 20);
     pushLog(state, `【永别】${state.spouseName || 'TA'} 先你一步走了。余生，你带着两个人的份活着。`, 'muted');
+    // v6.4：配偶身故也要清算家庭账簿（限定继承）
+    if (typeof settleHouseholdOnDeath === 'function') {
+      const hs = settleHouseholdOnDeath(state);
+      if (hs && (hs.estate > 0 || hs.debt > 0)) {
+        pushLog(state, `【继承】${state.spouseName || 'TA'} 留下的账簿：遗产 ${fmtMoney(hs.estate)}，债务 ${fmtMoney(hs.debt)}。` +
+          (hs.limited ? '按限定继承，超出的部分你不用替 TA 还。' : '') + `你实际接手 ${fmtMoney(hs.got)}。`, 'money');
+      }
+    }
   }
 
   // 未婚怀孕的三种结局
@@ -2618,8 +2712,8 @@ function scoreOf(state) {
   const worth = worthOf(state);
   let score = 0;
   score += Math.min(38, Math.sqrt(Math.max(0, worth) / 1e8) * 3.2);
-  score += Math.min(25, s.FAME * 0.35);
-  score += Math.min(15, s.NET * 0.12);
+  score += Math.min(25, s.FAME * 0.70);
+  score += Math.min(15, s.NET * 0.24);
   score += Math.min(10, s.WILL * 0.08);
   score += Math.min(8, s.INT * 0.05);
   score += Math.min(7, s.CHA * 0.05);
@@ -2633,7 +2727,7 @@ function scoreOf(state) {
   score += state.flags.own_car ? 1 : 0;
   score += state.flags.foundation ? 6 : 0;
   score += Math.min(8, (state.achievements || []).length * 0.5); // 成就也是人生的一部分
-  score -= state.stats.STRESS > 60 ? 5 : 0;
+  score -= state.stats.STRESS > 50 ? 5 : 0;
   if (state.market && state.market.debt > worth * 2 && worth > 0) score -= 6;
   return Math.round(clamp(score, 0, 100));
 }
@@ -2919,7 +3013,7 @@ function raceSeasonTick(state) {
   if (!best || state.age < 16 || state.prison > 0) return;
   if (!chance(0.5)) return;
   const s = state.stats;
-  const winP = clamp(0.10 + best * 0.05 + (s.STR || 0) / 500, 0.08, 0.55);
+  const winP = clamp(0.10 + best * 0.05 + (s.STR || 0) / 250, 0.08, 0.55);
   const prize = [0, 12000000, 40000000, 120000000, 400000000][best];
   if (chance(winP)) {
     s.MONEY += prize;
@@ -3023,7 +3117,7 @@ function libraryStudy(state) {
   s.STRESS = Math.max(0, (s.STRESS || 0) - 3);
   pushLog(state, '【图书馆】你占了靠窗的老位置，读完了一直想读的那本书。闭馆音乐响起时，天已经黑透了。', 'muted');
   // 超级大脑大赛：智力门槛 70，答对率跟智力走
-  if (s.INT >= 70 && chance(0.25)) {
+  if (s.INT >= 35 && chance(0.25)) {
     const p = clamp((s.INT - 60) / 60, 0.15, 0.8);
     if (chance(p)) {
       s.MONEY += 60000000;
@@ -3090,7 +3184,7 @@ function silverProfessor(state) {
   state.profYear = state.age;
   const pay = Math.round((2000000 + (state.stats.INT || 0) * 60000) * (1 + (state.edu.eduLevel || 0) * 0.25));
   state.stats.MONEY += pay;
-  state.stats.FAME = (state.stats.FAME || 0) + 2;
+  state.stats.FAME = (state.stats.FAME || 0) + 1;
   state.stats.MOOD = (state.stats.MOOD || 60) + 3;
   pushLog(state, `【客座教授】商学院请你讲了一学期的「人生的账」。课酬 ${fmtMoney(pay)}，但台下那些眼睛亮起来的年轻人，才是真正的报酬。`, 'money');
   return { ok: true };
@@ -3106,7 +3200,7 @@ function silverBook(state) {
   const peakNet = (state.peak && (state.peak.NET || state.peak.MONEY)) || 0;
   const royalty = Math.round(clamp(peakNet * 0.003, 2000000, 80000000) + (state.achievements || []).length * 1500000);
   state.stats.MONEY += royalty;
-  state.stats.FAME = (state.stats.FAME || 0) + 3;
+  state.stats.FAME = (state.stats.FAME || 0) + 1.5;
   state.stats.MOOD = (state.stats.MOOD || 60) + 5;
   pushLog(state, `【自传】你花了一年把这一生写在纸上。首印五十万册，版税 ${fmtMoney(royalty)}。有读者说：这本书比成功学好读，比小说疼。`, 'money');
   return { ok: true };
@@ -3161,7 +3255,7 @@ function clubJoin(state, id) {
   state.clubs = state.clubs || [];
   state.clubs.push(id);
   state.stats.MONEY -= c.fee;
-  state.stats.NET = (state.stats.NET || 0) + 3;
+  state.stats.NET = (state.stats.NET || 0) + 1.5;
   pushLog(state, `【圈层】你交了 ${fmtMoney(c.fee)} 入会费，${c.name}的名册上多了你的名字。${c.desc}`, 'story');
   return { ok: true };
 }
@@ -3273,7 +3367,7 @@ function rideBonus(state) {
   return {
     tier: b.tier, name: b.name, cha: b.cha, net: b.net,
     matchQ: Math.round(b.cha * 0.35),                 // 相亲对象质量
-    proposeP: clamp(b.cha / 320, 0, 0.12),            // 求婚成功率
+    proposeP: clamp(b.cha / 160, 0, 0.12),            // 求婚成功率
     vacMood: b.tier >= 3 ? 6 : (b.tier === 2 ? 3 : 1),// 度假心情加成
     flirtP: clamp(b.cha / 420, 0, 0.10)               // 搭讪成功率
   };
@@ -3467,7 +3561,7 @@ function fertility(state, gender, age) {
     else if (a <= 75) p = 0.04;
     else { p = 0; why = '这个年纪，医生只会笑着摇头'; }
   }
-  p -= (state.stats.STRESS || 0) / 500;
+  p -= (state.stats.STRESS || 0) / 417;
   if ((state.stats.HP || 60) < 40) p *= 0.6;
   return { p: Math.max(0, p), why: why };
 }
@@ -3507,6 +3601,8 @@ function npcTick(state) {
   if (state.prison > 0) return;
   spouseFundTick(state);
   spouseBuyTick(state);
+  // v6.4：婚后家庭财务年度结算（配偶收入进账 / 还婚前债 / 共同储蓄）
+  if (typeof spouseFinTick === 'function') spouseFinTick(state);
   if (state.flags.married) {
     const sp = state.spouse;
     // 配偶在外面有人 → 迟早会被发现
@@ -3684,14 +3780,14 @@ function famBizTick(state) {
   }
   const biz = state.famBiz;
   const s = state.stats;
-  const g = 0.035 + clamp((s.LOY || 0) * 0.0008, 0, 0.06) + rand(-0.055, 0.085);
+  const g = 0.035 + clamp((s.LOY || 0) * 0.0012, 0, 0.06) + rand(-0.055, 0.085);
   biz.val = Math.max(50000000, Math.round(biz.val * (1 + g)));
   const div = Math.round(biz.val * 0.015);
   s.MONEY += div;
   if (chance(0.07)) {
     const hit = Math.round(biz.val * (0.08 + Math.random() * 0.1));
     biz.val -= hit;
-    s.STRESS += 6;
+    s.STRESS += 5;
     pushLog(state, `【家业】行业寒冬，${biz.name}一笔大单黄了。你连夜开会，砍掉了一条产线。`, 'warn');
   } else if (g > 0.09 && chance(0.5)) {
     pushLog(state, `【家业】${biz.name}今年拿下了行业大奖。庆功宴上，老臣们敬你的酒一杯接一杯。`, 'story');
@@ -3704,7 +3800,7 @@ function famBizTick(state) {
     const heirScore = nHeir === 0 ? 0
       : heirs.reduce((acc, c) => acc + clamp((c.affinityForBiz != null ? c.affinityForBiz : 55) + (state.age - (c.born || 20) >= 0 && childAge(state, c) >= 22 && childAge(state, c) <= 48 ? 18 : 0), 0, 100), 0) / nHeir;
     const spouseBonus = (state.spouse && state.spouse.alive !== false && (state.spouse.affinity || 0) >= 60) ? 8 : 0;
-    const final = heirScore + spouseBonus + clamp((s.LOY || 0) * 0.2, 0, 15);
+    const final = heirScore + spouseBonus + clamp((s.LOY || 0) * 0.3, 0, 15);
     if (nHeir === 0) {
       state.flags.fam_biz_ok = false;
       const sell = Math.round(biz.val * 0.7);
@@ -3762,4 +3858,192 @@ function uniLifeTick(state) {
       applyEffects(state, { NET: 3, MOOD: 4 });
     }
   }
+}
+
+
+/* =========================================================
+ * v6.4.0 外界评价（别人眼里的你）
+ * ---------------------------------------------------------
+ * 玩家一辈子只看得见自己的面板，看不见自己在别人嘴里是什么样。
+ * 这一层把散落各处的状态（口碑、名望、道德、资产、婚姻、案底、
+ * 圈层、慈善）翻译成六组「谁在看你 + 他们怎么看你」。
+ * 同一个人在家人眼里和在舆论眼里，可以是完全相反的两个人 ——
+ * 这正是这套评价想让人看见的东西。
+ * ========================================================= */
+const IMAGE_GROUPS = [
+  { key: 'family', who: '家人', icon: '🏠' },
+  { key: 'colleague', who: '同事 / 同行', icon: '💼' },
+  { key: 'neighbor', who: '邻居 / 老乡', icon: '🚪' },
+  { key: 'friend', who: '朋友', icon: '🍻' },
+  { key: 'circle', who: '圈内 / 业界', icon: '🎭' },
+  { key: 'public', who: '舆论 / 陌生人', icon: '📰' }
+];
+
+/* 分档：0–100 打成六个说法 */
+const IMAGE_BANDS = [
+  [0, '很差'], [20, '不太好'], [35, '一般'], [50, '还行'], [66, '不错'], [82, '很好']
+];
+function imageBand(v) {
+  let lab = IMAGE_BANDS[0][1];
+  for (const b of IMAGE_BANDS) if (v >= b[0]) lab = b[1];
+  return lab;
+}
+
+/* 净资产档位（外界最先看见的永远是这个） */
+function worthTier(state) {
+  const w = (typeof netWorth === 'function') ? netWorth(state) : (state.stats.MONEY || 0);
+  if (w >= 30000000000) return 5;   // 300 亿+
+  if (w >= 5000000000) return 4;    // 50 亿+
+  if (w >= 800000000) return 3;     // 8 亿+
+  if (w >= 100000000) return 2;     // 1 亿+
+  if (w >= 10000000) return 1;      // 千万级
+  return 0;
+}
+
+/* 各组评价文案（按分档取一句） */
+const IMAGE_TEXT = {
+  family: [
+    ['家里人已经很久不主动提起你了。', '亲戚聚会时，你的名字会被轻轻带过。', '家里人觉得你过得一般，也不太指望你。',
+      '家里人提起你时语气是平的——不丢人，也不出挑。', '家里遇到事第一个想到你。', '在这个家里，你是那个说话有人听的人。']],
+  colleague: [
+    ['业内提起你就摇头，没人愿意把你写进项目名单。', '同事背后说你靠不住。', '同事觉得你只是一个普通的名字。',
+      '同事愿意把活交给你，也相信你能交回来。', '同行对你评价很高，你的名字能背书。', '这一行里，你的名字本身就是招牌。']],
+  neighbor: [
+    ['邻居绕着你走，看见你会换条路。', '街坊对你有看法，见面只是点头。', '邻居知道有你这么个人，仅此而已。',
+      '邻里之间提起你是客气的一句「挺好的」。', '街坊都愿意跟你打招呼，有事也愿意找你。', '这条街上的人都说：那是个好人。']],
+  friend: [
+    ['你的通讯录里，已经没人主动找你了。', '朋友越来越少，剩下的也淡了。', '朋友不多，但还联系。',
+      '你有一圈能坐下来吃饭的人。', '朋友遇事会先给你打电话。', '你这辈子交下的朋友，够坐满好几桌。']],
+  circle: [
+    ['圈子里没人知道你，也没人想知道。', '圈内提起你没什么印象。', '圈子里有人认识你，仅此而已。',
+      '圈内知道你的名字，也认你的位置。', '圈子里你是被邀请的那一类人。', '你的名字在圈内是能开门的。']],
+  public: [
+    ['报纸上出现你的名字时，通常不是好事。', '网上关于你的评价不太好。', '公众对你知道得不多，评价也平平。',
+      '外界对你的印象是正面的，但不算有名。', '公众记得你，而且记得的是好事。', '你的名字出现在标题里时，人们会停下来看。']]
+};
+
+function bandIdx(v) {
+  if (v < 20) return 0;
+  if (v < 35) return 1;
+  if (v < 50) return 2;
+  if (v < 66) return 3;
+  if (v < 82) return 4;
+  return 5;
+}
+
+/* 主入口：返回 { score, headline, groups[] } */
+function publicImage(state) {
+  const s = state.stats || {};
+  const f = state.flags || {};
+  const sp = state.spouse;
+  const tier = worthTier(state);
+  const kids = state.children ? state.children.length : (state.childCount || 0);
+  const friends = (state.friends || []).length;
+  const clubs = (state.clubs || []).length;
+  const c = state.career ? (typeof careerById === 'function' ? careerById(state.career.id) : null) : null;
+  const lv = state.career ? (state.career.level || 0) : 0;
+
+  /* ① 家人 */
+  let family = 42 + (s.LOVE || 0) * 0.22 + (s.SEC || 0) * 0.10 + kids * 2.5;
+  if (sp && sp.alive !== false) family += ((sp.affinity || 50) - 50) * 0.22;
+  if (f.divorced) family -= 12;
+  if (f.widowed) family -= 4;
+  if (f.exposed) family -= 22;
+  if (f.ex_prisoner) family -= 18;
+  if (state.grief) family -= 5;
+  if ((s.MONEY || 0) < 0) family -= 8;
+
+  /* ② 同事 / 同行 */
+  let colleague = 34 + (s.LOY || 0) * 0.42 + lv * 4.5 + (s.INT || 0) * 0.12;
+  if (c) colleague += 6;
+  if (state.job === '待业' || state.job === '无业' || !state.job) colleague -= 16;
+  if (state.prison > 0) colleague -= 30;
+  if (f.ex_prisoner) colleague -= 20;
+  if (f.fired) colleague -= 10;
+
+  /* ③ 邻居 / 老乡 */
+  let neighbor = 40 + tier * 6 + (s.ETH || 0) * 0.20 + (f.own_house ? 6 : 0);
+  if (f.ex_prisoner) neighbor -= 22;
+  if (f.scandal) neighbor -= 14;
+  if (f.charity) neighbor += 8;
+
+  /* ④ 朋友 */
+  let friend = 34 + (s.NET || 0) * 0.38 + friends * 2.2 + (s.CHA || 0) * 0.10;
+  if (f.betrayed_friend) friend -= 12;
+  if (state.grief) friend += 3;
+
+  /* ⑤ 圈内 / 业界 */
+  let circle = 22 + (s.FAME || 0) * 0.52 + (s.NET || 0) * 0.18 + clubs * 5;
+  if (f.fam_biz) circle += 10;
+  if (f.club_race || f.club_yacht || f.club_chamber) circle += 6;
+
+  /* ⑥ 舆论 / 陌生人 */
+  let pub = 30 + (s.FAME || 0) * 0.46 + (s.ETH || 0) * 0.14 + tier * 3;
+  if (f.charity) pub += 12;
+  if (f.ex_prisoner) pub -= 26;
+  if (f.exposed) pub -= 18;
+  if (f.scandal) pub -= 16;
+  if (f.hero) pub += 14;
+
+  const raw = { family: family, colleague: colleague, neighbor: neighbor, friend: friend, circle: circle, public: pub };
+  const groups = IMAGE_GROUPS.map(g => {
+    const v = clamp(Math.round(raw[g.key]), 0, 100);
+    return {
+      key: g.key, who: g.who, icon: g.icon, score: v,
+      label: imageBand(v), text: (IMAGE_TEXT[g.key] || [''])[0][bandIdx(v)]
+    };
+  });
+
+  // 总评：家人与同事的权重大一些——人这一辈子，主要是被身边的人记住
+  const score = Math.round(clamp(
+    raw.family * 0.22 + raw.colleague * 0.20 + raw.friend * 0.18
+    + raw.neighbor * 0.15 + raw.circle * 0.13 + raw.public * 0.12, 0, 100));
+
+  return { score: score, label: imageBand(score), groups: groups, headline: imageHeadline(state, score, groups) };
+}
+
+/* 一句话总评：不重复面板上的数字，说的是「你是个什么样的人」 */
+function imageHeadline(state, score, groups) {
+  const s = state.stats || {};
+  const f = state.flags || {};
+  const byKey = {};
+  (groups || []).forEach(g => byKey[g.key] = g.score);
+  const gap = Math.max(byKey.family || 0, byKey.circle || 0, byKey.public || 0)
+    - Math.min(byKey.family || 0, byKey.colleague || 0, byKey.neighbor || 0);
+
+  if ((byKey.public || 0) >= 70 && (byKey.family || 0) <= 45)
+    return '外面的人把你当回事，家里的人却觉得你很久没回家了。';
+  if ((byKey.family || 0) >= 70 && (byKey.public || 0) <= 40)
+    return '知道你的人不多，但知道你的那几个人，都把你放在心上。';
+  if (f.ex_prisoner && score >= 45)
+    return '你走过一段没人愿意提的路，后来把自己捞了回来——只是提起你的人，还是先想起那段。';
+  if (score >= 82) return '不管从哪个方向看过来，你这辈子都站得住。';
+  if (score >= 66) return '在认识你的人里，你的名声是好的，而且是你自己挣来的。';
+  if (score >= 50) return '大部分人提起你，会说一句「还不错」——这已经很不容易。';
+  if (score >= 35) return '你没做什么大恶，也没让人记住什么。这是一种平淡的清白。';
+  if (score >= 20) return '有些人对你的印象不太好。你自己知道是怎么走到这一步的。';
+  return '你在别人嘴里的样子，和你以为的自己，差得有点远。';
+}
+
+/* UI 用的渲染片段 */
+function publicImageHtml(state) {
+  const img = publicImage(state);
+  const rows = img.groups.map(g => {
+    const pct = Math.max(2, g.score);
+    const col = g.score >= 66 ? '#2E9E6B' : (g.score >= 40 ? '#C79A3C' : '#B4553F');
+    return `<div class="img-row">
+      <span class="img-who">${g.icon} ${esc(g.who)}</span>
+      <span class="img-bar"><i style="width:${pct}%;background:${col}"></i></span>
+      <span class="img-lv" style="color:${col}">${esc(g.label)}</span>
+    </div>
+    <div class="img-say">${esc(g.text)}</div>`;
+  }).join('');
+  return `<div class="img-card">
+    <div class="img-head">
+      <b>外界怎么看你</b>
+      <span class="img-score">${img.score} · ${esc(img.label)}</span>
+    </div>
+    <div class="img-lead">${esc(img.headline)}</div>
+    ${rows}
+  </div>`;
 }

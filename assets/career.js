@@ -48,7 +48,7 @@ const CAREERS = [
     tick: { CHA: 1, NET: 1, STR: -1 }
   },
   {
-    id: 'anchor', name: '主播 / 网红', cat: '新媒体', edu: 0, risk: 3, need: { CHA: 30 },
+    id: 'anchor', name: '主播 / 网红', cat: '新媒体', edu: 0, risk: 3, need: { CHA: 15 },
     desc: '直播间里只有你和一个补光灯。能不能火，谁也说不准。',
     ladder: [
       { title: '小主播', sal: 14000000, cost: 8000000 },
@@ -59,7 +59,7 @@ const CAREERS = [
     tick: { CHA: 2, FAME: 2, NET: 2, STRESS: 3, HP: -1 }
   },
   {
-    id: 'streamer', name: '自媒体博主', cat: '新媒体', edu: 2, risk: 2, need: { INT: 30 }, major: ['传媒', '艺术'],
+    id: 'streamer', name: '自媒体博主', cat: '新媒体', edu: 2, risk: 2, need: { INT: 15 }, major: ['传媒', '艺术'],
     desc: '一个人、一台电脑。流量是可以被设计出来的，也可以一夜归零。',
     ladder: [
       { title: '兼职博主', sal: 10000000, cost: 7000000 },
@@ -116,7 +116,7 @@ const CAREERS = [
     tick: { STR: -1, SEC: 2, WILL: -1 }
   },
   {
-    id: 'sales', name: '销售 / 中介', cat: '商业', edu: 1, risk: 2, need: { CHA: 25 }, major: ['金融'],
+    id: 'sales', name: '销售 / 中介', cat: '商业', edu: 1, risk: 2, need: { CHA: 13 }, major: ['金融'],
     desc: '底薪三千，提成上不封顶。脸皮厚一点，收入高一点。',
     ladder: [
       { title: '销售专员', sal: 17000000, cost: 12000000 },
@@ -138,7 +138,7 @@ const CAREERS = [
     tick: { STR: -1, CHA: 1, NET: 1 }
   },
   {
-    id: 'idol', name: '偶像练习生', cat: '演艺', edu: 1, risk: 3, need: { CHA: 50 }, major: ['艺术', '体育'],
+    id: 'idol', name: '偶像练习生', cat: '演艺', edu: 1, risk: 3, need: { CHA: 25 }, major: ['艺术', '体育'],
     desc: '练习室的镜子和体脂秤。出道位是几百个人抢的九个位置。',
     ladder: [
       { title: '练习生', sal: 7000000, cost: 8500000 },
@@ -151,10 +151,10 @@ const CAREERS = [
     needFlag: ['music']
   },
   {
-    id: 'gamer', name: '电竞选手', cat: '电竞', edu: 1, risk: 3, need: { INT: 35 },
+    id: 'gamer', name: '电竞选手', cat: '电竞', edu: 1, risk: 3, need: { INT: 18 },
     desc: '每天训练十四小时。黄金年龄只有四年，之后呢？',
     ladder: [
-      { title: '青训队员', sal: 7500000, cost: 8000000 },
+      { title: '电竞青训生', sal: 7500000, cost: 8000000 },
       { title: '职业选手', sal: 40000000, cost: 13000000 },
       { title: '明星选手', sal: 120000000, cost: 26000000 },
       { title: '俱乐部股东 / 教练', sal: 200000000, cost: 40000000 }
@@ -175,7 +175,7 @@ const CAREERS = [
     tick: { LOY: 1, NET: 1, STRESS: 1 }
   },
   {
-    id: 'accountant', name: '会计', cat: '财务', edu: 2, risk: 1, need: { INT: 30 }, major: ['金融'],
+    id: 'accountant', name: '会计', cat: '财务', edu: 2, risk: 1, need: { INT: 15 }, major: ['金融'],
     desc: '凭证、报表、汇算清缴。账面干净，睡觉才踏实。',
     ladder: [
       { title: '出纳 / 会计助理', sal: 24000000, cost: 10000000 },
@@ -197,7 +197,7 @@ const CAREERS = [
     tick: { HP: -1, LOVE: 1, WILL: 1, STRESS: 2 }
   },
   {
-    id: 'ecom', name: '电商运营', cat: '互联网', edu: 2, risk: 2, need: { INT: 28 }, major: ['金融', '理工'],
+    id: 'ecom', name: '电商运营', cat: '互联网', edu: 2, risk: 2, need: { INT: 14 }, major: ['金融', '理工'],
     desc: '详情页、投流、大促。GMV 就是你这一年的墓志铭。',
     ladder: [
       { title: '运营助理', sal: 22000000, cost: 10000000 },
@@ -210,7 +210,7 @@ const CAREERS = [
 
   /* ===== 本科 ===== */
   {
-    id: 'programmer', name: '程序员', cat: '互联网', edu: 3, risk: 1, need: { INT: 40 }, major: ['理工'],
+    id: 'programmer', name: '程序员', cat: '互联网', edu: 3, risk: 1, need: { INT: 20 }, major: ['理工'],
     desc: '需求、排期、线上事故。三十五岁是哪道坎，你早晚会知道。',
     ladder: [
       { title: '实习程序员', sal: 30000000, cost: 11000000 },
@@ -223,7 +223,7 @@ const CAREERS = [
     tick: { INT: 2, STR: -1, HP: -1, STRESS: 2 }
   },
   {
-    id: 'pm', name: '产品经理', cat: '互联网', edu: 3, risk: 2, need: { INT: 35, CHA: 30 }, major: ['理工', '金融', '传媒'],
+    id: 'pm', name: '产品经理', cat: '互联网', edu: 3, risk: 2, need: { INT: 18, CHA: 15 }, major: ['理工', '金融', '传媒'],
     desc: '需求文档写不完，锅也背不完。产品是妥协的艺术。',
     ladder: [
       { title: '产品助理', sal: 28000000, cost: 11000000 },
@@ -235,7 +235,7 @@ const CAREERS = [
     tick: { INT: 1, CHA: 1, NET: 2, STRESS: 3 }
   },
   {
-    id: 'designer', name: 'UI / 视觉设计师', cat: '互联网', edu: 3, risk: 1, need: { INT: 30 }, major: ['艺术'],
+    id: 'designer', name: 'UI / 视觉设计师', cat: '互联网', edu: 3, risk: 1, need: { INT: 15 }, major: ['艺术'],
     desc: '改稿第十七版。甲方说，还是第一版好。',
     ladder: [
       { title: '设计助理', sal: 24000000, cost: 10000000 },
@@ -246,7 +246,7 @@ const CAREERS = [
     tick: { INT: 1, CHA: 1, HP: -1, STRESS: 2 }
   },
   {
-    id: 'hacker', name: '黑客 / 安全研究员', cat: '灰色', edu: 3, risk: 3, need: { INT: 55 }, major: ['理工'],
+    id: 'hacker', name: '黑客 / 安全研究员', cat: '灰色', edu: 3, risk: 3, need: { INT: 28 }, major: ['理工'],
     desc: '灰色地带的技术活。一念是白帽子，一念是铁窗。',
     ladder: [
       { title: '脚本小子', sal: 36000000, cost: 12000000 },
@@ -257,7 +257,7 @@ const CAREERS = [
     tick: { INT: 2, ETH: -2, STRESS: 3, SEC: -2, WILL: 1 }
   },
   {
-    id: 'teacher', name: '中小学教师', cat: '教育', edu: 3, risk: 0, need: { INT: 40 }, major: ['师范'],
+    id: 'teacher', name: '中小学教师', cat: '教育', edu: 3, risk: 0, need: { INT: 20 }, major: ['师范'],
     desc: '编制、寒暑假、一群永远记不住你生日的孩子。',
     ladder: [
       { title: '代课老师', sal: 22000000, cost: 9000000 },
@@ -269,7 +269,7 @@ const CAREERS = [
     tick: { INT: 1, LOVE: 1, SEC: 2, STRESS: 2 }
   },
   {
-    id: 'lawyer', name: '律师', cat: '法律', edu: 3, risk: 2, need: { INT: 50 }, major: ['法律'],
+    id: 'lawyer', name: '律师', cat: '法律', edu: 3, risk: 2, need: { INT: 25 }, major: ['法律'],
     desc: '法考、实习、案源。前三年穷，后面看命。',
     ladder: [
       { title: '实习律师', sal: 18000000, cost: 10000000 },
@@ -281,7 +281,7 @@ const CAREERS = [
     tick: { INT: 2, NET: 2, FAME: 1, STRESS: 3 }
   },
   {
-    id: 'civil', name: '公务员 / 事业编', cat: '体制内', edu: 3, risk: 0, need: { INT: 45 },
+    id: 'civil', name: '公务员 / 事业编', cat: '体制内', edu: 3, risk: 0, need: { INT: 23 },
     desc: '千军万马过独木桥。考上那天，母亲在电话那头哭了。',
     ladder: [
       { title: '科员', sal: 30000000, cost: 11000000 },
@@ -296,7 +296,7 @@ const CAREERS = [
 
   /* ===== 名校 ===== */
   {
-    id: 'doctor', name: '医生', cat: '医疗', edu: 4, risk: 1, need: { INT: 55 }, major: ['医学'],
+    id: 'doctor', name: '医生', cat: '医疗', edu: 4, risk: 1, need: { INT: 28 }, major: ['医学'],
     desc: '五年本科、三年规培、无数个夜班。白大褂穿上是责任。',
     ladder: [
       { title: '规培医生', sal: 22000000, cost: 11000000 },
@@ -308,7 +308,7 @@ const CAREERS = [
     tick: { INT: 1, FAME: 1, HP: -2, STRESS: 3, ETH: 1 }
   },
   {
-    id: 'finance', name: '投行 / 券商', cat: '金融', edu: 4, risk: 2, need: { INT: 55, CHA: 35 }, major: ['金融'],
+    id: 'finance', name: '投行 / 券商', cat: '金融', edu: 4, risk: 2, need: { INT: 28, CHA: 18 }, major: ['金融'],
     desc: '路演、尽调、凌晨三点的 Excel。钱在这里流动得比任何地方都快。',
     ladder: [
       { title: '分析师', sal: 50000000, cost: 18000000 },
@@ -320,7 +320,7 @@ const CAREERS = [
     tick: { INT: 2, NET: 3, FAME: 1, HP: -2, STRESS: 4 }
   },
   {
-    id: 'ai', name: 'AI 算法工程师', cat: '互联网', edu: 5, risk: 2, need: { INT: 65 }, major: ['理工'],
+    id: 'ai', name: 'AI 算法工程师', cat: '互联网', edu: 5, risk: 2, need: { INT: 33 }, major: ['理工'],
     desc: '算力、模型、论文。这个时代最贵的一批大脑，就坐在这些工位上。',
     ladder: [
       { title: '算法工程师', sal: 70000000, cost: 20000000 },
@@ -331,7 +331,7 @@ const CAREERS = [
     tick: { INT: 3, FAME: 1, HP: -1, STRESS: 3 }
   },
   {
-    id: 'startup', name: '创业者', cat: '创业', edu: 1, risk: 3, need: { WILL: 40 },
+    id: 'startup', name: '创业者', cat: '创业', edu: 1, risk: 3, need: { WILL: 20 },
     desc: '六个工位、四个人的团队。融资 BP 改了三十版。',
     ladder: [
       { title: '初创者', sal: 12000000, cost: 14000000 },
@@ -343,7 +343,7 @@ const CAREERS = [
     tick: { WILL: 2, NET: 2, INT: 1, HP: -2, STRESS: 4 }
   },
   {
-    id: 'athlete', name: '职业运动员', cat: '体育', edu: 0, risk: 3, need: { STR: 26, HP: 55 }, major: ['体育'],
+    id: 'athlete', name: '职业运动员', cat: '体育', edu: 0, risk: 3, need: { STR: 13, HP: 46 }, major: ['体育'],
     desc: '训练房、队医、成绩单。吃的是青春饭，拼的是骨头和心气。',
     ladder: [
       { title: '青训队员', sal: 9000000, cost: 7200000 },
@@ -519,10 +519,10 @@ function careerTick(state) {
   const lv = state.career.level;
   const salaryK = (state.edu && state.edu.salaryK) || 1;
   let score = 30
-    + s.LOY * 0.35
-    + s.INT * 0.22
-    + s.NET * 0.16
-    + s.WILL * 0.14
+    + s.LOY * 0.525
+    + s.INT * 0.44
+    + s.NET * 0.32
+    + s.WILL * 0.28
     + state.career.years * 2.2
     + (salaryK - 1) * 22
     + rand(-11, 13)
@@ -554,8 +554,7 @@ function careerTick(state) {
   return result;
 }
 
-/* ---------- 初始化：把职业阶梯展开进 JOBS ---------- */
-buildJobTable();
+/* ---------- 初始化：把职业阶梯展开进 JOBS —— 调用已挪到文件末尾（v6.4） ---------- */
 
 /* =========================================================
  * 年薪乘子配置表（IMP-01 · A-07）
@@ -581,10 +580,10 @@ const CAREER_MULT = {
    *   985 生走不同路径结果差 2.1%。现统一为 KAOYAN_FLOOR，只剩这一个常量。 */
   edu: { field: 'salaryK', default: 1 },
   /* 属性加成：每 1 点属性 = 1 / div，div 越小这条属性越值钱 */
-  stats: { INT: 520, NET: 1000, LOY: 1100 },
+  stats: { INT: 260, NET: 500, LOY: 733 },
   /* 散工口径：没有正式职业（孤儿职称 / 长期待业）时只吃 INT 与 NET，
    * 不吃学历、不吃工龄、不吃忠诚 —— 这条原先在 engine.js 与 ui.js 各抄了一份 */
-  freelance: { INT: 400, NET: 800 },
+  freelance: { INT: 200, NET: 400 },
 
   /* ===== A-07 · 年代薪资曲线（v6.0 P2.1）=====
    * 这张表**不是**「工资应该涨多少」的独立设计，而是**守住房价收入比**的约束解：
@@ -641,7 +640,7 @@ function eraK(state) {
 
 /* 有效年薪构成：既用于结算，也用于对账 / 排查。返回每一项乘子，方便直接看钱是怎么来的 */
 function careerIncomeParts(state) {
-  const j = JOBS[state.job] || { salary: 0, cost: 12000000 };
+  const j = jobEntry(state, state.job);
   const s = state.stats || {};
   const S = CAREER_MULT.seniority, St = CAREER_MULT.stats;
   const salaryK = (state.edu && state.edu.salaryK) || CAREER_MULT.edu.default;
@@ -670,7 +669,7 @@ function careerIncome(state) {
 
 /* 没有正式职业时的散工收入（原为 engine.js / ui.js 各自内联的一份公式） */
 function freelanceIncome(state) {
-  const j = JOBS[state.job] || { salary: 0, cost: 12000000 };
+  const j = jobEntry(state, state.job);
   const s = state.stats || {};
   const F = CAREER_MULT.freelance;
   // E-6：散工不吃学历与工龄，但**要吃年代**，否则 1955 世代的散工收入会与现代持平
@@ -686,7 +685,7 @@ function freelanceIncome(state) {
  *  needFlag 的旗子来自 data.js v6 事件包（参军 / 考执照 / 殡仪馆的来信）
  * ========================================================= */
 CAREERS.push(
-  { id: 'pilot', name: '民航飞行员', cat: '航空', edu: 4, risk: 2, need: { INT: 60, HP: 65, CHA: 35 }, major: ['理工'],
+  { id: 'pilot', name: '民航飞行员', cat: '航空', edu: 4, risk: 2, need: { INT: 30, HP: 54, CHA: 18 }, major: ['理工'],
     desc: '三百吨的铝在万米高空以九百公里的时速飞行。你的手一寸一寸把它按在航线上。',
     ladder: [
       { title: '第二副驾', sal: 42000000, cost: 22000000 },
@@ -696,7 +695,7 @@ CAREERS.push(
       { title: '总飞行师', sal: 320000000, cost: 90000000 }
     ],
     tick: { HP: -1, FAME: 1, WILL: 1, STRESS: 2 } },
-  { id: 'cabincrew', name: '空乘', cat: '航空', edu: 2, risk: 1, need: { CHA: 45, HP: 50 },
+  { id: 'cabincrew', name: '空乘', cat: '航空', edu: 2, risk: 1, need: { CHA: 23, HP: 42 },
     desc: '微笑、广播、应急撤离口令。三千次起飞降落，你把服务做成了肌肉记忆。',
     ladder: [
       { title: '见习乘务员', sal: 14000000, cost: 10000000 },
@@ -706,7 +705,7 @@ CAREERS.push(
       { title: '客舱经理', sal: 80000000, cost: 34000000 }
     ],
     tick: { CHA: 1, HP: -1, STRESS: 2, NET: 1 } },
-  { id: 'avmech', name: '飞机维修师', cat: '航空', edu: 3, risk: 2, need: { INT: 45, WILL: 40 }, major: ['理工'],
+  { id: 'avmech', name: '飞机维修师', cat: '航空', edu: 3, risk: 2, need: { INT: 23, WILL: 20 }, major: ['理工'],
     desc: '航后检查要打几百项签。你的签名之后，是几百条人命。',
     ladder: [
       { title: '机务学徒', sal: 13000000, cost: 11000000 },
@@ -715,7 +714,7 @@ CAREERS.push(
       { title: '维修主管', sal: 65000000, cost: 30000000 }
     ],
     tick: { INT: 1, WILL: 1, HP: -2, STRESS: 2 } },
-  { id: 'tvhost', name: '主持人', cat: '传媒', edu: 3, risk: 2, need: { CHA: 55, INT: 42 }, major: ['艺术', '传媒'],
+  { id: 'tvhost', name: '主持人', cat: '传媒', edu: 3, risk: 2, need: { CHA: 28, INT: 21 }, major: ['艺术', '传媒'],
     desc: '直播镜头红灯亮起的那一秒，你的声音就是全场的定心丸。',
     ladder: [
       { title: '实习主播', sal: 12000000, cost: 10000000 },
@@ -724,7 +723,7 @@ CAREERS.push(
       { title: '台柱 · 金牌主持', sal: 130000000, cost: 45000000 }
     ],
     tick: { CHA: 2, FAME: 2, NET: 1, STRESS: 2 } },
-  { id: 'director', name: '导演', cat: '演艺', edu: 3, risk: 3, need: { INT: 50, FAME: 15 }, major: ['艺术', '传媒'],
+  { id: 'director', name: '导演', cat: '演艺', edu: 3, risk: 3, need: { INT: 25, FAME: 8 }, major: ['艺术', '传媒'],
     desc: '监视器后面的人决定一切，也背负一切。票房和口碑，总有一个会让你失眠。',
     ladder: [
       { title: '场记 / 副导演', sal: 11000000, cost: 10000000 },
@@ -733,7 +732,7 @@ CAREERS.push(
       { title: '名导 · 工作室老板', sal: 220000000, cost: 80000000 }
     ],
     tick: { CHA: 1, FAME: 3, NET: 2, STRESS: 3, HP: -1 } },
-  { id: 'brewer', name: '酿酒师', cat: '手艺', edu: 2, risk: 1, need: { INT: 40, WILL: 38 }, major: ['农林', '理工'],
+  { id: 'brewer', name: '酿酒师', cat: '手艺', edu: 2, risk: 1, need: { INT: 20, WILL: 19 }, major: ['农林', '理工'],
     desc: '温度、湿度、时间。微生物不认识 KPI，但你把它们调教得服服帖帖。',
     ladder: [
       { title: '酿酒学徒', sal: 11000000, cost: 9000000 },
@@ -742,7 +741,7 @@ CAREERS.push(
       { title: '酒庄技术总监', sal: 70000000, cost: 30000000 }
     ],
     tick: { INT: 1, HP: -1, MOOD: 1 } },
-  { id: 'sommelier', name: '品酒师', cat: '手艺', edu: 2, risk: 1, need: { CHA: 40, INT: 45 },
+  { id: 'sommelier', name: '品酒师', cat: '手艺', edu: 2, risk: 1, need: { CHA: 20, INT: 23 },
     desc: '一杯酒里能喝出产区、年份和酿酒师的心情。你的舌头值一套房。',
     ladder: [
       { title: '侍酒助理', sal: 12000000, cost: 11000000 },
@@ -751,7 +750,7 @@ CAREERS.push(
       { title: '首席品鉴顾问', sal: 85000000, cost: 32000000 }
     ],
     tick: { CHA: 1, INT: 1, HP: -1, NET: 1 } },
-  { id: 'empath', name: '情感咨询师 / 情感检测师', cat: '医疗', edu: 3, risk: 1, need: { INT: 50, CHA: 40 }, major: ['师范', '医学'],
+  { id: 'empath', name: '情感咨询师 / 情感检测师', cat: '医疗', edu: 3, risk: 1, need: { INT: 25, CHA: 20 }, major: ['师范', '医学'],
     desc: '一对对濒临散伙的情侣坐在你面前。你负责画出他们心里的等高线。',
     ladder: [
       { title: '咨询助理', sal: 13000000, cost: 11000000 },
@@ -760,16 +759,16 @@ CAREERS.push(
       { title: '情感工作室主理人', sal: 90000000, cost: 34000000 }
     ],
     tick: { INT: 1, CHA: 1, STRESS: 2, MOOD: 1 } },
-  { id: 'psychiatrist', name: '精神科医生', cat: '医疗', edu: 4, risk: 1, need: { INT: 60 }, major: ['医学'],
+  { id: 'psychiatrist', name: '精神科医生', cat: '医疗', edu: 4, risk: 1, need: { INT: 30 }, major: ['医学'],
     desc: '处方笔很轻，落下去的每个诊断都很重。这个时代的心事，一半在你的诊室里。',
     ladder: [
-      { title: '住院医师', sal: 22000000, cost: 18000000 },
-      { title: '主治医师', sal: 42000000, cost: 26000000 },
-      { title: '副主任医师', sal: 70000000, cost: 34000000 },
+      { title: '精神科住院医师', sal: 22000000, cost: 18000000 },
+      { title: '精神科主治医师', sal: 42000000, cost: 26000000 },
+      { title: '精神科副主任医师', sal: 70000000, cost: 34000000 },
       { title: '主任医师 · 督导师', sal: 120000000, cost: 46000000 }
     ],
     tick: { INT: 1, STRESS: 2, MOOD: 1, FAME: 1 } },
-  { id: 'mortician', name: '入殓师', cat: '特殊', edu: 2, risk: 1, need: { WILL: 55, ETH: 45 }, needFlag: ['mortician_call'],
+  { id: 'mortician', name: '入殓师', cat: '特殊', edu: 2, risk: 1, need: { WILL: 28, ETH: 45 }, needFlag: ['mortician_call'],
     desc: '你替逝者整理最后的体面。这行不缺钱，缺的是敢直视它的人。',
     ladder: [
       { title: '殡仪馆学员', sal: 16000000, cost: 10000000 },
@@ -778,7 +777,7 @@ CAREERS.push(
       { title: '遗体整容专家', sal: 85000000, cost: 28000000 }
     ],
     tick: { WILL: 2, ETH: 1, STRESS: 3, MOOD: -1 } },
-  { id: 'sforce', name: '特种部队', cat: '军伍', edu: 1, risk: 3, need: { STR: 60, HP: 75, WILL: 70 }, needFlag: ['veteran'],
+  { id: 'sforce', name: '特种部队', cat: '军伍', edu: 1, risk: 3, need: { STR: 30, HP: 63, WILL: 35 }, needFlag: ['veteran'],
     desc: '番号保密，行踪保密。你把最好的年华交给了一面旗帜。',
     ladder: [
       { title: '突击队员', sal: 18000000, cost: 14000000 },
@@ -787,7 +786,7 @@ CAREERS.push(
       { title: '传奇老兵 · 教官', sal: 80000000, cost: 36000000 }
     ],
     tick: { STR: 2, WILL: 2, HP: -2, FAME: 1 } },
-  { id: 'astronaut', name: '宇航员', cat: '特殊', edu: 5, risk: 3, need: { INT: 72, HP: 80, STR: 50 }, needFlag: ['veteran', 'astro_pool'],
+  { id: 'astronaut', name: '宇航员', cat: '特殊', edu: 5, risk: 3, need: { INT: 36, HP: 67, STR: 25 }, needFlag: ['veteran', 'astro_pool'],
     desc: '三千人里选出三个。点火的那八分钟，你替所有人抬头。',
     ladder: [
       { title: '预备航天员', sal: 35000000, cost: 24000000 },
@@ -796,7 +795,7 @@ CAREERS.push(
       { title: '航天英雄 · 少将', sal: 200000000, cost: 70000000 }
     ],
     tick: { INT: 1, FAME: 3, HP: -2, WILL: 2 } },
-  { id: 'jockey', name: '马术骑手', cat: '体育', edu: 1, risk: 2, need: { STR: 40, WILL: 40 }, needFlag: ['jockey_license'],
+  { id: 'jockey', name: '马术骑手', cat: '体育', edu: 1, risk: 2, need: { STR: 20, WILL: 20 }, needFlag: ['jockey_license'],
     desc: '人马合一不是玄学，是几百个清晨五点的马房。比赛的奖金很肥，摔下来也很疼。',
     ladder: [
       { title: '马房学徒', sal: 12000000, cost: 11000000 },
@@ -806,7 +805,7 @@ CAREERS.push(
       { title: '马术俱乐部主理人', sal: 150000000, cost: 50000000 }
     ],
     tick: { STR: 1, WILL: 1, HP: -1, MOOD: 2 } },
-  { id: 'racer_k', name: '卡丁车 / 初级方程式车手', cat: '体育', edu: 1, risk: 3, need: { STR: 35, CHA: 25 }, needFlag: ['race_license'],
+  { id: 'racer_k', name: '卡丁车 / 初级方程式车手', cat: '体育', edu: 1, risk: 3, need: { STR: 18, CHA: 13 }, needFlag: ['race_license'],
     desc: '每一个世界冠军的第一圈，都是在卡丁车场被套圈的。',
     ladder: [
       { title: '卡丁车手', sal: 10000000, cost: 14000000 },
@@ -814,7 +813,7 @@ CAREERS.push(
       { title: '青年组冠军', sal: 55000000, cost: 30000000 }
     ],
     tick: { STR: 1, CHA: 1, HP: -2, FAME: 1 } },
-  { id: 'racer_pro', name: '职业赛车手（GT / 拉力）', cat: '体育', edu: 1, risk: 3, need: { STR: 45, CHA: 35, WILL: 40 }, needFlag: ['race_license', 'race_win'],
+  { id: 'racer_pro', name: '职业赛车手（GT / 拉力）', cat: '体育', edu: 1, risk: 3, need: { STR: 23, CHA: 18, WILL: 20 }, needFlag: ['race_license', 'race_win'],
     desc: '砂石拉力和耐力赛是两种苦。领奖台上的香槟，是拿命换的汽水。',
     ladder: [
       { title: '车队签约车手', sal: 40000000, cost: 26000000 },
@@ -859,7 +858,7 @@ EVENTS.push(
  * ========================================================= */
 CAREERS.push(
   {
-    id: 'upzhu', name: '视频UP主', cat: '新媒体', edu: 2, risk: 3, need: { CHA: 25, INT: 30 }, minYear: 2010,
+    id: 'upzhu', name: '视频UP主', cat: '新媒体', edu: 2, risk: 3, need: { CHA: 13, INT: 15 }, minYear: 2010,
     desc: '一部手机、一腔热血。更新是玄学，三连是信仰，恰饭是艺术。',
     ladder: [
       { title: '百粉小UP', sal: 3000000, cost: 4000000 },
@@ -870,7 +869,7 @@ CAREERS.push(
     tick: { CHA: 1, INT: 1, FAME: 2, STRESS: 2, HP: -1 }
   },
   {
-    id: 'livestreamer', name: '直播带货主播', cat: '新媒体', edu: 1, risk: 3, need: { CHA: 35 }, minYear: 2017,
+    id: 'livestreamer', name: '直播带货主播', cat: '新媒体', edu: 1, risk: 3, need: { CHA: 18 }, minYear: 2017,
     desc: '三二一上链接。喉咙是消耗品，信任是易碎品，GMV是硬通货。',
     ladder: [
       { title: '夜班小主播', sal: 7000000, cost: 6000000 },
@@ -892,7 +891,7 @@ CAREERS.push(
     tick: { STR: -1, HP: -2, STRESS: 2, NET: 1 }
   },
   {
-    id: 'dronepilot', name: '无人机飞手', cat: '技术', edu: 2, risk: 2, need: { INT: 35 }, needFlag: ['drone_license'], minYear: 2015,
+    id: 'dronepilot', name: '无人机飞手', cat: '技术', edu: 2, risk: 2, need: { INT: 18 }, needFlag: ['drone_license'], minYear: 2015,
     desc: '航拍、测绘、植保、巡检。你的办公室在天上，摔一架一个月白干。',
     ladder: [
       { title: '持证飞手', sal: 9000000, cost: 7000000 },
@@ -903,7 +902,7 @@ CAREERS.push(
     tick: { INT: 1, CUR: 1, STRESS: 2 }
   },
   {
-    id: 'escorts', name: '陪诊师', cat: '服务业', edu: 1, risk: 1, need: { CHA: 20, LOVE: 45 }, minYear: 2020,
+    id: 'escorts', name: '陪诊师', cat: '服务业', edu: 1, risk: 1, need: { CHA: 10, LOVE: 45 }, minYear: 2020,
     desc: '替子女尽孝，陪陌生人看病。你熟悉每家医院的流程，也熟悉人情的重量。',
     ladder: [
       { title: '兼职陪诊', sal: 5000000, cost: 4000000 },
@@ -914,7 +913,7 @@ CAREERS.push(
     tick: { LOVE: 2, NET: 1, HP: -1 }
   },
   {
-    id: 'organizer', name: '整理收纳师', cat: '服务业', edu: 1, risk: 1, need: { WILL: 40 }, minYear: 2019,
+    id: 'organizer', name: '整理收纳师', cat: '服务业', edu: 1, risk: 1, need: { WILL: 20 }, minYear: 2019,
     desc: '你整理的不是衣服，是别人的人生。每一个塞满的衣柜背后，都是一段舍不得。',
     ladder: [
       { title: '上门整理师', sal: 6000000, cost: 4500000 },
@@ -925,7 +924,7 @@ CAREERS.push(
     tick: { WILL: 1, CHA: 1, LOVE: 1 }
   },
   {
-    id: 'scriptdm', name: '剧本杀DM', cat: '文娱', edu: 1, risk: 2, need: { CHA: 28, INT: 25 }, minYear: 2018,
+    id: 'scriptdm', name: '剧本杀DM', cat: '文娱', edu: 1, risk: 2, need: { CHA: 14, INT: 13 }, minYear: 2018,
     desc: '白天主持别人的悲欢离合，晚上复盘本子的逻辑漏洞。行业起落比剧本还刺激。',
     ladder: [
       { title: '实习DM', sal: 5000000, cost: 4500000 },
@@ -936,7 +935,7 @@ CAREERS.push(
     tick: { CHA: 1, INT: 1, MOOD: 1, STRESS: 2 }
   },
   {
-    id: 'petfuneral', name: '宠物殡葬师', cat: '服务业', edu: 1, risk: 1, need: { LOVE: 50, WILL: 35 }, minYear: 2015,
+    id: 'petfuneral', name: '宠物殡葬师', cat: '服务业', edu: 1, risk: 1, need: { LOVE: 50, WILL: 18 }, minYear: 2015,
     desc: '送别一只毛孩子，安慰一个家庭。你做的是告别，也是纪念。',
     ladder: [
       { title: '助理', sal: 5500000, cost: 4500000 },
@@ -947,7 +946,7 @@ CAREERS.push(
     tick: { LOVE: 2, ETH: 1, STRESS: 2 }
   },
   {
-    id: 'crosstra', name: '跨境电商运营', cat: '商业', edu: 3, risk: 2, need: { INT: 40 }, major: ['商科', '外语', '传媒'], minYear: 2014,
+    id: 'crosstra', name: '跨境电商运营', cat: '商业', edu: 3, risk: 2, need: { INT: 20 }, major: ['商科', '外语', '传媒'], minYear: 2014,
     desc: '把货卖到全世界。时差是你的作息表，汇率是你的心电图。',
     ladder: [
       { title: '运营专员', sal: 11000000, cost: 8000000 },
@@ -958,7 +957,7 @@ CAREERS.push(
     tick: { INT: 1, NET: 2, LOY: 1, STRESS: 3 }
   },
   {
-    id: 'aitrainer', name: 'AI训练师', cat: '技术', edu: 4, risk: 2, need: { INT: 60 }, major: ['计算机', '数学'], minYear: 2020,
+    id: 'aitrainer', name: 'AI训练师', cat: '技术', edu: 4, risk: 2, need: { INT: 30 }, major: ['计算机', '数学'], minYear: 2020,
     desc: '教机器说人话。你标注的每一条数据，都在塑造未来几十亿人看到的答案。',
     ladder: [
       { title: '数据标注专员', sal: 12000000, cost: 8000000 },
@@ -969,3 +968,24 @@ CAREERS.push(
     tick: { INT: 2, CUR: 1, LOY: 1, STRESS: 3, HP: -1 }
   }
 );
+
+/* =========================================================
+ * v6.4.0 职业工资表修复
+ * ---------------------------------------------------------
+ * 旧 bug：buildJobTable() 原先在文件中间（CAREERS 数组定义之后、
+ * v6.0/v6.3 的 CAREERS.push 之前）就调用了，于是导演、飞行员等
+ * 全部后加职业的职称从未注册进 JOBS → careerIncome 走
+ * `JOBS[job] || {salary:0}` 兜底 → 这些职业年薪恒为 0。
+ * 修法：调用挪到文件末尾，并给收入函数加一层职业阶梯回落。
+ * ========================================================= */
+function jobEntry(state, jobName) {
+  const j = JOBS[jobName];
+  if (j) return j;
+  const c = state && state.career ? careerById(state.career.id) : null;
+  if (c) {
+    const lv = Math.max(0, Math.min(c.ladder.length - 1, state.career.level || 0));
+    return { salary: c.ladder[lv].sal, cost: c.ladder[lv].cost, career: c.id };
+  }
+  return { salary: 0, cost: 12000000 };
+}
+buildJobTable();
