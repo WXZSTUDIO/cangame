@@ -111,42 +111,40 @@ function quitForSchool(state, schoolName) {
   applyEffects(state, { LOY: -6, STRESS: 5, MOOD: 3 });
 }
 
-/* 每年按人生阶段认识新朋友：类型必须匹配年龄与身份 */
+/* 每年结识新同事：只有上班后才遇到（同公司同事 / 客户 / 合作伙伴） */
 function friendGrowth(state) {
   if (!state.friends) state.friends = [];
   const alive = state.friends.filter(f => f.alive !== false);
-  if (alive.length >= 5) return;
+  if (alive.length >= 8) return;
   const has = (k) => state.friends.some(f => f.key === k && f.alive !== false);
   const stage = schoolStageOf(state);
   const candidates = [];
-  FRIEND_TYPES.forEach(t => {
+  COLLEAGUE_TYPES.forEach(t => {
     if (state.age < (t.from || 0)) return;
     if (t.to && state.age > t.to) return;
     if (t.needCareer && !state.career) return;
-    if (t.key === 'teacher' && !stage) return;      // 恩师只在读书阶段出现
-    if (t.key === 'childhood' && state.age > 14) return; // 发小要趁小
     if (has(t.key)) return;
     candidates.push(t);
   });
   if (!candidates.length) return;
-  // 朋友不是每年都交得到的
-  if (!chance(state.age <= 6 ? 0.25 : 0.35)) return;
+  // 同事不是每年都交得到的
+  if (!chance(0.4)) return;
   const t = candidates[randInt(0, candidates.length - 1)];
-  // 年龄差按关系类型来：恩师永远比你大一辈，同事则上下浮动
+  // 年龄差按关系类型来：同事/客户上下浮动
   const gp = t.ageGap || [-1, 2];
   const gap = randInt(gp[0], gp[1]);
   const fg = chance(0.5) ? 'F' : 'M';
   const f = {
     key: t.key,
     gender: fg,
-    name: randomKoreanName(fg),
+    name: randomPersonName(fg),
     affinity: randInt(12, 30),
     lastTouch: -1,
     age: clamp(state.age + gap, 3, 92),
     since: state.age
   };
   state.friends.push(f);
-  pushLog(state, `【新朋友】你认识了 ${f.name}（${t.label}，${f.age} 岁）。${t.line.replace('每年', '以后')}。`, 'muted');
+  pushLog(state, `【新同事】${t.key === 'client' ? '工作中你对接上' : '你认识了'}${f.name}（${t.label}，${f.age} 岁）。${t.line.replace('每年', '以后')}。`, 'muted');
 }
 
 /* ---------- 人际互动（人际关系面板） ---------- */
@@ -229,8 +227,8 @@ function socialAct(state, kind, idx) {
      * 文案也从「聚了聚」改为「发条消息」，明确它不是减压手段。
      * ⚠ spec 原文写的是「−3 → −1」，实测现值是 −2 —— spec 的输入值有误，按意图取 −1。 */
     s.NET += 1; s.LOVE += 2; s.STRESS -= 0.83;
-    const t = FRIEND_TYPES.find(x => x.key === f.key);
-    pushLog(state, `【问候】你给 ${f.name}（${t ? t.label : '朋友'}）发了条消息。他回得很快，虽然只聊了几句。`, 'muted');
+    const t = COLLEAGUE_TYPES.find(x => x.key === f.key);
+    pushLog(state, `【问候】你给 ${f.name}（${t ? t.label : '同事'}）发了条消息。他回得很快，虽然只聊了几句。`, 'muted');
   } else { delete touch[key]; return { ok: false }; }
   applyEffects(state, {}); // 触发数值夹取
   return { ok: true };
@@ -262,6 +260,11 @@ function socialActAll(state, kind) {
     let n = 0;
     ['father', 'mother', 'spouse', 'child', 'pet'].forEach(k => {
       if (socialAct(state, k).ok) n++;
+    });
+    // 兄弟姐妹：逐个陪一次（家里有兄弟姐妹时一键互动也要覆盖到）
+    (state.siblings || []).forEach((s, i) => {
+      if (!s.alive) return;
+      if (sibChat(state, i).ok) n++;
     });
     if (n) pushLog(state, `【团圆】这一年你把家里人挨个陪了一遍（${n} 位）。`, 'muted');
     return { ok: n > 0, n };
@@ -1115,9 +1118,41 @@ function choiceTexts(state, ev) {
   return ev._ct.txt;
 }
 
+/* v6.5.0 未成年「成人向选项」过滤
+ * 事件自带的 choices 此前在 eventChoices 里被原样返回，绕开了 choiceTexts
+ * 的未成年重映射——于是 6 岁孩子会被问「要不要全仓杀入虚拟货币」「继续上班」。
+ * 这里统一兜一道：18 岁前命中 ADULT_CHOICE_KW 的选项，
+ * 按风险档位替换成 CHOICE_TEMPLATES_MINOR 的同龄人口吻，effects 原样保留。 */
+function isAdultChoice(text) {
+  if (typeof ADULT_CHOICE_KW === 'undefined') return false;
+  const t = String(text || '');
+  for (let i = 0; i < ADULT_CHOICE_KW.length; i++) {
+    if (t.indexOf(ADULT_CHOICE_KW[i]) >= 0) return true;
+  }
+  return false;
+}
+
+function minorSafeChoices(state, ev, list) {
+  if (state.age >= 18) return list;
+  if (typeof CHOICE_TEMPLATES_MINOR === 'undefined') return list;
+  let need = false;
+  for (const c of list) { if (isAdultChoice(c.text)) { need = true; break; } }
+  if (!need) return list;
+  let tag = inferEventTag(state, ev);
+  if (tag === 'work' || tag === 'money') tag = 'default';   // 与 choiceTexts 的未成年重映射保持一致
+  const pool = CHOICE_TEMPLATES_MINOR[tag] || CHOICE_TEMPLATES_MINOR.default;
+  return list.map((c, i) => {
+    if (!isAdultChoice(c.text)) return c;
+    const trio = pool[i % pool.length] || CHOICE_TEMPLATES_MINOR.default[0];
+    const r = Math.min(Math.max(c.risk || 2, 1), trio.length);
+    return Object.assign({}, c, { text: trio[r - 1] });
+  });
+}
+
 function eventChoices(state, ev) {
   if (ev.choices && ev.choices.length) {
-    return ev.choices.map(c => Object.assign({ risk: c.risk || 2 }, c));
+    const list = ev.choices.map(c => Object.assign({ risk: c.risk || 2 }, c));
+    return minorSafeChoices(state, ev, list);
   }
   if (state.age < 13) return null; // 童年叙事事件保持单按钮
   const base = ev.eff || {};
@@ -1323,9 +1358,9 @@ function friendTick(state) {
     f.age = (f.age || state.age) + 1;
     if (state.age >= 55 && chance(0.004 + Math.max(0, state.age - 60) * 0.0016)) {
       f.alive = false;
-      const t = FRIEND_TYPES.find(x => x.key === f.key);
-      addGrief(state, `老友 ${f.name} 走了`, 14);
-      pushLog(state, `【永别】${f.name}（${t ? t.label : '朋友'}）走了。葬礼上你想起很多年前的那个夏天。`, 'warn');
+      const t = COLLEAGUE_TYPES.find(x => x.key === f.key);
+      addGrief(state, `老同事 ${f.name} 走了`, 14);
+      pushLog(state, `【永别】${f.name}（${t ? t.label : '同事'}）走了。葬礼上你想起很多年前一起加班的那些日子。`, 'warn');
     }
   });
 }
@@ -1354,9 +1389,9 @@ const INBOUND_LINES = {
     '那家新开的店，你不是说想去吗。'
   ],
   friend: [
-    '出来喝一杯，老地方。就我们几个。',
-    '好久没见了，聚一下？',
-    '我这边出了点事，能跟你说说话吗。'
+    '中午一起吃饭的同事问你：最近项目还顺利吗？',
+    '客户发来消息：上次那单，多亏你兜底。',
+    '老搭档说：晚上有空吗，聊聊新机会。'
   ],
   classmate: [
     '班长在群里喊了：毕业这些年，聚一次吧。',
@@ -1608,7 +1643,7 @@ function autoEmploy(state) {
  *   写成顶层 const 就会踩 TDZ。
  */
 function livingCost(state) {
-  const j = JOBS[state.job] || { cost: 12000000 };
+  const j = JOBS[state.job] || JOBS[defaultJob(state.age)] || { cost: 12000000 };
   let cost = j.cost || 0;
   if (state.flags.gangnam_owner) cost += 15000000;
   if (state.flags.married) cost += 12000000;
@@ -1688,7 +1723,7 @@ function yearBase(state) {
 
   // 朋友圈被动加成（好感越高，加成越大）
   if (state.friends) state.friends.forEach(f => {
-    const t = FRIEND_TYPES.find(x => x.key === f.key);
+    const t = COLLEAGUE_TYPES.find(x => x.key === f.key);
     if (!t) return;
     const k = Math.max(0.3, (f.affinity || 0) / 50);
     for (const stat in t.pass) {
@@ -1851,7 +1886,18 @@ function step(state) {
   // 2. 新的一年
   if (state.age >= END_AGE) { finish(state); return { type: 'end' }; }
   state.age += 1;
-  state.job = state.job || defaultJob(state.age);
+  // 重新计算「人生阶段」身份：在职→职业名；在读→学籍阶段；其余→待业/无业
+  // ⚠ 不能用 `state.job || defaultJob(age)`：出生时 job 已是 '婴儿'（truthy），
+  // 会导致身份永远冻结在「婴儿」，8 岁后仍显示婴儿状态。这里每年按学籍/职业实算。
+  if (state.career) {
+    state.job = state.career.title;
+  } else if (state.age < 7) {
+    state.job = '婴儿';
+  } else if (isEnrolled(state)) {
+    state.job = defaultJob(state.age);
+  } else {
+    state.job = (state.age <= 22 ? '待业' : '无业');
+  }
 
   yearBase(state);
   if (state.finished) return { type: 'end' };
@@ -2174,6 +2220,8 @@ function resolveEvent(state, ev, choiceIndex) {
       const t = (ch.pet === 'cat') ? '猫' : '狗';
       pushLog(state, `【领养】你领养了一只${t}，给它取名 ${state.pet.name}。从此多了一个等你回家的生命。`, 'muted');
     }
+    // 父母离异后再育的半个手足
+    if (ch.halfSibling) makeHalfSibling(state, ch.halfSibling);
     extra = ' 【选择 ' + ch.text + '】';
   } else {
     eff = ev.eff || {};
@@ -3651,7 +3699,7 @@ function makeSiblings(state) {
     const older = chance(0.55);
     const diff = randInt(1, 6);
     const sib = {
-      name: parentNameFor({ name: state.name }, g),
+      name: sibName(state, g),
       gender: g,
       born: older ? y - diff : y + diff,   // 出生年份（相对你）
       affinity: randInt(45, 80),
@@ -3668,6 +3716,44 @@ function makeSiblings(state) {
     } });
   }
   return out;
+}
+
+/* 兄弟姐妹随「家姓」（即你与父亲同一个姓）。姐妹此前误用了随机姓氏，
+ * 导致和父亲不同姓——这里统一用 state.name[0]（家姓）+ 当龄名字。 */
+function sibName(state, g) {
+  const sn = (state && state.name && state.name[0]) ? state.name[0] : SURNAMES[randInt(0, SURNAMES.length - 1)];
+  const pool = (g === 'F') ? GIVEN_NAMES.F : GIVEN_NAMES.M;
+  return sn + pool[randInt(0, pool.length - 1)];
+}
+
+/* 父母离异后再育的半个手足：随新伴侣的姓，与家姓不同，需标注（同母异父 / 同父异母） */
+function makeHalfSibling(state, info) {
+  if (!state.siblings) state.siblings = [];
+  if (state.siblings.some(s => s.half)) return;   // 整局只标一次，避免刷出一堆
+  const g = chance(0.5) ? 'M' : 'F';
+  // 叙事里写的是「你看着那个陌生的姓」，所以必须避开家姓，不能随机撞回去
+  const homeSn = (state && state.name && state.name[0]) ? state.name[0] : '';
+  const snPool = SURNAMES.filter(s => s !== homeSn);
+  const newSn = snPool.length ? snPool[randInt(0, snPool.length - 1)] : SURNAMES[randInt(0, SURNAMES.length - 1)];
+  const pool = (g === 'F') ? GIVEN_NAMES.F : GIVEN_NAMES.M;
+  const sib = {
+    name: newSn + pool[randInt(0, pool.length - 1)],
+    gender: g,
+    born: state.startYear + state.age,   // 离异当年出生
+    affinity: randInt(20, 45),
+    alive: true,
+    married: false,
+    touchYear: -1,
+    half: true,
+    rel: info && info.rel || 'half'      // '异父'（同母异父）/ '异母'（同父异母）
+  };
+  state.siblings.push(sib);
+  state.queue = state.queue || [];
+  state.queue.unshift({ type: 'event', ev: {
+    id: 'sib_half_' + state.age, w: 0, age: [0, 200],
+    text: `父母分开后，${info && info.rel === '异父' ? '母亲' : '父亲'}和别人组成了新家庭，又添了个${g === 'M' ? '弟弟' : '妹妹'}——${sib.name}。你看着那个陌生的姓，忽然觉得自己像个客人。`
+  } });
+  return sib;
 }
 
 function sibAge(state, s) { return state.startYear + state.age - s.born; }

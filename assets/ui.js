@@ -431,6 +431,7 @@ function rerollName() {
 /* ---------- 游戏页 ---------- */
 let GAME_VIEW = 'main'; // main | job | rel
 let REL_TAB = 'family'; // family | friends
+let POP_OPEN = false;    // 选择事件/中高考弹窗是否打开（打开时阻断「下一年」）
 
 function enterGame() {
   if (STATE) { marketMigrate(STATE); migrateState(STATE); }
@@ -454,18 +455,11 @@ function ageAvatar(age, gender) {
 
 function renderStats() {
   const s = STATE.stats;
-  // v6.1 真人头像：14 岁以上用精灵图，幼年走 emoji
+  // v6.5：头像回归 emoji（不再使用真人精灵图）
   const hudAva = $('hudAvatar');
-  if (STATE.age >= 14) {
-    hudAva.textContent = '';
-    hudAva.classList.add('photo');
-    const st = avaStyle(STATE.name, STATE.gender).split(':');
-    hudAva.style.backgroundPosition = st[1];
-  } else {
-    hudAva.classList.remove('photo');
-    hudAva.style.backgroundPosition = '';
-    hudAva.textContent = ageAvatar(STATE.age, STATE.gender);
-  }
+  hudAva.classList.remove('photo');
+  hudAva.style.backgroundPosition = '';
+  hudAva.textContent = ageAvatar(STATE.age, STATE.gender);
   $('hudName').textContent = `${STATE.name} · ${STATE.gender === 'M' ? '男' : '女'} · ${STATE.familyName.split(' ')[0]}`;
   $('hudAge').textContent = `${STATE.age} / ${END_AGE}岁 · ${fmtYear(STATE)} 年 · ${STATE.job || defaultJob(STATE.age)}`;
   $('hudCash').textContent = fmtMoney(s.MONEY);
@@ -756,13 +750,10 @@ function portraitSVG(name, gender, age, opt) {
     `</svg>`;
 }
 
-/* 包装成可放进 rel-ava 的方块
- * v6.1 真人照片头像：14 岁以上用精灵图（见 avaIndex），幼年仍走 SVG 画像（照片里没有小孩） */
+/* 包装成可放进 rel-ava 的方块——v6.5 起统一用 emoji 头像 */
 function personAvatar(name, gender, age, cls, opt) {
-  if (age == null || age >= 14) {
-    return `<span class="rel-ava pic photo ${cls || ''}" style="${avaStyle(name, gender)}"></span>`;
-  }
-  return `<span class="rel-ava pic ${cls || ''}">${portraitSVG(name, gender, age, opt)}</span>`;
+  const av = ageAvatar(age == null ? 25 : age, gender);
+  return `<span class="rel-ava emoji ${cls || ''}">${av}</span>`;
 }
 
 /* ---------- v6.1 真人头像精灵图（assets/avatars.jpg · 10 列 × 4 行） ----------
@@ -1566,14 +1557,14 @@ function renderRelView() {
     const list = STATE.friends || [];
     if (list.length) {
       extra = `<div class="of-btns" style="padding:0 4px 10px">
-        <button class="btn small" onclick="uiSocialAll('friend')">🔁 一键和所有朋友聚一次</button>
+        <button class="btn small" onclick="uiSocialAll('friend')">🔁 一键和所有同事聚一次</button>
       </div>`;
     }
     list.forEach((f, i) => {
-      const t = FRIEND_TYPES.find(x => x.key === f.key);
+      const t = COLLEAGUE_TYPES.find(x => x.key === f.key);
       cards.push({
         avaSvg: personAvatar(f.name, f.gender || (hashStr(f.name) % 2 ? 'F' : 'M'), f.age, f.alive === false ? 'amber' : ''),
-        name: `${f.name} · ${t ? t.label : '朋友'}`,
+        name: `${f.name} · ${t ? t.label : '同事'}`,
         sub: f.alive === false ? '已经不在了。' : `好感度 ${Math.round(f.affinity)}% · ${f.age || 20}岁 · ${t ? t.line : ''}`,
         key: f.alive === false ? null : 'friend:' + i,
         dead: f.alive === false
@@ -1585,7 +1576,7 @@ function renderRelView() {
     <div class="rel-head">
       <button class="rel-tab ${REL_TAB === 'family' ? 'active' : ''}" onclick="setRelTab('family')">👪 家人</button>
       <button class="rel-tab ${REL_TAB === 'classmate' ? 'active' : ''}" onclick="setRelTab('classmate')">🎒 同学</button>
-      <button class="rel-tab ${REL_TAB === 'friends' ? 'active' : ''}" onclick="setRelTab('friends')">🧑‍🤝‍🧑 朋友</button>
+      <button class="rel-tab ${REL_TAB === 'friends' ? 'active' : ''}" onclick="setRelTab('friends')">💼 同事</button>
       <button class="rel-tab ${REL_TAB === 'love' ? 'active' : ''}" onclick="setRelTab('love')">💘 恋人</button>
       <button class="rel-tab ${REL_TAB === 'good' ? 'active' : ''}" onclick="setRelTab('good')">🙏 向善</button>
       <button class="rel-tab ${REL_TAB === 'relax' ? 'active' : ''}" onclick="setRelTab('relax')">🍃 减压</button>
@@ -2048,16 +2039,28 @@ function renderIdle() {
   $('actions').innerHTML = `<button class="btn primary" onclick="advance()">下一年 ▸</button>`;
 }
 
-function renderItem(item) {
+function closePop() {
+  POP_OPEN = false;
+  const m = $('popModal');
+  if (m) m.classList.remove('open');
+}
+
+/* 选择事件 / 中高考 / 投资机会：弹窗呈现，必须做出选择才能「下一年」 */
+function showPop(item) {
   STATE.pending = item;
-  let html = '';
+  POP_OPEN = true;
+  const m = $('popModal');
+  if (m) m.classList.add('open');
+  // 清空背后的内联卡片，避免误触「下一年」
+  $('card').innerHTML = '';
+  $('actions').innerHTML = '';
+  let head = '', body = '', actions = '';
   if (item.type === 'event') {
     const ev = item.ev;
-    html = `<div class="card-inner">
-      <div class="card-year">${fmtYear(STATE)} 年 · ${STATE.age}岁</div>
-      <p class="card-text">${esc(ev.text)}</p></div>`;
+    head = `人生事件 · ${fmtYear(STATE)} 年 · ${STATE.age}岁`;
+    body = `<p class="card-text">${esc(ev.text)}</p>`;
     const list = eventChoices(STATE, ev) || [];
-    const btns = list.map((c, i) => {
+    actions = list.map((c, i) => {
       const r = c.risk || 2;
       let sub = '';
       if (c.gamble) {
@@ -2068,8 +2071,7 @@ function renderItem(item) {
         if (d.length) sub = `<span class="gamble">${d.join(' · ')}</span>`;
       }
       return `<button class="btn choice c-risk${r}" onclick="choose(${i})">${esc(c.text)}<span class="risk r${r}">风险${riskLabel(r)}</span>${sub}</button>`;
-    }).join('');
-    $('actions').innerHTML = btns || `<button class="btn primary" onclick="choose(-1)">继续 ▸</button>`;
+    }).join('') || `<button class="btn primary" onclick="choose(-1)">继续 ▸</button>`;
   } else if (item.type === 'exam') {
     const ex = item.exam;
     if (ex.quiz && !ex.quiz.done) {
@@ -2078,62 +2080,68 @@ function renderItem(item) {
       const q = qz.qs[qz.i];
       const LETTERS = ['A', 'B', 'C', 'D'];
       const OPT_COLORS = ['', 'o-gold', 'o-blue', 'o-teal', 'o-pink'];
-      html = `<div class="card-inner exam">
-        <div class="card-year">${fmtYear(STATE)} 年 · ${STATE.age}岁 · ${esc(ex.title)} · 第 ${qz.i + 1}/${qz.qs.length} 题 · 答对 ${qz.correct}</div>
-        <p class="quiz-q">${esc(q.q)}</p>
-        <div class="quiz-progress"><i style="width:${Math.round(qz.i / qz.qs.length * 100)}%"></i></div>
-      </div>`;
-      $('actions').innerHTML = q.opts.map((o, k) =>
+      head = `${esc(ex.title)} · 第 ${qz.i + 1}/${qz.qs.length} 题 · 已答对 ${qz.correct}`;
+      body = `<p class="quiz-q">${esc(q.q)}</p><div class="quiz-progress"><i style="width:${Math.round(qz.i / qz.qs.length * 100)}%"></i></div>`;
+      actions = q.opts.map((o, k) =>
         `<button class="btn choice quiz-opt" onclick="answerExam(${k})"><span class="quiz-letter ${OPT_COLORS[k + 1]}">${LETTERS[k]}</span>${esc(o)}</button>`
       ).join('');
-      $('card').innerHTML = html;
-      renderStats(); renderStream(); markDirty();
-      return;
-    }
-    html = `<div class="card-inner exam">
-      <div class="card-year">${fmtYear(STATE)} 年 · ${STATE.age}岁 · ${esc(ex.title)}</div>
-      ${ex.score != null ? `<div class="exam-score">${ex.score}<small> / ${ex.full}</small></div>` : ''}
-      <p class="card-text">${esc(ex.text).replace(/\n/g, '<br>')}</p></div>`;
-    $('actions').innerHTML = (ex.options || []).map((o, i) => {
-      const meta = o.minScore != null ? `录取线 ${Math.round(o.minScore / 100 * (ex.full || 100))}` : '';
-      /* E-13：把「起薪系数」露出来。档内连续化之后，同一档内不同分数拿到的系数不同，
-       * 985 / 211 / 一本 之间只差 2%~10%，不显示这个数，玩家就是在盲选。
-       * 只有大学有 salaryK（HIGH_SCHOOLS 没有），中考放榜不显示。 */
-      let salaryTag = '';
-      if (o.salaryK != null && typeof salaryKFor === 'function') {
-        const k = salaryKFor(o, ex.score);
-        const over = (ex.score != null && ex.score > uniNeed(o)) ? '（超线加成后）' : '';
-        salaryTag = `<span class="risk r1">起薪 ×${k.toFixed(3)}${over}</span>`;
-      }
-      if (o.locked) {
-        return `<button class="btn choice dis" disabled>${esc(o.name)}
+    } else {
+      head = `${esc(ex.title)}`;
+      body = `${ex.score != null ? `<div class="exam-score">${ex.score}<small> / ${ex.full}</small></div>` : ''}<p class="card-text">${esc(ex.text).replace(/\n/g, '<br>')}</p>`;
+      actions = (ex.options || []).map((o, i) => {
+        const meta = o.minScore != null ? `录取线 ${Math.round(o.minScore / 100 * (ex.full || 100))}` : '';
+        let salaryTag = '';
+        if (o.salaryK != null && typeof salaryKFor === 'function') {
+          const k = salaryKFor(o, ex.score);
+          const over = (ex.score != null && ex.score > uniNeed(o)) ? '（超线加成后）' : '';
+          salaryTag = `<span class="risk r1">起薪 ×${k.toFixed(3)}${over}</span>`;
+        }
+        if (o.locked) {
+          return `<button class="btn choice dis" disabled>${esc(o.name)}
+            <span class="gamble">${esc(o.desc)}</span>
+            ${salaryTag}
+            <span class="risk r3">进不去 · ${esc(o.lockReason || '条件不够')}</span></button>`;
+        }
+        return `<button class="btn choice" onclick="chooseExam(${i})">${esc(o.name)}
           <span class="gamble">${esc(o.desc)}</span>
           ${salaryTag}
-          <span class="risk r3">进不去 · ${esc(o.lockReason || '条件不够')}</span></button>`;
-      }
-      return `<button class="btn choice" onclick="chooseExam(${i})">${esc(o.name)}
-        <span class="gamble">${esc(o.desc)}</span>
-        ${salaryTag}
-        ${meta ? `<span class="risk r2">${meta}</span>` : ''}</button>`;
-    }).join('');
+          ${meta ? `<span class="risk r2">${meta}</span>` : ''}</button>`;
+      }).join('');
+    }
   } else if (item.type === 'invest') {
-    html = `<div class="card-inner invest">
-      <div class="card-year">投资机会 · ${fmtYear(STATE)} 年</div>
-      <p class="card-text">${esc(item.text).replace(/\n/g, '<br>')}</p></div>`;
-    $('actions').innerHTML = item.choices.map((c, i) =>
-      `<button class="btn choice ${c.disabled ? 'dis' : ''}" ${c.disabled ? 'disabled' : ''} onclick="investChoice(${i})">${esc(c.text)}</button>`).join('');
-  } else {
-    html = `<div class="card-inner"><div class="card-year">${item.year} 年</div><p class="card-text">新的一年开始了。</p></div>`;
-    $('actions').innerHTML = `<button class="btn primary" onclick="advance()">继续 ▸</button>`;
+    head = `投资机会 · ${fmtYear(STATE)} 年`;
+    body = `<p class="card-text">${esc(item.text).replace(/\n/g, '<br>')}</p>`;
+    actions = item.choices.map((c, i) =>
+      `<button class="btn choice ${c.disabled ? 'dis' : ''}" ${c.disabled ? 'disabled' : ''} onclick="investChoice(${i})">${esc(c.text)}</button>`
+    ).join('');
   }
-  $('card').innerHTML = html;
+  $('popHead').innerHTML = head;
+  $('popBody').innerHTML = body;
+  $('popActions').innerHTML = actions;
   renderStats();
   renderStream();
   markDirty();
 }
 
+/* 事件/考试/投资结算后，继续到下一项或回到空闲；交互项走弹窗，否则关闭弹窗 */
+function continueFlow() {
+  if (STATE.queue && STATE.queue.length) {
+    const it = STATE.queue.shift();
+    if (it.type === 'event' || it.type === 'exam' || it.type === 'invest') { showPop(it); return; }
+  }
+  closePop();
+  renderIdle();
+}
+
+function renderItem(item) {
+  // 交互型内容（事件 / 中高考 / 投资）一律弹窗，必须做出选择才能继续；其余内联渲染
+  if (item.type === 'event' || item.type === 'exam' || item.type === 'invest') { showPop(item); return; }
+  renderIdle();
+}
+
 function advance() {
   if (!STATE || STATE.finished) return;
+  if (POP_OPEN) { toast('请先做出选择，才能继续下一年'); return; }
   let item = step(STATE);
   // 跳过纯年份头，直接进入内容
   let guard = 0;
@@ -2150,7 +2158,7 @@ function answerExam(k) {
   if (!item || item.type !== 'exam') return;
   const r = answerExamQ(STATE, k);
   if (!r.ok) { toast('现在不能作答'); return; }
-  renderItem(item); // 下一题或放榜，都在同一个卡片里
+  showPop(item); // 下一题或放榜，刷新同一个弹窗
 }
 
 function chooseExam(i) {
@@ -2180,8 +2188,7 @@ function doChooseExam(i) {
   renderStats();
   renderStream();
   markDirty();
-  if (STATE.queue && STATE.queue.length) renderItem(STATE.queue.shift());
-  else renderIdle();
+  continueFlow();
 }
 
 function choose(i) {
@@ -2220,8 +2227,7 @@ function doChoose(i) {
   renderStream();
   markDirty();
   if (STATE.finished) { finishGame(); return; }
-  if (STATE.queue && STATE.queue.length) renderItem(STATE.queue.shift());
-  else renderIdle();
+  continueFlow();
 }
 
 function investChoice(i) {
@@ -2234,8 +2240,7 @@ function investChoice(i) {
   renderStats();
   renderStream();
   markDirty();
-  if (STATE.queue && STATE.queue.length) renderItem(STATE.queue.shift());
-  else renderIdle();
+  continueFlow();
 }
 
 function finishGame() {
@@ -2748,7 +2753,7 @@ function familyTreeHtml() {
   const gen2 = [];
   (s.siblings || []).forEach(sib => {
     if (!sib.alive && sibAge(s, sib) < 0) return;
-    const rel = sib.born < s.startYear ? (sib.gender === 'M' ? '哥哥' : '姐姐') : (sib.gender === 'M' ? '弟弟' : '妹妹');
+    const rel = sibRelLabel(s, sib);
     gen2.push(treeChip(personAvatar(sib.name, sib.gender, sibAge(s, sib), ''), sib.name, rel + (sib.alive ? '' : ' · 已故'), !sib.alive));
   });
   const meSub = (s.flags.married ? '已婚' : (s.flags.dating ? '恋爱中' : '未婚')) + ' · ' + (s.job || '');
@@ -2773,17 +2778,26 @@ function familyTreeHtml() {
   </div>`;
 }
 
+/* 手足关系标签：含「同母异父 / 同父异母」标注（父母离异后再育） */
+function sibRelLabel(s, sib) {
+  let rel = sib.born < s.startYear ? (sib.gender === 'M' ? '哥哥' : '姐姐') : (sib.gender === 'M' ? '弟弟' : '妹妹');
+  if (sib.half) rel += (sib.rel === '异父' ? '（同母异父）' : '（同父异母）');
+  return rel;
+}
+
 /* ---------- A1 手足卡（家人页） ---------- */
 function sibCards() {
   const out = [];
   (STATE.siblings || []).forEach((sib, i) => {
     const a = sibAge(STATE, sib);
-    const rel = sib.born < STATE.startYear ? (sib.gender === 'M' ? '哥哥' : '姐姐') : (sib.gender === 'M' ? '弟弟' : '妹妹');
+    const rel = sibRelLabel(STATE, sib);
     out.push(sib.alive
       ? {
         avaSvg: personAvatar(sib.name, sib.gender, a, ''),
         name: `${rel} · ${sib.name}`,
-        sub: `${a}岁 · ${sib.married ? '已成家' : '未婚'} · 亲近 ${Math.round(sib.affinity)}%。${(sib.affinity || 0) >= 70 ? '你们是无话不说的手足。' : (sib.affinity || 0) >= 45 ? '平时各忙各的，有事必到。' : '小时候总吵架，现在客气得像亲戚。'}`,
+        sub: `${a}岁 · ${sib.married ? '已成家' : '未婚'} · 亲近 ${Math.round(sib.affinity)}%。` +
+          (sib.half ? '你们不是一个父亲/母亲，却在同一本户口本旁。' :
+            (sib.affinity || 0) >= 70 ? '你们是无话不说的手足。' : (sib.affinity || 0) >= 45 ? '平时各忙各的，有事必到。' : '小时候总吵架，现在客气得像亲戚。'),
         key: null,
         multi: sib.touchYear === STATE.age
           ? '<span class="rel-act dis">今年见过了</span>'

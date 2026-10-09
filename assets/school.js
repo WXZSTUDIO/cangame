@@ -66,35 +66,35 @@ const SCORE_K = { over: 70, max: 0.10 };
 const UNIVERSITIES = [
   {
     id: 'u_985', name: '985 重点大学', edu: 5, minScore: 88, years: 4, tier: 5,
-    major: ['计算机', '人工智能', '金融学', '临床医学', '法学', '电子信息'],
+    major: ['计算机', '人工智能', '金融学', '临床医学', '法学', '电子信息', '数学', '物理学', '生物科学', '建筑学', '经济学', '自动化'],
     desc: '录取通知书是红色的。村里或小区门口，会贴一张大红榜。',
     eff: { INT: 8, NET: 10, FAME: 10, CHA: 3, WILL: 4 },
     flags: ['uni_985'], salaryK: 1.42
   },
   {
     id: 'u_211', name: '211 大学', edu: 4, minScore: 78, years: 4, tier: 4,
-    major: ['软件工程', '会计学', '新闻学', '机械', '教育学', '播音与主持艺术'],
+    major: ['软件工程', '会计学', '新闻学', '机械', '教育学', '播音与主持艺术', '统计学', '心理学', '化学工程', '电气工程', '社会学', '财务管理'],
     desc: '也是好学校。校招的时候，简历能过第一道机器筛选。',
     eff: { INT: 6, NET: 8, FAME: 7, CHA: 2, WILL: 3 },
     flags: ['uni_211'], salaryK: 1.20
   },
   {
     id: 'u_yiben', name: '普通一本', edu: 4, minScore: 68, years: 4, tier: 3.5,
-    major: ['工商管理', '土木工程', '英语', '市场营销', '视觉传达设计', '表演'],
+    major: ['工商管理', '土木工程', '英语', '市场营销', '视觉传达设计', '表演', '汉语言文学', '通信工程', '护理学', '药学', '行政管理', '旅游管理'],
     desc: '省里的好学校。能不能出头，看这四年你怎么过。',
     eff: { INT: 5, NET: 6, FAME: 4, CHA: 2, WILL: 2 },
     flags: ['uni_bk'], salaryK: 1.06
   },
   {
     id: 'u_erben', name: '二本 / 民办本科', edu: 3, minScore: 56, years: 4, tier: 3,
-    major: ['电子商务', '国际经济与贸易', '环境工程', '汉语言文学', '动画', '音乐表演'],
+    major: ['电子商务', '国际经济与贸易', '环境工程', '汉语言文学', '动画', '音乐表演', '数字媒体技术', '社会工作', '食品科学', '城乡规划', '日语', '金融工程'],
     desc: '学费是家里咬牙凑的。毕业证上写着本科，剩下的看你自己。',
     eff: { INT: 3, NET: 5, CHA: 2, WILL: 3 },
     flags: ['uni_bk'], salaryK: 0.95
   },
   {
     id: 'u_zhuanke', name: '专科院校', edu: 2, minScore: 42, years: 3, tier: 2,
-    major: ['护理学', '机电', '广告学', '物流管理', '学前教育'],
+    major: ['护理学', '机电', '广告学', '物流管理', '学前教育', '汽车维修', '烹饪工艺', '计算机应用', '畜牧兽医', '园林技术'],
     desc: '三年制。技术性更强，也更容易在毕业那年就找到活干。',
     eff: { STR: 3, NET: 5, CHA: 2, WILL: 3 },
     flags: ['uni_zk'], salaryK: 0.85
@@ -204,7 +204,7 @@ const CLASSMATE_TYPES = [
 
 function makeClassmates(state, stage) {
   const pool = CLASSMATE_TYPES.slice();
-  const n = stage === 'uni' ? 5 : (stage === 'grad' ? 4 : 4);
+  const n = stage === 'uni' ? 8 : (stage === 'grad' ? 6 : 6);
   // 研究生同学年纪更大一些
   const ageAdd = stage === 'grad' ? randInt(0, 3) : 0;
   const out = [];
@@ -229,7 +229,7 @@ function makeClassmates(state, stage) {
 
 /* 同学阶段名 */
 const STAGE_CN = { pri: '小学', mid: '初中', high: '高中', uni: '大学', grad: '研究生' };
-const CLASSMATE_CAP = 14;
+const CLASSMATE_CAP = 22;
 
 function stageCn(s) { return STAGE_CN[s] || '老同学'; }
 
@@ -458,7 +458,8 @@ function answerExamQ(state, optIdx) {
   if (qz.i >= qz.qs.length) {
     // 放榜
     const quizScore = qz.correct * ex.perQ;
-    const total = clamp(ex.base + quizScore, 0, ex.full);
+    const allCorrect = qz.correct === qz.qs.length;   // 五题全对 → 满分
+    const total = allCorrect ? ex.full : clamp(ex.base + quizScore, 0, ex.full);
     ex.score = total;
     ex.quizScore = quizScore;
     qz.done = true;
@@ -472,10 +473,10 @@ function answerExamQ(state, optIdx) {
     const open = ex.options.filter(o => !o.locked);
     ex.text =
       `放榜了。平时分 ${ex.base} / ${ex.academicFull}，常识题答对 ${qz.correct} / 5 道得 ${quizScore} / ${ex.quizFull} 分，` +
-      `总分 ${total} / ${ex.full}${total >= ex.full ? '——满分。' : '。'}\n` +
+      `总分 ${total} / ${ex.full}${allCorrect ? '——五题全对，满分！' : (total >= ex.full ? '——满分。' : '。')}\n` +
       (open.length > 1 ? `${pool.length} 条路摆在这里，你能走的有 ${open.length} 条。想去哪儿？`
         : open.length === 1 ? `只有一条路能走。` : `今年，一条路都没走通。`);
-    pushLog(state, `【放榜】${ex.kind === 'mid' ? '中考' : '高考'} ${total} 分（满分 ${ex.full}${total >= ex.full ? '，满分' : ''}）。`, 'money');
+    pushLog(state, `【放榜】${ex.kind === 'mid' ? '中考' : '高考'} ${total} 分（满分 ${ex.full}${allCorrect ? '，满分（五题全对）' : (total >= ex.full ? '，满分' : '')}）。`, 'money');
   }
   return { ok: true, correct: correct, done: qz.done };
 }

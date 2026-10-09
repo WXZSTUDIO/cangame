@@ -50,7 +50,7 @@ click(w.document.getElementById('btnStart'));
 console.log('进入:', activeScreen());
 
 // 3 → 一路推进到结局（中途进入市场做买卖）
-let steps = 0, traded = 0, viewChecked = false;
+let steps = 0, traded = 0, viewChecked = false, popSeen = null, popSteps = 0;
 while (activeScreen() === 'screen-game' && steps++ < 800) {
   // 对局中途检查底部导航视图（人际关系 / 工作）
   if ((steps === 5 || steps === 40) && !viewChecked) {
@@ -90,13 +90,29 @@ while (activeScreen() === 'screen-game' && steps++ < 800) {
       click(w.document.getElementById('btnMarketBack'));
     }
   }
-  const btns = [...w.document.querySelectorAll('#actions button')].filter(b => !b.disabled);
-  if (!btns.length) { click(w.document.getElementById('actions').querySelector('button')) || null; }
-  if (!btns.length) break;
-  click(btns[btns.length > 1 ? Math.floor(Math.random() * btns.length) : 0]);
+  /* v6.5.0 起，事件 / 中高考 / 投资改为弹窗呈现（#popActions），且未选择时 #actions 会被清空、
+   * 「下一年」会被拦住 —— 这正是本期需求，测试用例要跟着走。 */
+  const pop = w.document.getElementById('popModal');
+  const popOpen = pop && pop.classList.contains('open');
+  const popBtns = popOpen
+    ? [...w.document.querySelectorAll('#popActions button')].filter(b => !b.disabled)
+    : [];
+  const inlineBtns = popOpen
+    ? []
+    : [...w.document.querySelectorAll('#actions button')].filter(b => !b.disabled);
+  const btns = popOpen ? popBtns : inlineBtns;
+  if (btns.length) {
+    click(btns.length > 1 ? btns[Math.floor(Math.random() * btns.length)] : btns[0]);
+    if (popSeen === null && popOpen) popSeen = steps;
+    if (popOpen) popSteps++;
+    continue;
+  }
+  // 没有待决选项时，用底部「下一年」推进
+  click(w.document.getElementById('dockNext'));
 }
 console.log('市场成交次数:', traded);
 console.log('推进次数:', steps, '| 最终页:', activeScreen());
+console.log('弹窗首次出现于第', popSeen, '步 | 命中弹窗次数:', popSteps);
 
 const st = w.__getState();
 console.log('结局:', st && st.ending ? st.ending.title : '(无)');

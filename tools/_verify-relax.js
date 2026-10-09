@@ -152,8 +152,10 @@ console.log('== RA-7 socialAct 朋友项降权 ==');
 {
   const src = fs.readFileSync(path.join(ROOT, 'assets/engine.js'), 'utf8');
   const seg = src.slice(src.indexOf("} else if (kind === 'friend') {"), src.indexOf("} else { delete touch[key]; return { ok: false }; }"));
-  ok(/s\.STRESS -= 1;/.test(seg), '朋友项 STRESS −1（与 r_friends 去重）',
-    (seg.match(/s\.STRESS -= \d;/) || ['?'])[0]);
+  /* v6.4 把属性上限统一到 100 后，STRESS 由 120 尺度折到 100 尺度：
+   * 原 −1 → −1 × 100/120 ≈ −0.83。这里跟着折算后的值走。 */
+  ok(/s\.STRESS -= 0\.83;/.test(seg), '朋友项 STRESS −0.83（v6.4 尺度折算，与 r_friends 去重）',
+    (seg.match(/s\.STRESS -= [\d.]+;/) || ['?'])[0]);
   ok(/【问候】/.test(seg), '文案改为轻量维护（【问候】）', /【问候】/.test(seg) ? 'ok' : 'missing');
 }
 
@@ -178,7 +180,8 @@ console.log('== RA-9 与恢复公式的联立（B = 22 的来源）==');
   const best = Math.max.apply(null, A.RELAX_ACTS.map(r => -r.eff.STRESS));
   ok(maxRelief >= 10, '最弱一条减压量 ≥ 10（保证穷人也有 −10）', maxRelief);
   ok(best === 16, '最强一条 = 16（与 spec 的 −16 一致）', best);
-  ok(A.STRESS_TUNE && A.STRESS_TUNE.RECOVER_FLAT === 7, '固定恢复项仍为 7', A.STRESS_TUNE && A.STRESS_TUNE.RECOVER_FLAT);
+  /* v6.4 调参：固定恢复项 7 → 0.8（配合 DAMP_T 58 收敛压力） */
+  ok(A.STRESS_TUNE && A.STRESS_TUNE.RECOVER_FLAT === 0.8, '固定恢复项为 0.8', A.STRESS_TUNE && A.STRESS_TUNE.RECOVER_FLAT);
 }
 
 console.log(fail ? `\n✗ ${fail} 条未通过` : '\n全部通过 ✅');

@@ -1329,7 +1329,7 @@ const EVENTS_EXTRA = [
       { text: '在街头摆摊卖国旗，赚第一桶金', eff: { MONEY: 1200000, CHA: 4, INT: 4, NET: 3 }, risk: 3,
         gamble: { p: 0.5, win: { MONEY: 5000000, CHA: 5 }, lose: { MONEY: -300000, STRESS: 5 } } }
     ] },
-  { id: 'x_e05', age: [16, 65], w: 7, once: true, era: true, text: '《江南 Style》火遍全球。全世界的综艺都在跳骑马舞，江南的房价在半年里又涨了一成。',
+  { id: 'x_e05', age: [18, 65], w: 7, once: true, era: true, text: '《江南 Style》火遍全球。全世界的综艺都在跳骑马舞，江南的房价在半年里又涨了一成。',
     cond: { yearMin: 2012, yearMax: 2013 },
     choices: [
       { text: '笑一笑，继续上班', eff: { STRESS: -5 }, risk: 1 },
@@ -1421,6 +1421,20 @@ const EVENTS_FAMILY = [
       { text: '装睡，什么都不想听', eff: { STRESS: 6, WILL: 2 }, risk: 2 },
       { text: '站起来对父亲说：别吵了', eff: { WILL: 5, CHA: 2, STRESS: 8 }, risk: 3,
         gamble: { p: 0.45, win: { WILL: 6, NET: 3 }, lose: { STRESS: 10 } } }
+    ] },
+
+  /* ===== · 父母离异（童年，仅一次） ===== */
+  { id: 'f_divorce', age: [9, 16], w: 5, cond: { need: ['parents_alive'], ban: ['parents_divorced'] },
+    text: '父母之间的战争终于摊牌。一张离婚协议书摆在桌上，他们蹲下来问你：想跟着谁过？',
+    choices: [
+      { text: '跟着父亲', eff: { STRESS: 6, MOOD: -4, WILL: 2 }, risk: 2, flags: ['parents_divorced', 'with_father'],
+        halfSibling: { rel: '异父' },
+        gamble: { p: 0.5, win: { NET: 2 }, lose: { STRESS: 4 } } },
+      { text: '跟着母亲', eff: { STRESS: 6, MOOD: -4, WILL: 2 }, risk: 2, flags: ['parents_divorced', 'with_mother'],
+        halfSibling: { rel: '异母' },
+        gamble: { p: 0.5, win: { NET: 2 }, lose: { STRESS: 4 } } },
+      { text: '谁也不想选，自己长大', eff: { STRESS: 8, MOOD: -3, WILL: 4, ETH: 2 }, risk: 3,
+        flags: ['parents_divorced'] }
     ] },
 
   /* ===== · 成年后与父母 ===== */
@@ -1963,12 +1977,12 @@ const RELAX_ACTS = [
 
 /* ---------------- 朋友圈类型（人际关系卡片） ---------------- */
 /* ageGap：相对「你」的年龄差区间。恩师必须年长一辈，同事/生意伙伴跨度更大 */
-const FRIEND_TYPES = [
-  { key: 'childhood', avatar: '🧑‍🤝‍🧑', label: '发小', pass: { LOVE: 0.5 }, line: '每年关爱 +', from: 5, ageGap: [-1, 2] },
-  { key: 'colleague', avatar: '👔', label: '同事', pass: { LOY: 0.5 }, line: '每年职场口碑 +', from: 17, needCareer: true, ageGap: [-7, 9] },
-  { key: 'biz', avatar: '🤝', label: '生意伙伴', pass: { MONEY: 250000 }, line: '每年现金 +', from: 24, needCareer: true, ageGap: [-9, 13] },
-  { key: 'neighbor', avatar: '🏘', label: '老友', pass: { HP: 0.4 }, line: '每年健康 +', from: 38, ageGap: [-5, 8] },
-  { key: 'teacher', avatar: '👩‍🏫', label: '恩师', pass: { INT: 0.4 }, line: '每年智力 +', from: 7, to: 23, ageGap: [16, 30] }
+/* 同事（原「朋友」栏）：工作后才会遇到的人——同公司同事、客户、合作伙伴。
+ * 全部 needCareer，没上班就不生成；名字用中文（randomPersonName）。 */
+const COLLEAGUE_TYPES = [
+  { key: 'colleague', avatar: '👔', label: '同事', pass: { LOY: 0.5 }, line: '每年职场口碑 +', from: 20, needCareer: true, ageGap: [-8, 10] },
+  { key: 'client', avatar: '🤝', label: '客户', pass: { MONEY: 220000 }, line: '每年现金 +', from: 24, needCareer: true, ageGap: [-10, 14] },
+  { key: 'partner', avatar: '💼', label: '合作伙伴', pass: { NET: 0.6 }, line: '每年人脉 +', from: 26, needCareer: true, ageGap: [-6, 12] }
 ];
 
 /* ---------------- 称号（按人生阶段显示身份） ---------------- */
@@ -2047,6 +2061,28 @@ const CHOICE_TEMPLATES = {
     ['低调度过', '照常', '冲一次，不留遗憾']
   ]
 };
+
+/* ---------------- v6.5.0 成人向措辞黑名单（用于未成年选项过滤） ----------------
+ * 事件自带的 choices 会绕过模板系统直接显示原文，于是出现了
+ * 「6 岁孩子被问要不要全仓杀入虚拟货币」这种出戏的场面。
+ * 这份词表给 engine.minorSafeChoices 用：18 岁前命中任一词的选项，
+ * 会被替换成同龄人口吻（按风险档位对应），effects 保持不变。
+ * 新增词条时宁可多收——漏掉的代价是歪掉的年龄感，多收的代价只是换句说法。 */
+const ADULT_CHOICE_KW = [
+  /* 职场 */
+  '公司', '上班', '加班', '同事', '领导', '上司', '职场', '工资', '月薪', '跳槽', '年终',
+  '绩效', '裁员', '工位', '汇报', '出差', '晋升', '辞职', '老板', '甲方', '乙方', '饭局', '应酬',
+  /* 生意与财务 */
+  '创业', '合伙人', '融资', '客户', '生意', '项目', '开户', '全仓', '减仓', '清仓', '定投',
+  '股票', '基金', '投资', '抄底', '入市', '仓位', '楼市', '买房', '房贷', '贷款', '房租',
+  '现金为王', '科技股', '蓝筹', '虚拟货币', '估值',
+  /* 成年生活费 / 积蓄与交易术语 */
+  '积蓄', '大厂', '打工', '上班族', '年薪', '分红', '港股', '美股', '证券', '涨停', '套牢',
+  '杠杆', '期货', '债券', '退休金', '首付', '月供', '理财', '存款', '币圈', '炒房', '炒币',
+  '资产配置', '期权', '对冲', 'IPO', '跳槽涨薪', '年终奖', '五险一金',
+  /* 成年生活 */
+  '社保', '公积金', '体检报告', '看父母', '看望', '回家看', '探亲', '酒局'
+];
 
 /* ---------------- v6.2.2 未成年选项文案池 ----------------
  * 13-17 岁还在读书，「先请示上级」「照常上班」这类成人口吻会瞬间出戏。
@@ -2344,48 +2380,48 @@ const VACATIONS = [
  * ========================================================= */
 const EVENTS_WAVE = [
   /* ---- 科技大爆炸时代 ---- */
-  { id: 'w_crypto', yearMin: 2018, yearMax: 2042, w: 7, youth: true, elderly: true,
+  { id: 'w_crypto', age: [18, 90], yearMin: 2018, yearMax: 2042, w: 7, youth: true, elderly: true,
     text: '【浪潮】网上有个戴墨镜的年轻人天天喊「财富自由」。一种叫虚拟货币的东西，去年涨了四倍，上个月腰斩了一次，这周又翻倍了。交易所的 APP 排名第一。',
     choices: [
       { text: ' · 全仓杀入：富贵险中求', risk: 3, eff: {}, gamble: { p: 0.42, win: { MONEY: 26000000, MOOD: 12 }, lose: { MONEY: -9000000, MOOD: -18, STRESS: 10 } } },
       { text: ' · 定投一成仓：当个虔诚的信徒', risk: 2, eff: { MONEY: -2000000, CUR: 3 }, gamble: { p: 0.62, win: { MONEY: 6000000, CUR: 2 }, lose: { MONEY: -1500000 } } },
       { text: ' · 不碰：看不懂的钱不赚', risk: 1, eff: { SEC: 3, WILL: 2 } }
     ] },
-  { id: 'w_ai', yearMin: 2028, w: 8, elderly: true, youth: true,
+  { id: 'w_ai', age: [18, 90], yearMin: 2028, w: 8, elderly: true, youth: true,
     text: '【浪潮】AI 把写字楼翻了个底朝天。咖啡店里人人都在聊智能体、算力、大模型。有人三个月做出了十亿估值，也有人的公司一夜之间变成了「落后的生产力」。',
     choices: [
       { text: ' · 押上积蓄做 AI 应用', risk: 3, eff: { MONEY: -15000000, STRESS: 10 }, gamble: { p: 0.36, win: { MONEY: 120000000, FAME: 12, NET: 8 }, lose: { MONEY: -8000000, MOOD: -10 } } },
       { text: ' · 进大厂 AI 部门打工，稳稳地站在浪里', risk: 1, eff: { INT: 3, NET: 3, MONEY: 3000000 } },
       { text: ' · 用 AI 给自己提效，不创业也不内卷', risk: 1, eff: { INT: 4, STRESS: -4 } }
     ] },
-  { id: 'w_tsunami', yearMin: 1990, w: 3,
+  { id: 'w_tsunami', age: [18, 90], yearMin: 1990, w: 3,
     text: '【海啸】隔洋传来的坏消息一夜之间砸到了每张报纸头条：全球金融海啸。楼盘售楼处灯火通明——是打折的灯。股市的曲线像跳楼的人坠落时划出的弧线。',
     choices: [
       { text: ' · 现金为王，谁劝也不动', risk: 1, eff: { SEC: 4, STRESS: 4, newsK: -0.20, houseK: -0.30 } },
       { text: ' · 别人恐惧我贪婪：抄底楼市与蓝筹', risk: 3, eff: { MONEY: -20000000, newsK: 0.14, houseK: 0.08, WILL: 4 }, gamble: { p: 0.5, win: { MONEY: 45000000, NET: 5 }, lose: { MONEY: -12000000, MOOD: -12 } } },
       { text: ' · 减仓自保，先让家里人安心', risk: 2, eff: { newsK: -0.08, houseK: -0.18, MOOD: 3, STRESS: -6 } }
     ] },
-  { id: 'w_techboom', yearMin: 2005, w: 3,
+  { id: 'w_techboom', age: [18, 90], yearMin: 2005, w: 3,
     text: '【黑天鹅 · 喜】某实验室凌晨两点发了一篇论文，三天后整个科技板块疯了。半导体、AI、新能源全线暴涨，交易软件的服务器挤到崩溃。',
     choices: [
       { text: ' · 这波科技行情，吃下', risk: 2, eff: { techK: 0.60, MOOD: 6 } },
       { text: ' · 涨成这样，落袋为安先', risk: 1, eff: { techK: 0.3, SEC: 3 } }
     ] },
-  { id: 'w_techcrash', yearMin: 2005, w: 3,
+  { id: 'w_techcrash', age: [18, 90], yearMin: 2005, w: 3,
     text: '【黑天鹅 · 灾】吹了很久的「技术泡沫」今天破了。科技股集体跳水，市值蒸发以万亿计。财经频道的主播语速快得像在逃命。',
     choices: [
       { text: ' · 技术的终局没变，越跌越买', risk: 3, eff: { techK: -0.45, MONEY: -5000000, WILL: 3 }, gamble: { p: 0.55, win: { MONEY: 30000000, NET: 3 }, lose: { MONEY: -8000000 } } },
       { text: ' · 清仓科技股，钱不能陪着一起殉葬', risk: 1, eff: { techK: -0.6, SEC: 4, STRESS: 5 } }
     ] },
   /* ---- 赛博 / 未来时代 ---- */
-  { id: 'w_bodymod', yearMin: 2058, w: 8, elderly: true,
+  { id: 'w_bodymod', age: [18, 90], yearMin: 2058, w: 8, elderly: true,
     text: '【未来】私立诊所的海报印着「细胞重编程 · 器官再生 · 表观遗传逆转」。衰老第一次被官方定义为「可治疗的疾病」——标价也印得很诚实。',
     choices: [
       { text: ' · 做全套基因修复与再生疗程', risk: 2, eff: { MONEY: -180000000, HP: 18, MOOD: 10, FAME: 3 } },
       { text: ' · 只做基础保养套餐', risk: 1, eff: { MONEY: -30000000, HP: 8 } },
       { text: ' · 生老病死是自然，不掺这些', risk: 1, eff: { ETH: 3, WILL: 3, MOOD: 2 } }
     ] },
-  { id: 'w_space', yearMin: 2075, w: 6, elderly: true, youth: true,
+  { id: 'w_space', age: [18, 90], yearMin: 2075, w: 6, elderly: true, youth: true,
     text: '【未来】近地轨道旅游正式民用化。发射中心排起了队，朋友圈里一半人在晒失重自拍，另一半在转发「票价」。',
     choices: [
       { text: ' · 买一张近地轨道票，上去看看', risk: 2, eff: { MONEY: -80000000, MOOD: 18, CUR: 6, FAME: 5, HP: -2 } },

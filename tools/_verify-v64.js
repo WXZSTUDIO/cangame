@@ -206,10 +206,15 @@ ok(r5.html > 200, 'UI 片段可渲染');
 
 /* ---------- 6. 版本串 ---------- */
 sec('6 · 版本与资源串');
+/* 发版铁律：每次发版所有资源串同步递增。这里守「不低于当初写这条断言时的版本」，
+ * 免得后续版本（如 6.5.0）一升级就永久变红；当前版本的精确校验由 _verify-v65.js 负责。 */
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-ok(/v6\.4\.0/.test(html), 'index.html 出现 v6.4.0');
-const n = (html.match(/\?v=6\.4\.0/g) || []).length;
-ok(n >= 11, '资源串已升到 6.4.0（' + n + ' 处）', n);
+const m = html.match(/\?v=(\d+)\.(\d+)\.(\d+)/);
+const cur = m ? [+m[1], +m[2], +m[3]] : [0, 0, 0];
+const atLeast = (a, b) => a[0] !== b[0] ? a[0] > b[0] : (a[1] !== b[1] ? a[1] > b[1] : a[2] >= b[2]);
+ok(atLeast(cur, [6, 4, 0]), '资源串不低于 6.4.0（当前 ' + cur.join('.') + '）', cur.join('.'));
+const n = (html.match(/\?v=/g) || []).length;
+ok(n >= 11, '全部 ' + n + ' 个资源都带版本号（发版同步递增）', n);
 
 console.log('\n' + (fail ? '✗ ' : '✓ ') + 'v6.4.0：' + pass + ' 通过 / ' + fail + ' 失败');
 process.exit(fail ? 1 : 0);
