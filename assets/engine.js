@@ -628,6 +628,14 @@ function migrateState(state) {
   if (state.retirePlan === undefined) state.retirePlan = null;
   if (state.profYear === undefined) state.profYear = 0;
   if (state.bookYear === undefined) state.bookYear = 0;
+  // v6.2.1：旧存档没有关系阶段字段——现任补 dating，其余按好感补
+  if (state.love && state.love.candidates) {
+    state.love.candidates.forEach(l => {
+      if (!l || l.stage !== undefined) return;
+      l.stage = (state.love.partner === l && state.flags.dating) ? 'dating'
+        : ((l.affinity || 0) >= LOVE_META.closeAffinity ? 'close' : 'met');
+    });
+  }
   if (state.medGeneYear === undefined) state.medGeneYear = 0;
   if (state.medOrganYear === undefined) state.medOrganYear = 0;
   if (state.market && state.market.techK === undefined) state.market.techK = 0;
@@ -2244,7 +2252,7 @@ function resolveEvent(state, ev, choiceIndex) {
       if (l) {
         lv.candidates.push(l);
         if (state.age >= LOVE_META.marryAge && l.affinity >= LOVE_META.marryAffinity) marry(state, l);
-        else { lv.partner = l; state.flags.dating = true; }
+        else { l.stage = 'dating'; lv.partner = l; state.flags.dating = true; }
       }
     }
   }
@@ -2477,6 +2485,7 @@ function resolveEvent(state, ev, choiceIndex) {
         if (state.spouse) state.spouse.affinity = clamp((state.spouse.affinity || 60) - 6, 0, 100);
         pushLog(state, `【偷情】你接住了 ${l.name} 的那句话。从此手机有了第二个密码。`, 'warn');
       } else {
+        l.stage = 'dating';      // v6.2.1：答应别人的表白 = 确定关系
         lv.partner = l;
         state.flags.dating = true; state.flags.in_love = true;
         pushLog(state, `【在一起】你和 ${l.name} 在一起了。${state.age} 岁这年，有人先说了那句话。`, 'money');

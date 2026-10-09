@@ -539,8 +539,12 @@ function doUniActivity(state, actId) {
     pushLog(state, '【上岸】考研成绩出来了。你考上了。研究生三年，又是一段没有人问结果的路。', 'money');
   }
   if (a.id === 'a_love') {
+    // v6.2.1：校园心动只是「开始在意一个人」，不是直接交往——
+    // 从在意到在一起，中间还隔着几次见面和一句要有人先开口的话。
     state.flags.in_love = true;
-    if (!state.flags.dating) { state.flags.dating = true; ensureLover(state, '同学'); }
+    const lv0 = loveInit(state);
+    const hasClose = (lv0.candidates || []).some(x => x.alive !== false && (x.affinity || 0) >= LOVE_META.closeAffinity);
+    if (!hasClose && (lv0.candidates || []).length < 4) ensureLover(state, '同学');
   }
   pushLog(state, `【校园】${a.name} — ${a.desc}`, 'muted');
   return { ok: true };

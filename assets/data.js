@@ -2437,3 +2437,68 @@ ACHIEVEMENTS.push(
   { id: 'a_blacklist', icon: '🚫', name: '社会性死亡', desc: '被圈子彻底除名',
     cond: s => !!(s.flags && s.flags.blacklisted) }
 );
+
+/* =========================================================
+ * v6.2.1 · 天赋语义搜索
+ * 玩家记不住 124 个天赋的名字，但记得住自己想要什么：
+ * 搜「魅力」就该把所有带魅力的天赋都列出来（哪怕名字和描述里都没有「魅力」两个字）。
+ * 所以匹配范围 = 名字 + 描述 + 分类 + 效果属性的中文名与别名。
+ * ========================================================= */
+const STAT_CN = {
+  INT: '智力', STR: '体魄', CHA: '魅力', WILL: '意志',
+  HP: '健康', STRESS: '压力', MONEY: '现金',
+  NET: '人脉', FAME: '声望', LOY: '口碑',
+  CUR: '好奇', LOVE: '关爱', SEC: '安全', AUTO: '自主', GROW: '成长',
+  ETH: '道德', MOOD: '心情'
+};
+
+/* 搜索别名：玩家嘴里说的词 → 属性键 */
+const STAT_ALIAS = {
+  INT: ['智力', '智商', '聪明', '脑子', '学习', '读书', '考试', '记忆力'],
+  STR: ['体魄', '体质', '力量', '身体', '强壮', '体育', '运动', '体力'],
+  CHA: ['魅力', '颜值', '长相', '好看', '外貌', '吸引力', '气质', '漂亮'],
+  WILL: ['意志', '毅力', '抗压', '坚持', '韧性'],
+  HP: ['健康', '寿命', '生病', '养生', '体格', '活久', '长寿'],
+  STRESS: ['压力', '减压', '轻松', '焦虑'],
+  MONEY: ['钱', '现金', '财富', '存款', '资产', '有钱', '收入', '资金'],
+  NET: ['人脉', '关系', '社交', '圈子', '朋友'],
+  FAME: ['声望', '名望', '名气', '出名', '有名'],
+  LOY: ['口碑', '信誉', '职场'],
+  CUR: ['好奇', '探索'],
+  LOVE: ['关爱', '感情', '温情'],
+  SEC: ['安全', '安全感'],
+  GROW: ['成长', '发育'],
+  ETH: ['道德', '善良', '底线', '良心', '好人'],
+  MOOD: ['心情', '快乐', '开心', '情绪']
+};
+
+/* 空格分词：每个词都要命中（命中名字/描述/分类，或命中效果属性） */
+function talentSearchHit(t, q) {
+  const terms = String(q || '').trim().split(/\s+/).filter(Boolean);
+  if (!terms.length) return true;
+  const text = [t.name || '', t.desc || '', t.tag || '', (t.flags || []).join(' ')].join(' ');
+  const eff = [];
+  for (const k in (t.eff || {})) {
+    const v = t.eff[k];
+    if (typeof v === 'number' && v !== 0) {
+      eff.push(STAT_CN[k] || k);
+      (STAT_ALIAS[k] || []).forEach(a => eff.push(a));
+    }
+  }
+  const effText = eff.join(' ');
+  return terms.every(w => text.indexOf(w) >= 0 || effText.indexOf(w) >= 0);
+}
+
+/* 命中的是哪一项属性（用于在卡片上标注「为什么被搜出来」） */
+function talentHitStats(t, q) {
+  const terms = String(q || '').trim().split(/\s+/).filter(Boolean);
+  if (!terms.length) return [];
+  const out = [];
+  for (const k in (t.eff || {})) {
+    const v = t.eff[k];
+    if (typeof v !== 'number' || v === 0) continue;
+    const words = [STAT_CN[k] || k].concat(STAT_ALIAS[k] || []);
+    if (terms.some(w => words.some(x => x.indexOf(w) >= 0 || w.indexOf(x) >= 0))) out.push(k);
+  }
+  return out;
+}

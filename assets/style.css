@@ -543,13 +543,13 @@ body{
 /* ---- 真人头像（10 列 × 4 行精灵图：0-19 女 / 20-39 男；position 由 js 计算） ---- */
 .rel-ava.photo{
   padding:0;overflow:hidden;
-  background-image:url("avatars.jpg?v=6.2.0");
+  background-image:url("avatars.jpg?v=6.2.1");
   background-size:1000% 400%;background-repeat:no-repeat;
   box-shadow:0 0 0 2.5px #fff, 0 6px 14px rgba(176,52,158,.18);
 }
 .hud-avatar.photo{
   font-size:0;border-color:#fff;
-  background-image:url("avatars.jpg?v=6.2.0");
+  background-image:url("avatars.jpg?v=6.2.1");
   background-size:1000% 400%;background-repeat:no-repeat;
 }
 
@@ -573,3 +573,9 @@ body{
 
 /* ---- 圈层 / 银发 / 信托 卡片复用 rel-card，小徽标 ---- */
 .club-badge{display:inline-block;background:var(--gold-l);border-radius:10px;padding:1px 8px;font-size:11px;font-weight:900;color:var(--ink);margin-left:6px}
+
+/* ---- v6.2.1 天赋语义搜索：命中项高亮 ---- */
+.talent .t-eff b.hit{
+  color:var(--pink-d);background:var(--gold-l);
+  border-radius:6px;padding:0 4px;font-weight:900;
+}

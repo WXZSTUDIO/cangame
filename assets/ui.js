@@ -324,22 +324,29 @@ function renderTalents() {
   const q = (($('talentSearch') || {}).value || '').trim();
   let list;
   if (TALENT_ALL) {
-    list = TALENTS.slice();
+    // v6.2.1：语义搜索——搜「魅力」会把所有带魅力的都列出来（含减魅力的负面天赋）
+    list = TALENTS.slice().filter(t => talentSearchHit(t, q));
     if (q) {
-      list = list.filter(t => (t.name || '').indexOf(q) >= 0 || (t.desc || '').indexOf(q) >= 0 || (t.tag || '').indexOf(q) >= 0);
+      // 命中的属性越多、绝对值越大，越靠前
+      list = list.sort((a, b) => {
+        const sa = talentHitStats(a, q).reduce((n, k) => n + Math.abs(a.eff[k]), 0);
+        const sb = talentHitStats(b, q).reduce((n, k) => n + Math.abs(b.eff[k]), 0);
+        return sb - sa;
+      });
     } else {
       // 没搜索词时按标签分组排一遍，看起来整齐
       const order = ['核心', '脑力', '体魄', '心性', '人际', '财运', '才华', '背景', '负面'];
       list = list.slice().sort((a, b) => (order.indexOf(a.tag || '') + 1 || 99) - (order.indexOf(b.tag || '') + 1 || 99));
     }
   } else {
-    list = TALENT_POOL.filter(t => !q || (t.name || '').indexOf(q) >= 0 || (t.desc || '').indexOf(q) >= 0 || (t.tag || '').indexOf(q) >= 0);
+    list = TALENT_POOL.filter(t => talentSearchHit(t, q));
   }
   const hint = $('talentHint');
   if (hint) {
+    const effTip = q ? ' · 含效果里带这个属性的，都列出来了' : '';
     hint.innerHTML = TALENT_ALL
-      ? `全部 ${TALENTS.length} 种天赋${q ? ` · 匹配「${esc(q)}」${list.length} 种` : ' · 按类别排序，可用搜索框过滤'}`
-      : `随机抽出 ${TALENT_POOL.length} 种（共 ${TALENTS.length} 种可选）${q ? ` · 匹配「${esc(q)}」${list.length} 种` : ''}`;
+      ? `全部 ${TALENTS.length} 种天赋${q ? ` · 匹配「${esc(q)}」${list.length} 种${effTip}` : ' · 记不住名字？直接搜属性：魅力 / 钱 / 长寿 / 考试 / 人脉'}`
+      : `随机抽出 ${TALENT_POOL.length} 种（共 ${TALENTS.length} 种可选）${q ? ` · 匹配「${esc(q)}」${list.length} 种${effTip}` : ''}`;
   }
   list.forEach(t => {
     const d = document.createElement('div');
@@ -347,9 +354,15 @@ function renderTalents() {
     const afford = sel || (CREATE_POINTS - t.cost) >= 0;
     d.className = 'talent' + (sel ? ' sel' : '') + (afford ? '' : ' no');
     const costTxt = t.cost > 0 ? `消耗 ${t.cost} 点` : (t.cost < 0 ? `返还 ${-t.cost} 点` : '免费');
+    // 搜索时标出「为什么这条被搜出来」——例如搜魅力时高亮 CHA
+    const hits = q ? talentHitStats(t, q) : [];
+    const effTxt = describeEffects(t.eff).map(s => {
+      const k = hits.find(h => s.indexOf(STAT_CN[h] || h) === 0);
+      return k ? `<b class="hit">${s}</b>` : s;
+    }).join(' · ');
     d.innerHTML = `<div class="t-head"><span class="t-name">${t.tag ? `<i class="t-tag">${esc(t.tag)}</i>` : ''}${esc(t.name)}</span><span class="t-cost">${costTxt}</span></div>` +
       `<div class="t-desc">${esc(t.desc)}</div>` +
-      `<div class="t-eff">${describeEffects(t.eff).join(' · ') || ''}</div>`;
+      `<div class="t-eff">${effTxt || ''}</div>`;
     d.onclick = () => {
       const i = SELECTED.indexOf(t.id);
       if (i >= 0) { CREATE_POINTS += t.cost; SELECTED.splice(i, 1); }
@@ -1048,23 +1061,9 @@ function renderRelView() {
           : { avaSvg: personAvatar(ps.mother.name, 'F', ps.mother.age, 'amber'), name: `母亲 · ${ps.mother.name}`, sub: `已故。走得那年 ${ps.mother.age}岁。`, dead: true });
       }
     }
+    /* v6.2.1：前任不进「家人」页——那是过去式，不是家里人。
+     * 联系 / 复合 / 复婚的入口挪到「恋爱」页去了。 */
     const oppG = STATE.gender === 'M' ? 'F' : 'M';
-    exList(STATE).forEach((ex, i) => {
-      const canChat = ex.lastTouch !== STATE.age;
-      const canRe = ex.wasSpouse && !STATE.flags.married && (ex.affinity || 0) >= LOVE_META.marryAffinity && STATE.age >= LOVE_META.marryAge;
-      const canRe2 = !STATE.flags.married && !STATE.flags.dating && (ex.affinity || 0) >= 55;
-      const tag = ex.wasSpouse ? (STATE.gender === 'M' ? '前妻' : '前夫') : '前任';
-      cards.push({
-        avaSvg: personAvatar(ex.name, ex.gender || oppG, ex.age || STATE.age, 'amber'),
-        name: `${tag} · ${ex.name}`,
-        sub: `${ex.at || STATE.age} 岁那年${ex.wasSpouse ? '离的' : '分开的'}${ex.reason ? `（${esc(ex.reason)}）` : ''} · 好感 ${Math.round(ex.affinity || 0)}%` +
-          `${canChat ? '' : ' · 今年联系过了'}${STATE.childCount && ex.wasSpouse ? ' · 孩子的事，你们还得见面' : ''}`,
-        key: null,
-        multi: `${canChat ? `<button class="rel-act" onclick="uiExChat(${i})">联系</button>` : '<span class="rel-act dis">今年联系过了</span>'}` +
-          `${canRe2 ? `<button class="rel-act" onclick="uiRekindle(${i})">复合</button>` : ''}` +
-          `${canRe ? `<button class="rel-act" onclick="uiRemarry(${i})">复婚</button>` : ''}`
-      });
-    });
     if (STATE.flags.married && STATE.spouse) {
       const sp = STATE.spouse;
       cards.push(sp.alive
@@ -1218,42 +1217,83 @@ function renderRelView() {
       </div>`;
     }
     if (lv.candidates.length) {
-      extra += `<div class="rel-sub" style="padding:0 4px 8px">同一个对象一年最多见 ${LOVE_META.touchesPerYear} 次：<b>点名字就能聊天</b>，约会和送礼要花钱但涨得更多。</div>`;
+      extra += `<div class="rel-sub" style="padding:0 4px 8px">同一个对象一年最多见 ${LOVE_META.touchesPerYear} 次：<b>点名字就能聊天</b>，约会和送礼要花钱但涨得更多。<br>` +
+        `<b>认识一个人 ≠ 在一起</b>：先聊到「有点意思」，好感 ${LOVE_META.confessAffinity}% 才够开口表白——表白也可能被拒。</div>`;
     }
     const married = !!STATE.flags.married;
     lv.candidates.forEach((l, i) => {
       const left = (l.lastTouch !== STATE.age) ? LOVE_META.touchesPerYear : Math.max(0, LOVE_META.touchesPerYear - (l.touches || 0));
       const can = left > 0 && l.alive !== false;
-      const intimateBtns = (l.affinity >= LOVE_META.touchAffinity && !l.pregnant) || (married && l.affinity >= LOVE_META.touchAffinity)
+      /* v6.2.1：认识 ≠ 交往。关系分四档，只有「交往中」才谈得上亲密、求婚、分手 */
+      const stage = (typeof loverStage === 'function') ? loverStage(STATE, l) : 'met';
+      const stageTxt = STAGE_LABEL[stage] || '刚认识';
+      const isDating = stage === 'dating';
+      const taken = married || !!STATE.flags.dating;
+      // 亲密/越界：未婚必须先确定关系；已婚走越界；偷情关系单独一档
+      const intimateOk = !l.pregnant && l.affinity >= LOVE_META.touchAffinity && (isDating || married || l.secret);
+      const intimateBtns = intimateOk
         ? `<button class="rel-act" onclick="uiIntimate(${i},0)">${married ? '越界' : '亲密'}</button>
            <button class="rel-act safe" onclick="uiIntimate(${i},1)">${married ? '越界' : '亲密'} · 做好措施 ${fmtMoney(LOVE_META.safeCost)}</button>`
         : '';
-      const taken = married || !!STATE.flags.dating;
-      const affairBtns = (taken && l.affinity >= LOVE_META.touchAffinity)
+      const affairBtns = (taken && l.affinity >= LOVE_META.touchAffinity && !isDating)
         ? (l.secret
           ? `<button class="rel-act" onclick="uiEndAffair(${i})">🛑 收手</button>`
           : `<button class="rel-act" onclick="uiStartAffair(${i})">🌙 偷情（长期）</button>`)
         : '';
+      // 表白：好感够、没对象（或对象就是 TA）、去年没被拒
+      const confessLocked = married || isDating || l.secret
+        || (STATE.flags.dating && lv.partner && lv.partner !== l)
+        || ((l.confessFailYear || 0) + 1) > STATE.age;
+      const confessBtn = (!confessLocked && l.affinity >= LOVE_META.confessAffinity)
+        ? `<button class="rel-act primary" onclick="uiConfess(${i})">💌 表白</button>`
+        : (!confessLocked ? `<span class="rel-act dis">表白需好感 ${LOVE_META.confessAffinity}%</span>` : '');
+      const partBtn = isDating
+        ? `<button class="rel-act danger" onclick="uiBreakup(${i})">分手</button>`
+        : (!married && !l.secret && !l.pregnant ? `<button class="rel-act" onclick="uiDrop(${i})">不再联系</button>` : '');
       cards.push({
-        avaSvg: personAvatar(l.name, l.gender, l.age, married ? 'amber' : 'green'),
+        avaSvg: personAvatar(l.name, l.gender, l.age, married ? 'amber' : (isDating ? 'green' : '')),
         name: l.name,
-        sub: `${loverLabel(l)} · ${l.age}岁 · 好感 <b>${Math.round(l.affinity)}%</b>` +
+        sub: `<b>${stageTxt}</b> · ${loverLabel(l)} · 好感 <b>${Math.round(l.affinity)}%</b>` +
           `${l.pregnant ? (l.illegitPreg ? ' · <b style="color:var(--red)">⚠ 怀了你的孩子（婚外）</b>' : ' · ⚠ 怀孕了') : ''}` +
           `${l.hiddenChild ? ' · 有个养在外面的孩子' : ''}` +
-          `${married ? ' · <b style="color:var(--red)">婚外</b>' : ''}${l.secret ? ' · <b style="color:var(--red)">偷情中</b>' : ''} · 今年还能约 ${left} 次`,
+          `${(married && !l.secret) ? ' · <b style="color:var(--red)">婚外</b>' : ''}${l.secret ? ' · <b style="color:var(--red)">偷情中</b>' : ''}` +
+          `${stage === 'met' ? ' · 才认识，多见几次面' : (stage === 'close' ? ` · 好感到 ${LOVE_META.confessAffinity}% 就能表白` : '')}` +
+          ` · 今年还能约 ${left} 次`,
         key: null,
         click: can ? `uiLove(${i},'chat')` : '',
         multi: can ? `
           <button class="rel-act" onclick="uiLove(${i},'chat')">聊天</button>
           <button class="rel-act" onclick="uiLove(${i},'date')">约会 ${fmtMoney(LOVE_META.dateCost)}</button>
           <button class="rel-act" onclick="uiLove(${i},'gift')">送礼 ${fmtMoney(LOVE_META.giftCost)}</button>
+          ${confessBtn}
           ${intimateBtns}
           ${affairBtns}
-          ${!married && l.affinity >= LOVE_META.marryAffinity && STATE.age >= LOVE_META.marryAge ? `<button class="rel-act" onclick="uiPropose(${i})">求婚</button>` : ''}
-          ${!married ? `<button class="rel-act danger" onclick="uiBreakup(${i})">分手</button>` : ''}
+          ${!married && isDating && l.affinity >= LOVE_META.marryAffinity && STATE.age >= LOVE_META.marryAge ? `<button class="rel-act" onclick="uiPropose(${i})">求婚</button>` : ''}
+          ${partBtn}
         ` : '<span class="rel-act dis">今年的次数用完了</span>'
       });
     });
+    /* v6.2.1：前任挪到这里（原来的家庭页）——过去的人归过去，不进家门 */
+    if (exList(STATE).length) {
+      extra += `<div class="rel-sub" style="padding:6px 4px 4px;border-left:3px solid var(--dim)">` +
+        `<b>旧人</b>　这些人已经不在你的生活里了，但通讯录还记得。</div>`;
+      exList(STATE).forEach((ex, i) => {
+        const canChat = ex.lastTouch !== STATE.age;
+        const canRe = ex.wasSpouse && !STATE.flags.married && (ex.affinity || 0) >= LOVE_META.marryAffinity && STATE.age >= LOVE_META.marryAge;
+        const canRe2 = !STATE.flags.married && !STATE.flags.dating && (ex.affinity || 0) >= 55;
+        const tag = ex.wasSpouse ? (STATE.gender === 'M' ? '前妻' : '前夫') : '前任';
+        cards.push({
+          avaSvg: personAvatar(ex.name, ex.gender || (STATE.gender === 'M' ? 'F' : 'M'), ex.age || STATE.age, 'amber'),
+          name: `${tag} · ${ex.name}`,
+          sub: `${ex.at || STATE.age} 岁那年${ex.wasSpouse ? '离的' : '分开的'}${ex.reason ? `（${esc(ex.reason)}）` : ''} · 好感 ${Math.round(ex.affinity || 0)}%` +
+            `${canChat ? '' : ' · 今年联系过了'}`,
+          key: null,
+          multi: `${canChat ? `<button class="rel-act" onclick="uiExChat(${i})">联系</button>` : '<span class="rel-act dis">今年联系过了</span>'}` +
+            `${canRe2 ? `<button class="rel-act" onclick="uiRekindle(${i})">复合</button>` : ''}` +
+            `${canRe ? `<button class="rel-act" onclick="uiRemarry(${i})">复婚</button>` : ''}`
+        });
+      });
+    }
   } else if (REL_TAB === 'good') {
     const eth = Math.round(STATE.stats.ETH || 50);
     extra = `<div class="rel-sub" style="padding:0 4px 8px">道德 ${eth}。它不是只能往下掉——<b>每一件善事今年只能做一次</b>。` +
@@ -1604,6 +1644,30 @@ function uiBreakup(i) {
       if (!r.ok) { toast(r.msg || '现在不行'); return; }
       afterAct('分开了');
     });
+}
+
+/* v6.2.1 表白：把「有点意思」说成「在一起」。被拒要等一年 */
+function uiConfess(i) {
+  const lv = loveInit(STATE);
+  const l = lv.candidates[i];
+  if (!l) return;
+  uiConfirm('要开口吗',
+    `你要跟 <b>${esc(l.name)}</b> 说那句话。<br>好感 ${Math.round(l.affinity)}%——${l.affinity >= 70 ? 'TA 大概会答应。' : (l.affinity >= 55 ? '有一半的可能，也有一半的尴尬。' : '这个好感度，多半会被婉拒。')}<br>被拒的话，这一年里没法再开口。`,
+    '就说', () => {
+      const r = confessTo(STATE, i);
+      if (!r.ok) { toast(r.msg || '现在不行'); afterAct(); return; }
+      afterAct('在一起了');
+    });
+}
+
+/* 还没在一起的人：不联系就不联系了，不算前任 */
+function uiDrop(i) {
+  const lv = loveInit(STATE);
+  const l = lv.candidates[i];
+  if (!l) return;
+  const r = dropAcquaintance(STATE, i);
+  if (!r.ok) { toast(r.msg || '现在不行'); return; }
+  afterAct('不再联系了');
 }
 
 /* 前任：联系 / 复合 / 复婚 */

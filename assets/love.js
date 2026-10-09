@@ -7,6 +7,8 @@ const LOVE_META = {
   marryAge: 22,
   marryAffinity: 70,   // 求婚门槛
   touchAffinity: 58,   // 到此才可能发生亲密关系
+  closeAffinity: 38,   // v6.2.1：到此才算「有点意思」（仍不是交往）
+  confessAffinity: 55, // v6.2.1：到此才够开口表白——认识 ≠ 在一起
   touchesPerYear: 3,   // 同一个人一年最多见 3 次（原来一年只有一次，关系根本推不动）
   pregnantBase: 0.16,
   safePregnant: 0.008, // 做好措施后的怀孕概率（几乎为零，但不是绝对）
@@ -44,6 +46,7 @@ function makeLover(state, src) {
   const tp = TEMPERAMENTS[randInt(0, TEMPERAMENTS.length - 1)];
   const bg = MATCH_BACKGROUNDS[randInt(0, MATCH_BACKGROUNDS.length - 1)];
   const look = clamp(Math.round(rand(35, 90)), 5, 100);
+  const aff = src === '同学' ? randInt(18, 34) : randInt(12, 28);
   return {
     name: randomPersonName(gender),
     gender: gender,
@@ -51,12 +54,14 @@ function makeLover(state, src) {
     look: look,
     charm: clamp(Math.round(rand(30, 90)), 5, 100),
     tp: tp.key, bg: bg.key, src: src || '偶遇',
-    affinity: src === '同学' ? randInt(18, 34) : randInt(12, 28),
+    affinity: aff,
     alive: true,
     lastTouch: -1,
     touches: 0,
     met: state.age,
-    pregnant: false
+    pregnant: false,
+    // v6.2.1：认识一个人 ≠ 在交往。关系要一步步走：met → close → dating
+    stage: aff >= LOVE_META.closeAffinity ? 'close' : 'met'
   };
 }
 
@@ -64,6 +69,80 @@ function loverLabel(l) {
   const t = TEMPERAMENTS.find(x => x.key === l.tp) || { label: '' };
   const b = MATCH_BACKGROUNDS.find(x => x.key === l.bg) || { label: '' };
   return `${l.name} · ${l.age} · ${t.label} · ${b.label} · 颜值 ${l.look}`;
+}
+
+/* ---------- v6.2.1 关系阶段：刚认识 / 有点意思 / 交往中 ----------
+ * 现实常识：认识一个人，和跟一个人在一起，是两件事。
+ * 中间隔着好几次见面、几次试探，和一句得由谁先开口的话。 */
+const STAGE_LABEL = { met: '刚认识', close: '有点意思', dating: '交往中', secret: '见不得光' };
+
+function loverStage(state, l) {
+  if (!l) return 'met';
+  if (l.secret) return 'secret';
+  if (l.stage === 'dating') return 'dating';
+  // 旧存档兼容：没有 stage 字段时，按「是不是现任 + 好感」推断
+  if (l.stage === undefined || l.stage === null) {
+    const lv = loveInit(state);
+    if (lv.partner === l && state.flags.dating) return 'dating';
+    if (lv.partner === l) return 'close';
+  }
+  return (l.affinity || 0) >= LOVE_META.closeAffinity ? 'close' : 'met';
+}
+
+function stageText(state, l) { return STAGE_LABEL[loverStage(state, l)] || '刚认识'; }
+
+/* 表白：把「有点意思」变成「在一起」。不一定成功，失败要等一年 */
+function confessTo(state, idx) {
+  const lv = loveInit(state);
+  const l = lv.candidates[idx];
+  if (!l) return { ok: false, msg: '没有这个人' };
+  if (l.alive === false) return { ok: false, msg: 'TA 已经不在了' };
+  if (state.flags.married) return { ok: false, msg: '你已经结婚了——那不叫表白，叫越界' };
+  if (loverStage(state, l) === 'dating') return { ok: false, msg: '你们已经在一起了' };
+  if (state.flags.dating && lv.partner && lv.partner !== l) return { ok: false, msg: '你已经有人了，先和 TA 说清楚' };
+  if (state.age < 16) return { ok: false, msg: '再大一点再说' };
+  if ((l.confessFailYear || 0) + 1 > state.age) return { ok: false, msg: '上次被拒还没缓过来，明年再开口吧' };
+  if ((l.affinity || 0) < LOVE_META.confessAffinity) {
+    return { ok: false, msg: `还不到开口的时候（现在 ${Math.round(l.affinity || 0)}%，需 ${LOVE_META.confessAffinity}%）——多见几次面` };
+  }
+  const s = state.stats;
+  const rb = (typeof rideBonus === 'function') ? rideBonus(state) : { flirtP: 0 };
+  let p = 0.30 + ((l.affinity || 0) - LOVE_META.confessAffinity) / 95
+    + (s.CHA || 40) / 340 + ((l.look || 60) - 60) / 500 + (rb.flirtP || 0);
+  if (l.tp === 'romantic') p += 0.06;
+  if (l.tp === 'cool') p -= 0.06;
+  if ((s.ETH || 60) < 30) p -= 0.05;   // 名声太差，别人家里会拦
+  p = clamp(p, 0.12, 0.92);
+  if (!chance(p)) {
+    l.confessFailYear = state.age;
+    l.affinity = clamp((l.affinity || 0) - 12, 0, 100);
+    applyEffects(state, { MOOD: -6, STRESS: 5, LOVE: -3, WILL: -1 });
+    pushLog(state, `【表白被拒】你把话说出口了。${l.name} 沉默了一会儿，说：「我们……还是这样比较好吧。」\n` +
+      `你笑着说没事，然后把手机放回了口袋。有些话一年只能说一次。`, 'warn');
+    return { ok: false, msg: '被拒绝了', p: p };
+  }
+  l.stage = 'dating';
+  lv.partner = l;
+  state.flags.dating = true;
+  state.flags.in_love = true;
+  applyEffects(state, { LOVE: 8, MOOD: 6, SEC: 3, STRESS: -3 });
+  pushLog(state, `【在一起】${state.age} 岁这年，你先开的口。${l.name} 说：「好啊。」\n` +
+    `从今往后，通讯录里多了一个置顶。`, 'money');
+  return { ok: true, p: p };
+}
+
+/* 断联：还没在一起的人，走了就走了，不算前任 */
+function dropAcquaintance(state, idx) {
+  const lv = loveInit(state);
+  const l = lv.candidates[idx];
+  if (!l) return { ok: false, msg: '没有这个人' };
+  if (loverStage(state, l) === 'dating') return { ok: false, msg: '你们在一起了——要走就走分手流程' };
+  if (l.pregnant) return { ok: false, msg: 'TA 怀着你的孩子，这时候走不掉' };
+  lv.candidates.splice(idx, 1);
+  if (lv.partner === l) { lv.partner = null; delete state.flags.dating; }
+  delete l.secret;
+  pushLog(state, `【断联】你和 ${l.name} 慢慢就不联系了。通讯录里那个名字还在，只是再也没拨过。`, 'muted');
+  return { ok: true };
 }
 
 /* ---------- 三条来源 ---------- */
@@ -95,7 +174,8 @@ function meetFromClassmate(state, idx) {
     look: c.charm, charm: c.charm, tp: tp.key, bg: bg.key, src: '同学', stage: c.stage,
     affinity: clamp(c.affinity + randInt(2, 8), 5, 100),
     alive: true, lastTouch: -1, touches: 0, met: state.age, pregnant: false,
-    outside: !!state.flags.married
+    outside: !!state.flags.married,
+    stage: 'met'   // v6.2.1：开始在意 ≠ 在一起
   };
   lv.candidates.push(l);
   pushLog(state, `【心动】你开始在意 ${l.name} 了。早恋这件事，老师和家长都反对，但你控制不了自己。`, 'story');
@@ -111,6 +191,7 @@ function meetOutside(state) {
   const l = makeLover(state, married ? '外遇' : '邂逅');
   l.outside = married;   // 只是「婚外认识的人」，要不要越线是下一步的事
   l.affinity = randInt(22, 40);
+  l.stage = l.affinity >= LOVE_META.closeAffinity ? 'close' : 'met';
   lv.candidates.push(l);
   pushLog(state, married
     ? `【外遇】${l.srcText || ''}你认识了 ${l.name}。${l.age}岁。${loverLabel(l)}。\n你知道自己在做什么——也知道一旦被发现，要还的东西不止一句道歉。`
@@ -199,6 +280,7 @@ function confessTick(state) {
     l = makeLover(state, '表白');
     l.outside = married;
     l.affinity = randInt(38, 58);
+    l.stage = 'close';
     lv.candidates.push(l);
     pushLog(state, `【表白】${l.name} 找了个机会把话说了出口。${loverLabel(l)}。`, 'story');
   }
@@ -221,20 +303,28 @@ function meetByMatchmaker(state) {
   l.look = clamp(Math.round((l.look + q) / 2), 10, 98);
   l.charm = clamp(Math.round((l.charm + q) / 2), 10, 98);
   l.affinity = randInt(26, 42);
+  l.stage = l.affinity >= LOVE_META.closeAffinity ? 'close' : 'met';
   lv.candidates.push(l);
-  pushLog(state, `【相亲】媒人安排了一次见面：${loverLabel(l)}。你付了介绍费 ${fmtMoney(LOVE_META.matchCost)}。`, 'story');
+  pushLog(state, `【相亲】媒人安排了一次见面：${loverLabel(l)}。你付了介绍费 ${fmtMoney(LOVE_META.matchCost)}。` +
+    `介绍人临走时说：「处着看，别着急。」`, 'story');
   return { ok: true, lover: l };
 }
 
+/* v6.2.1：这个函数以前叫「确保有个对象」——认识一个人就直接置为交往，
+ * 太跳了。现在它只负责「让你认识一个人」，后面的路要自己走。 */
 function ensureLover(state, src) {
   const lv = loveInit(state);
-  if (lv.partner) return lv.partner;
   const l = makeLover(state, src || '偶遇');
-  l.affinity = randInt(35, 55);
+  l.affinity = randInt(30, 46);
+  l.stage = l.affinity >= LOVE_META.closeAffinity ? 'close' : 'met';
   lv.candidates.push(l);
-  lv.partner = l;
-  state.flags.dating = true;
   return l;
+}
+
+/* 好感涨上来之后，关系自动从「刚认识」推进到「有点意思」（但不会自动交往） */
+function syncStage(state, l) {
+  if (!l || l.secret || l.stage === 'dating') return;
+  l.stage = (l.affinity || 0) >= LOVE_META.closeAffinity ? 'close' : 'met';
 }
 
 /* 每年跟同一个人见过几次了 */
@@ -268,8 +358,15 @@ function loveAct(state, idx, kind) {
     applyEffects(state, { LOVE: 1, NET: 1, STRESS: -1 });
   }
   l.touches = (l.touches || 0) + 1;
+  const before = loverStage(state, l);
   l.affinity = clamp(l.affinity + gain, 0, 100);
+  syncStage(state, l);
   const n = LOVE_META.touchesPerYear - l.touches;
+  // 阶段跨越要有一句叙事，不然玩家不知道关系推进了
+  if (before === 'met' && loverStage(state, l) === 'close') {
+    pushLog(state, `【有点意思】你发现 ${l.name} 回消息的速度变快了。\n` +
+      `你们还没说破什么，但每次见面的时间都在变长。`, 'story');
+  }
   pushLog(state, `【${label}】你和 ${l.name} ${kind === 'date' ? '吃了一顿饭，看了场电影' : kind === 'gift' ? '挑了一份礼物，TA 收下了' : '聊到很晚'}。好感 ${Math.round(l.affinity)}%${spend ? `（花了 ${fmtMoney(spend)}）` : ''}。今年还能再约 ${n} 次。`, 'muted');
   return { ok: true, affinity: l.affinity, left: n };
 }
@@ -284,13 +381,17 @@ function loveIntimate(state, idx, safe) {
   if (l.affinity < LOVE_META.touchAffinity) return { ok: false, msg: `好感还不够（需 ${LOVE_META.touchAffinity}%）` };
   if (state.age < 16) return { ok: false, msg: '太早了' };
   const married = !!state.flags.married;
+  // v6.2.1：没确定关系之前，这一步走不过去——除了已婚状态下的越界（那是另一回事）
+  if (!married && !l.secret && loverStage(state, l) !== 'dating') {
+    return { ok: false, msg: `你们还没在一起。先开口把关系定下来（好感 ${LOVE_META.confessAffinity}% 就能表白）` };
+  }
   if (safe) {
     const cost = LOVE_META.safeCost;
     if (state.stats.MONEY < cost) return { ok: false, msg: '连这个钱都拿不出来' };
     state.stats.MONEY -= cost;
   }
-  lv.partner = l;
-  if (!married) { state.flags.dating = true; state.flags.in_love = true; }
+  // 已婚时不要把情人设成「现任」——现任另有其人
+  if (!married) { l.stage = 'dating'; lv.partner = l; state.flags.dating = true; state.flags.in_love = true; }
   applyEffects(state, { LOVE: safe ? 5 : 6, SEC: married ? -4 : 3, STRESS: married ? 6 : 2 });
 
   if (married) {
@@ -423,6 +524,7 @@ function breakup(state, idx) {
   }
   delete l.secret;
   delete l.pregnant;
+  delete l.stage;
   l.affinity = clamp(l.affinity - 12, 15, 62);
   state.exes = state.exes || [];
   state.exes.unshift({
@@ -481,7 +583,7 @@ function rekindle(state, i) {
     name: ex.name, gender: ex.gender || (state.gender === 'M' ? 'F' : 'M'), age: ex.age || state.age,
     look: ex.look || 60, charm: 60, tp: 'warm', bg: 'mid', src: '旧情复燃',
     affinity: clamp(ex.affinity, 50, 88), alive: true, lastTouch: state.age, touches: 1,
-    met: ex.met || state.age, pregnant: false
+    met: ex.met || state.age, pregnant: false, stage: 'dating'
   };
   lv.candidates.push(l);
   lv.partner = l;

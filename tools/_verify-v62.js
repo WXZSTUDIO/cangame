@@ -1,4 +1,4 @@
-/* v6.2.0 冒烟验证：非婚生子女 / 动态情感危机 / 常识自洽四象限
+/* v6.2.x 冒烟验证：非婚生子女 / 动态情感危机 / 常识自洽四象限
  *  1 版本号与缓存串
  *  2 婚外受孕 → 私生子三选一（认 / 瞒 / 断）
  *  3 认领与继承权（遗嘱名单 / 争产结算）
@@ -56,12 +56,12 @@ function married(o) {
 console.log('== 1. 版本号 ==');
 {
   const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-  ok(/v6\.2\.0/.test(html), 'index.html 出现 v6.2.0');
+  ok(/v6.2.[01]/.test(html), 'index.html 出现 v6.2.x');
   ok(!/v5\.5\.0/.test(html), '介绍页脚注不再是 v5.5.0');
-  ok((html.match(/\?v=6\.2\.0/g) || []).length === 11, '11 个资源串已升到 6.2.0',
-    (html.match(/\?v=6\.2\.0/g) || []).length);
+  ok((html.match(/\?v=6.2.[01]/g) || []).length === 11, '11 个资源串已升到 6.2.d',
+    (html.match(/\?v=6.2.[01]/g) || []).length);
   const css = fs.readFileSync(path.join(ROOT, 'assets/style.css'), 'utf8');
-  ok(css.indexOf('avatars.jpg?v=6.2.0') >= 0, 'style.css 头像串 6.2.0');
+  ok(/avatars\.jpg\?v=6\.2\.\d/.test(css), 'style.css 头像串 6.2.x');
 }
 
 console.log('== 2. 婚外受孕 → 私生子三选一 ==');
