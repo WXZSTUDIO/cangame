@@ -210,6 +210,9 @@ function settlePrestige(state) {
   if (state.flags.trust_founder) pts += 10;
   if (state.flags.foundation) pts += 8;
   if (state.flags.cryonaut) pts += 20;
+  /* v6.3.0：家族企业顺利交接 —— 门阀再添一笔 */
+  if (state.flags.fam_biz_ok) pts += 25;
+  if (state.flags.fam_biz && !state.flags.fam_biz_ok) pts += 6;
   if (state.career && state.career.lv >= 5) pts += 10;
   pts = Math.min(200, Math.round(pts));
   v.prestige += pts;

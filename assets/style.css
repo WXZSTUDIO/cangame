@@ -543,13 +543,13 @@ body{
 /* ---- 真人头像（10 列 × 4 行精灵图：0-19 女 / 20-39 男；position 由 js 计算） ---- */
 .rel-ava.photo{
   padding:0;overflow:hidden;
-  background-image:url("avatars.jpg?v=6.2.3");
+  background-image:url("avatars.jpg?v=6.3.0");
   background-size:1000% 400%;background-repeat:no-repeat;
   box-shadow:0 0 0 2.5px #fff, 0 6px 14px rgba(176,52,158,.18);
 }
 .hud-avatar.photo{
   font-size:0;border-color:#fff;
-  background-image:url("avatars.jpg?v=6.2.3");
+  background-image:url("avatars.jpg?v=6.3.0");
   background-size:1000% 400%;background-repeat:no-repeat;
 }
 
@@ -599,3 +599,60 @@ body{
   text-align:justify;letter-spacing:.4px;
 }
 .epitaph-text::first-letter{font-size:20px;color:#8A6A34;font-weight:700}
+
+/* ---- v6.3.0 家族图谱 ---- */
+.ftree{
+  margin:2px 4px 12px;padding:12px 14px 10px;
+  background:linear-gradient(170deg,#FDF6FF,#F3E9FA);
+  border:2px solid var(--lav);border-radius:18px;
+}
+.ft-title{font-weight:900;font-size:14px;color:#6B54A8;margin-bottom:8px}
+.ft-title i{font-weight:600;font-size:11px;color:#A08BC9;margin-left:6px;font-style:normal}
+.ft-row{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px}
+.ft-gen{
+  flex:none;width:44px;font-size:11px;font-weight:900;color:#8A76B8;
+  background:#EADFF8;border-radius:8px;padding:6px 0;text-align:center;margin-top:6px;
+}
+.ft-chips{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+.ft-chip{
+  display:flex;align-items:center;gap:6px;background:#fff;
+  border:1.5px solid #D9C8F0;border-radius:12px;padding:4px 10px 4px 4px;
+}
+.ft-chip .rel-ava{width:30px;height:30px;border-radius:50%;border-width:2px;box-shadow:none;font-size:15px}
+.ft-chip .rel-ava.photo{background-size:1000% 400%}
+.ft-chip-info{display:flex;flex-direction:column;min-width:0}
+.ft-chip-info b{font-size:12px;color:#3A2E5C;white-space:nowrap}
+.ft-chip-info i{font-size:10px;color:#9A8BC0;font-style:normal;white-space:nowrap}
+.ft-chip.dead{opacity:.55;filter:grayscale(.7)}
+.ft-empty{font-size:11px;color:#B4A5D8;padding:8px 4px}
+
+/* ---- v6.3.0 结算页人生轨迹时间轴 ---- */
+.tl-wrap{position:relative;margin:4px 4px 14px;padding-left:20px}
+.tl-wrap::before{
+  content:'';position:absolute;left:6px;top:6px;bottom:6px;width:2px;
+  background:linear-gradient(180deg,var(--pink) 0%,var(--lav) 60%,#C9B79C 100%);
+  border-radius:2px;
+}
+.tl-row{display:flex;gap:8px;align-items:flex-start;padding:5px 0;position:relative}
+.tl-dot{
+  position:absolute;left:-20px;top:11px;width:10px;height:10px;border-radius:50%;
+  background:#fff;border:2.5px solid var(--lav);flex:none;
+}
+.tl-row.money .tl-dot{border-color:var(--gold)}
+.tl-row.warn .tl-dot{border-color:var(--red)}
+.tl-row.end .tl-dot{border-color:var(--pink-d);background:var(--pink)}
+.tl-year{flex:none;width:74px;font-size:11px;font-weight:900;color:var(--dim);padding-top:2px}
+.tl-text{font-size:12px;line-height:1.65;color:var(--ink);font-weight:600;min-width:0}
+.tl-row.warn .tl-text{color:var(--red)}
+.tl-row.end .tl-text{font-weight:900}
+
+/* ---- v6.3.0 成就徽章 pop 动画（结算页已解锁项） ---- */
+@keyframes achPop{
+  0%{transform:scale(.4) rotate(-12deg);opacity:0}
+  60%{transform:scale(1.18) rotate(3deg);opacity:1}
+  100%{transform:scale(1) rotate(0);opacity:1}
+}
+.end-ach .ach.on{animation:achPop .5s cubic-bezier(.34,1.56,.64,1) both}
+.end-ach .ach.on:nth-child(2n){animation-delay:.08s}
+.end-ach .ach.on:nth-child(3n){animation-delay:.16s}
+.end-ach .ach.on:nth-child(5n){animation-delay:.24s}

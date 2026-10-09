@@ -56,12 +56,12 @@ function married(o) {
 console.log('== 1. 版本号 ==');
 {
   const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-  ok(/v6\.2\.\d/.test(html), 'index.html 出现 v6.2.x');
+  ok(/v6\.\d+\.\d+/.test(html), 'index.html 出现 v6.x 版本号');
   ok(!/v5\.5\.0/.test(html), '介绍页脚注不再是 v5.5.0');
-  ok((html.match(/\?v=6\.2\.\d/g) || []).length === 11, '11 个资源串已升到 6.2.d',
-    (html.match(/\?v=6\.2\.\d/g) || []).length);
+  ok((html.match(/\?v=6\.\d+\.\d+/g) || []).length === 11, '11 个资源串已升版',
+    (html.match(/\?v=6\.\d+\.\d+/g) || []).length);
   const css = fs.readFileSync(path.join(ROOT, 'assets/style.css'), 'utf8');
-  ok(/avatars\.jpg\?v=6\.2\.\d/.test(css), 'style.css 头像串 6.2.x');
+  ok(/avatars\.jpg\?v=6\.\d+\.\d+/.test(css), 'style.css 头像串已升版');
 }
 
 console.log('== 2. 婚外受孕 → 私生子三选一 ==');
