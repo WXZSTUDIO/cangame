@@ -461,6 +461,9 @@ function jobOffers(state) {
     }
     let okFlag = true;
     if (c.needFlag && !c.needFlag.some(f => state.flags[f])) okFlag = false;
+    // v6.2：有案底的人进不了要政审的行当（坐过牢就当不了老师 / 公务员 / 飞行员）
+    const rec = (typeof recordBlocked === 'function') ? recordBlocked(state, c) : null;
+    if (rec) okFlag = false;
     // 专业对口：只约束本科及以上的对口职业（没上过大学的人不受限）
     let majorOk = true;
     if (c.major && lv >= 3 && myMajor && c.major.indexOf(myMajor) === -1) {
@@ -468,7 +471,7 @@ function jobOffers(state) {
       okFlag = false;
     }
     const entry = entryLevelFor(state, c);
-    return { career: c, okEdu, okStat, okFlag, majorOk, miss, entry, title: c.ladder[entry].title };
+    return { career: c, okEdu, okStat, okFlag, majorOk, miss, entry, record: rec, title: c.ladder[entry].title };
   });
 }
 
@@ -492,6 +495,7 @@ function applyJob(state, careerId) {
   if (!offer) return { ok: false, msg: '没有这个岗位' };
   if (!offer.okEdu) return { ok: false, msg: `学历不够（需 ${EDU_LEVELS[c.edu]}）` };
   if (!offer.okStat) return { ok: false, msg: `能力不够：${offer.miss}` };
+  if (offer.record) return { ok: false, msg: offer.record + '（出狱后，有些门就关上了）' };
   if (!offer.okFlag) return { ok: false, msg: offer.majorOk ? '你缺少进入这行的机缘' : '专业不对口（HR 筛简历就刷掉了）' };
   if (state.age < CAREER_META.minWorkAge) return { ok: false, msg: `${CAREER_META.minWorkAge}岁才能正式工作` };
   const lv = offer.entry;

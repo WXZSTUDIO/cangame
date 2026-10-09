@@ -132,6 +132,7 @@ function startAffair(state, idx) {
   l.affairSince = state.age;
   applyEffects(state, { ETH: -10, LOVE: 3, SEC: -4, STRESS: 6, MOOD: 2 });
   if (state.spouse) state.spouse.affinity = clamp((state.spouse.affinity || 60) - 3, 0, 100);
+  bumpSuspicion(state, 8, '你最近心不在焉');
   pushLog(state, `【偷情】你和 ${l.name} 开始了见不得光的那部分。\n` +
     `你删掉了聊天记录，学会了一个新密码。被发现的概率，比你想的要高。`, 'warn');
   return { ok: true, lover: l };
@@ -297,7 +298,17 @@ function loveIntimate(state, idx, safe) {
     applyEffects(state, { ETH: -12, FAME: -4 });
     if (state.spouse) state.spouse.affinity = clamp((state.spouse.affinity || 60) - 5, 0, 100);
     l.outside = true;
+    bumpSuspicion(state, randInt(6, 14), '深夜没回家');
     pushLog(state, `【越界】你和 ${l.name} 走到了一起。回家时你在楼下站了很久才敢上楼。`, 'warn');
+    // v6.2：婚外情也会怀孕——这一步是有后果的，不是只有道德扣分的过场动画
+    const pp = safe ? LOVE_META.safePregnant * 3
+      : (LOVE_META.pregnantBase * 0.85 + (l.look / 450) + (state.stats.CHA / 600));
+    if (chance(pp)) {
+      l.pregnant = true;
+      l.illegitPreg = true;
+      pushLog(state, `【出事了】${l.name} 说她怀孕了。你们都清楚，这个孩子不能姓你家的姓——至少现在还不能。`, 'warn');
+      return { ok: true, pregnant: true, illegit: true, affair: true, lover: l };
+    }
     if (chance(LOVE_META.affairRisk)) {
       state.queue = state.queue || [];
       state.extraQueue = state.extraQueue || [];
@@ -597,22 +608,47 @@ function spouseAct(state) {
   return { ok: true };
 }
 
-/* 已婚生育 */
+/* 已婚生育
+ * v6.2：男女都有生育窗口——不是只有女人才会老，男人过了 68 也很勉强；
+ * 高龄产妇有真实的身体代价；小概率双胞胎。 */
 function tryBaby(state) {
   if (!state.flags.married) return { ok: false, msg: '未婚' };
-  if (state.age > 45 && state.gender === 'F') return { ok: false, msg: '年纪太大了' };
-  if (state.childCount >= 4) return { ok: false, msg: '已经够热闹了' };
-  const p = 0.42 - Math.max(0, state.age - 34) * 0.02 - state.stats.STRESS / 500;
-  if (!chance(Math.max(0.08, p))) {
+  if (state.childCount >= 5) return { ok: false, msg: '已经够热闹了' };
+  const me = (typeof fertility === 'function') ? fertility(state, state.gender, state.age) : { p: 0.42, why: '' };
+  if (me.p <= 0) return { ok: false, msg: me.why || '这个年纪已经不可能了' };
+  const spAge = (state.spouse && state.spouse.age) || state.age;
+  const spG = state.gender === 'M' ? 'F' : 'M';
+  const ta = (typeof fertility === 'function') ? fertility(state, spG, spAge) : { p: 0.42, why: '' };
+  if (ta.p <= 0) return { ok: false, msg: `对方${ta.why ? '：' + ta.why : '也已经不行了'}` };
+  const p = Math.max(0, Math.min(me.p, ta.p));
+  if (!chance(p)) {
     pushLog(state, `【备孕】这一年月子中心又没排上。你们决定顺其自然。`, 'muted');
-    return { ok: true, baby: false };
+    return { ok: true, baby: false, p: p };
+  }
+  // 高龄产妇：能生，但要拿身体换
+  const risk = (typeof maternityRisk === 'function') ? maternityRisk(state, state.age) : 0;
+  if (risk > 0 && chance(risk)) {
+    applyEffects(state, { HP: -14, STRESS: 14, MOOD: -6 });
+    pushLog(state, `【高龄产褥】产后大出血，抢救室的灯亮了一整夜。母子平安——但医生说，你的身体从此不一样了。`, 'warn');
   }
   const kid = (typeof addChild === 'function')
     ? addChild(state)
     : (state.childCount = (state.childCount || 0) + 1, null);
   applyEffects(state, { LOVE: 5, GROW: 3, MONEY: -9000000, STRESS: 6 });
   pushLog(state, `【出生】${kid ? (kid.gender === 'M' ? '儿子 ' : '女儿 ') + kid.name : '第 ' + state.childCount + ' 个孩子'}来到这个世界。${state.spouseName || '伴侣'} 说：像极了你小时候。`, 'money');
-  return { ok: true, baby: true };
+  // 双胞胎：年纪越轻概率越高
+  const twinP = state.age <= 32 ? 0.014 : (state.age <= 38 ? 0.008 : 0.002);
+  if (chance(twinP)) {
+    const kid2 = (typeof addChild === 'function') ? addChild(state, { gender: kid && kid.gender === 'M' ? 'F' : 'M' }) : null;
+    if (kid2) {
+      applyEffects(state, { LOVE: 4, MONEY: -6000000, STRESS: 4 });
+      state.flags.twins = true;
+      pushLog(state, `【双胞胎】B 超室里医生说：「两个心跳。」\n` +
+        `${kid ? kid.name : ''} 和 ${kid2.name}，从此你们家的开销也要乘二。`, 'money');
+      return { ok: true, baby: true, twins: true };
+    }
+  }
+  return { ok: true, baby: true, p: p };
 }
 
 /* ---------- 年度恋爱结算 ---------- */
@@ -646,14 +682,11 @@ function loveTick(state) {
   const dropped = [];
   lv.candidates.forEach(l => {
     l.age = (l.age || state.age) + 1;
-    // 偷情 / 长期外遇：每一年都在被发现的风险里
-    if (l.secret) {
-      const risk = LOVE_META.affairRisk * 0.62 + Math.min(0.18, (state.age - (l.affairSince || state.age)) * 0.02);
-      if (chance(risk)) {
-        delete l.secret;
-        state.extraQueue = state.extraQueue || [];
-        state.extraQueue.push({ type: 'event', ev: makeAffairEvent(state, l) });
-      }
+    // 偷情 / 长期外遇：v6.2 起不再在这里单独摇骰——
+    // 曝光统一交给 crisisTick() 按「社会地位 + 圈层 + 私生子 + 怀疑度」算出来的曝光率判定，
+    // 否则两条线会重复触发，玩家会觉得「怎么年年被抓」。这里只负责让关系继续留下痕迹。
+    if (l.secret && state.flags.married) {
+      bumpSuspicion(state, 2 + Math.min(4, Math.max(0, state.age - (l.affairSince || state.age))), null);
     }
     // 候选人冷却：长期不联系，好感自然流失
     l.touches = 0;
@@ -677,4 +710,309 @@ function loveTick(state) {
   if (state.age >= 17) meetByChance(state);
   // 别人也会先开口：不是永远只有你在追
   confessTick(state);
+}
+
+/* =========================================================
+ * v6.2.0 · 非婚生子女与动态情感危机系统
+ *
+ * 设计原则（常识自洽）：
+ *   1) 有其利必有其弊 —— 婚外情能生孩子，孩子就要吃穿、要名分、要继承权
+ *   2) 因果闭环       —— 越有名、圈层越高、秘密越多，越藏不住
+ *   3) NPC 行为对等   —— 配偶不是数据：会起诉、会原谅、会记仇、也会反过来出轨
+ * ========================================================= */
+
+const CRISIS_META = {
+  exposureBase: 0.09,     // 有秘密在身时的年度基础曝光率
+  fameK: 0.0024,          // 每点名望推高的曝光率（名人没有隐私）
+  clubK: 0.045,           // 每个圈层（圈子里人多嘴杂）
+  secretK: 0.05,          // 每段偷情关系
+  childK: 0.06,           // 每个未认领的私生子（孩子在长大，纸包不住火）
+  houseK: 0.03,           // 名下有豪宅（物业、司机、邻居都在看）
+  richK: 0.05,            // 净资产 10 亿以上
+  suspicionDecay: 9,      // 没有秘密时，配偶的怀疑每年自然回落
+  suspicionMax: 100,
+  supportCost: 9000000,   // 每个「养在外面」的孩子一年要花的钱
+  ackCost: 60000000       // 认领入户的一次性代价（户口、抚养费、场面上的账）
+};
+
+/* ---------- 配偶的怀疑度：不是随机雷，是你一点点堆出来的 ---------- */
+function suspicionOf(state) {
+  const sp = state.spouse;
+  if (!sp) return 0;
+  return clamp(sp.suspicion || 0, 0, CRISIS_META.suspicionMax);
+}
+
+function bumpSuspicion(state, n, why) {
+  if (!state.spouse) return 0;
+  state.spouse.suspicion = clamp((state.spouse.suspicion || 0) + n, 0, CRISIS_META.suspicionMax);
+  const s = state.spouse.suspicion;
+  if (s >= 70 && (state.suspectWarnYear || 0) !== state.age) {
+    state.suspectWarnYear = state.age;
+    pushLog(state, `【察觉】${state.spouse.name} 没有问你什么，但最近家里的空气不一样了。` +
+      `${why ? '（' + why + '）' : ''}怀疑这种东西，攒够了就会变成结论。`, 'warn');
+  }
+  return s;
+}
+
+/* ---------- 年度曝光率：社会地位越高，越藏不住 ---------- */
+function exposureRate(state) {
+  const lv = loveInit(state);
+  const secrets = (lv.candidates || []).filter(x => x.secret || x.illegitPreg).length;
+  const illegits = illegitChildren(state).filter(c => !c.ack).length;
+  const clubs = (state.clubs || []).length;
+  const fame = Math.max(0, state.stats.FAME || 0);
+  const net = (typeof netWorth === 'function') ? netWorth(state) : (state.stats.MONEY || 0);
+  let p = CRISIS_META.exposureBase;
+  p += fame * CRISIS_META.fameK;
+  p += secrets * CRISIS_META.secretK;
+  p += illegits * CRISIS_META.childK;
+  p += clubs * CRISIS_META.clubK;
+  if (state.flags.gangnam_owner) p += CRISIS_META.houseK;
+  if (net >= 1000000000) p += CRISIS_META.richK;
+  const sp = state.spouse || {};
+  if (sp.tp === 'fire') p += 0.05;          // 要强的人会盯着你
+  else if (sp.tp === 'cool') p -= 0.03;     // 冷淡的人懒得管
+  else if (sp.tp === 'warm') p -= 0.01;
+  p -= clamp(((sp.affinity || 60) - 60) / 500, -0.04, 0.04);   // 感情好就更信你
+  p += (suspicionOf(state) / 100) * 0.18;                       // 怀疑本身会变成证据
+  return clamp(p, 0.01, 0.88);
+}
+
+/* ---------- 非婚生子女 ---------- */
+function illegitChildren(state) {
+  return (state.children || []).filter(c => c.illegit && c.alive !== false);
+}
+/* 养在外面、没名分的孩子 */
+function hiddenChildren(state) {
+  return illegitChildren(state).filter(c => !c.ack);
+}
+
+/* 生下私生子：ack=true 立刻认领入户；否则养在外面，年年要钱，年年有风险 */
+function bearIllegitimate(state, l, ack) {
+  const kid = (typeof addChild === 'function') ? addChild(state, {}) : null;
+  if (kid) {
+    kid.illegit = true;
+    kid.outside = true;                 // 婚外所生（生母不是配偶）
+    kid.mother = l ? l.name : '生母不详';
+    kid.ack = !!ack;
+    kid.hidden = !ack;
+  }
+  if (l) { l.pregnant = false; l.illegitPreg = false; l.hiddenChild = !ack; }
+  return kid;
+}
+
+/* 私生子三选一 */
+function makeIllegitEvent(state, l) {
+  const sp = state.spouse || { name: '你爱人' };
+  return {
+    id: 'illegit_at_' + state.age,
+    loverName: l ? l.name : null,
+    age: [16, 200], w: 0,
+    text: `【私生子】${l ? l.name : '那个人'} 把化验单推到你面前，手一直在抖。\n` +
+      `你算了一下日子——这个孩子，进不了${sp.name === '你爱人' ? '你家' : sp.name + '家'}的门。\n` +
+      `你可以认，可以不认，也可以让它从来没来过。三条路，都要用一辈子去还。`,
+    choices: [
+      {
+        text: '认下来：给孩子一个名分（户口、抚养费、家里的风浪）', risk: 3,
+        eff: { ETH: 4, WILL: 6, SEC: -10, STRESS: 14, FAME: -6, MONEY: -CRISIS_META.ackCost },
+        flags: ['illegit_ack']
+      },
+      {
+        text: '瞒着：在外面养着，每月打钱', risk: 3,
+        eff: { ETH: -8, SEC: -5, STRESS: 10, MONEY: -8000000 },
+        flags: ['illegit_hide']
+      },
+      {
+        text: '断干净：给一笔钱，从此两清', risk: 2,
+        eff: { ETH: -22, LOVE: -10, MOOD: -8, WILL: -4, MONEY: -60000000 },
+        flags: ['illegit_drop']
+      }
+    ]
+  };
+}
+
+/* 认领 / 补办认领手续 */
+function acknowledgeChild(state, i) {
+  const c = (state.children || [])[i];
+  if (!c) return { ok: false, msg: '没有这个孩子' };
+  if (!c.illegit) return { ok: false, msg: '这个孩子本来就在户口本上' };
+  if (c.ack) return { ok: false, msg: '已经认过了' };
+  if (state.stats.MONEY < CRISIS_META.ackCost) return { ok: false, msg: `认领要花的钱不够（需 ${fmtMoney(CRISIS_META.ackCost)}）` };
+  state.stats.MONEY -= CRISIS_META.ackCost;
+  c.ack = true;
+  c.hidden = false;
+  applyEffects(state, { ETH: 5, WILL: 4, SEC: -6, STRESS: 10, FAME: -4 });
+  pushLog(state, `【认领】你在派出所门口站了一个上午。${c.name} 的户口落到了你的名下——` +
+    `从此 TA 与婚生子女享有同等权利，包括将来分这个家。${c.mother ? `生母是 ${c.mother}。` : ''}`, 'story');
+  // 家里那位不会不知道
+  if (state.flags.married && state.spouse) {
+    bumpSuspicion(state, 45, '户口本上多了一个人');
+    state.spouse.affinity = clamp((state.spouse.affinity || 60) - 18, 0, 100);
+    pushLog(state, `【风浪】${state.spouse.name} 迟早会知道。户口本这种东西，藏不住。`, 'warn');
+  }
+  return { ok: true, child: c };
+}
+
+/* 每个「养在外面」的孩子每年要花的钱（生活费 + 封口费） */
+function illegitSupportCost(state) {
+  return hiddenChildren(state).length * CRISIS_META.supportCost;
+}
+
+/* ---------- 动态情感危机：年度曝光判定 ---------- */
+function crisisTick(state) {
+  if (!state.flags.married || !state.spouse || !state.spouse.alive) return null;
+  if (state.prison > 0) return null;
+  if (state.crisisYear === state.age) return null;   // 一年只炸一次
+  const lv = loveInit(state);
+  const secrets = (lv.candidates || []).filter(x => x.secret);
+  const hid = hiddenChildren(state);
+  const pending = (lv.candidates || []).filter(x => x.illegitPreg);
+  if (!secrets.length && !hid.length && !pending.length) {
+    if (state.spouse.suspicion) state.spouse.suspicion = Math.max(0, state.spouse.suspicion - CRISIS_META.suspicionDecay);
+    return null;
+  }
+  // 秘密每多存在一年，就多一年的痕迹
+  bumpSuspicion(state, randInt(3, 9) + secrets.length * 3 + hid.length * 5, null);
+  const p = exposureRate(state);
+  if (!chance(p)) return null;
+  // 从哪条线炸的：偷情关系，还是那个藏了很久的孩子
+  const viaChild = hid.length > 0 && (chance(0.4) || !secrets.length);
+  const ctx = viaChild
+    ? { via: 'child', name: hid[0] ? hid[0].name : '那个孩子', childIdx: state.children.indexOf(hid[0]) }
+    : { via: 'lover', name: secrets.length ? secrets[0].name : (pending[0] ? pending[0].name : '那个人') };
+  state.crisisYear = state.age;
+  state.flags.exposed = true;
+  state.extraQueue = state.extraQueue || [];
+  state.extraQueue.push({ type: 'event', ev: makeExposureEvent(state, ctx) });
+  return ctx;
+}
+
+/* 东窗事发：先由你决定怎么应对，再由配偶决定怎么处置你 */
+function makeExposureEvent(state, ctx) {
+  const sp = state.spouse || { name: '你爱人' };
+  const via = ctx && ctx.via;
+  const who = ctx && ctx.name;
+  const head = via === 'child'
+    ? `【曝光 · 孩子】一个孩子站在门口，长得和你小时候一模一样。${sp.name} 看了很久，问：「这是谁家的？」\n纸包不住火——${who} 的事，终于有人说了出来。`
+    : `【曝光 · 偷情】${sp.name} 把一叠打印出来的聊天记录放在餐桌上，按时间排好了序。\n「${who} 是谁。」这不是问句。`;
+  const buy = Math.round(Math.max(0, ((typeof netWorth === 'function') ? netWorth(state) : state.stats.MONEY)) * 0.15);
+  return {
+    id: 'expose_at_' + state.age,
+    age: [16, 200], w: 0,
+    exposeVia: via || 'lover',
+    exposeName: who || null,
+    exposeBuy: buy,
+    text: head + `\n外面的门关着，里面的门也关上了。你只有三分钟决定怎么开口。`,
+    choices: [
+      { text: '全部承认：任 TA 处置', risk: 3, eff: { ETH: 3, WILL: 4, SEC: -8, STRESS: 14 }, flags: ['expose_admit'] },
+      { text: '抵赖到底：死不认账', risk: 3, eff: { ETH: -10, WILL: -3, SEC: -4, STRESS: 16 }, flags: ['expose_deny'] },
+      { text: `用钱摆平：${fmtMoney(buy)} 买一个「算了」`, risk: 2, eff: {}, flags: ['expose_buy'] },
+      { text: '先下手为强：是我不想过了，离吧', risk: 3, eff: { LOVE: -16, SEC: -12, STRESS: 12, ETH: -6 }, flags: ['expose_leave'] }
+    ]
+  };
+}
+
+/* 配偶的裁决：按性格、感情、你的名声、有没有私生子，动态决定走哪条路 */
+function spouseVerdict(state, force) {
+  const sp = state.spouse || {};
+  const tp = sp.tp || 'warm';
+  const aff = sp.affinity || 60;
+  const fame = Math.max(0, state.stats.FAME || 0);
+  const hid = hiddenChildren(state).length;
+  const net = (typeof netWorth === 'function') ? netWorth(state) : (state.stats.MONEY || 0);
+  const w = { sue: 1.0, forgive: 1.0, coexist: 1.0, blacklist: 1.0 };
+  if (tp === 'fire') { w.sue *= 2.2; w.forgive *= 0.5; }
+  if (tp === 'cool') { w.sue *= 1.4; w.coexist *= 1.6; w.forgive *= 0.7; }
+  if (tp === 'warm') { w.forgive *= 2.0; w.sue *= 0.6; }
+  if (tp === 'practical') { w.coexist *= 1.9; w.sue *= 0.9; }
+  if (tp === 'romantic') { w.forgive *= 1.4; w.coexist *= 1.2; }
+  if (tp === 'fun') { w.blacklist *= 1.5; w.coexist *= 1.2; }
+  if (aff >= 78) { w.forgive *= 1.8; w.sue *= 0.45; }
+  else if (aff <= 40) { w.sue *= 2.0; w.forgive *= 0.4; }
+  if (hid > 0) { w.sue *= 1.8; w.forgive *= 0.6; }              // 有私生子，几乎没有原谅可言
+  if (fame >= 60 || net >= 2000000000) w.blacklist *= 2.0;      // 你越有名，TA 越能用舆论
+  if ((state.stats.ETH || 60) >= 78) { w.forgive *= 1.3; w.sue *= 0.85; }
+  if (state.flags.spouse_terms) { w.forgive *= 0.35; w.sue *= 2.0; }  // 再犯一次，就没有第二次机会
+  if (force) return force;
+  let total = 0; for (const k in w) total += w[k];
+  let r = Math.random() * total;
+  for (const k in w) { r -= w[k]; if (r <= 0) return k; }
+  return 'sue';
+}
+
+/* ① 起诉离婚 + 财产强行分割 + 名誉封杀 */
+function spouseSue(state, why) {
+  const sp = state.spouse || { name: state.spouseName || '爱人', affinity: 30 };
+  const worth = Math.max(0, (typeof netWorth === 'function') ? netWorth(state) : state.stats.MONEY);
+  const ratio = clamp(0.5 + (state.stats.FAME || 0) / 400 + hiddenChildren(state).length * 0.06, 0.5, 0.72);
+  const want = Math.round(worth * ratio);
+  const paid = Math.min(want, Math.max(0, state.stats.MONEY));
+  state.stats.MONEY -= paid;
+  // 起诉离婚：财产分割之外，还有名誉
+  applyEffects(state, { LOVE: -30, SEC: -22, MOOD: -14, STRESS: 18, FAME: -22, ETH: -12, HP: -5 });
+  state.clubs = [];                      // 圈层把你除名了
+  state.flags.sued = true;
+  state.flags.blacklisted = true;
+  delete state.flags.married;
+  delete state.flags.in_love;
+  state.flags.divorced = true;
+  state.exes = state.exes || [];
+  state.exes.unshift({
+    name: sp.name, gender: state.gender === 'M' ? 'F' : 'M', age: sp.age,
+    met: sp.since || state.age, at: state.age, reason: why || '起诉离婚',
+    wasSpouse: true, affinity: clamp((sp.affinity || 40) - 45, 0, 30), look: sp.look || 60, lastTouch: -1
+  });
+  if (state.exes.length > 5) state.exes.length = 5;
+  state.spouse = null; state.spouseName = null;
+  // 偷情对象：法院的卷宗里也有名字了
+  const lv = loveInit(state);
+  lv.candidates = lv.candidates.filter(x => !x.secret);
+  lv.partner = null;
+  pushLog(state, `【起诉离婚】${sp.name} 请了律师。财产分割 ${fmtMoney(paid)}（约为你净资产的 ${Math.round(ratio * 100)}%）——` +
+    `这不是「分一半」，这是法院判的。你要付的还不止钱：圈层除名、名声扫地，${why ? '事由写着「' + why + '」' : ''}。`, 'warn');
+  if (typeof addGrief === 'function') addGrief(state, `被 ${sp.name} 起诉离婚`, 16);
+  return { ok: true, paid: paid, ratio: ratio };
+}
+
+/* ② 原谅：留在这个家，但要带条件 */
+function spouseForgive(state) {
+  const sp = state.spouse;
+  applyEffects(state, { ETH: 4, LOVE: -6, SEC: -6, MOOD: -6, STRESS: 10 });
+  sp.affinity = clamp((sp.affinity || 60) - 22, 8, 100);
+  sp.suspicion = 55;
+  state.flags.spouse_terms = true;
+  state.spouseTermsYear = state.age;
+  pushLog(state, `【原谅】${sp.name} 哭了一整夜，最后说：「最后一次。」\n` +
+    `条件是：家里的账本归 TA 管，你每月的生活费要报账，手机不许设密码。你们还住在一起，但这个家从此有了规矩。`, 'warn');
+  return { ok: true };
+}
+
+/* ③ 睁一只眼闭一只眼：婚姻名存实亡——而 TA 也不是省油的灯 */
+function spouseCoexist(state) {
+  const sp = state.spouse;
+  applyEffects(state, { LOVE: -12, SEC: -14, MOOD: -8, ETH: -4 });
+  sp.affinity = clamp((sp.affinity || 60) - 12, 5, 100);
+  sp.suspicion = 40;
+  sp.affair = true;              // NPC 对等：你会的，TA 也会
+  sp.affairSince = state.age;
+  state.flags.open_marriage = true;
+  pushLog(state, `【共处】${sp.name} 什么都没说，只是从那天起不再问你几点回家。\n` +
+    `你们像两个合租的陌生人，客气、疏远、互不干涉。你想：这样也好。\n` +
+    `——直到你也开始好奇，TA 那些晚归的晚上去了哪里。`, 'warn');
+  return { ok: true };
+}
+
+/* ④ 社会名誉封杀：婚不离婚，但你在社会意义上已经死了 */
+function spouseBlacklist(state) {
+  const sp = state.spouse;
+  const before = Math.round(state.stats.FAME || 0);
+  const cut = Math.max(12, Math.round(before * 0.55));
+  applyEffects(state, { FAME: -cut, NET: -14, LOY: -16, MOOD: -10, SEC: -8, STRESS: 14 });
+  state.clubs = [];
+  state.flags.blacklisted = true;
+  if (state.spouse) state.spouse.affinity = clamp((state.spouse.affinity || 60) - 16, 5, 100);
+  pushLog(state, `【封杀】${sp.name} 没有提离婚，只是把该说的都说了出去。\n` +
+    `圈子里没人再接你电话，商会撤销了你的席位，合作方在合同上按了手印又抽回去。\n` +
+    `名望 ${before} → ${Math.round(state.stats.FAME || 0)}。你还活着，只是没人再提你的名字。`, 'warn');
+  return { ok: true, cut: cut };
 }

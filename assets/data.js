@@ -2315,14 +2315,14 @@ const EVENTS_WAVE = [
   { id: 'w_tsunami', yearMin: 1990, w: 3,
     text: '【海啸】隔洋传来的坏消息一夜之间砸到了每张报纸头条：全球金融海啸。楼盘售楼处灯火通明——是打折的灯。股市的曲线像跳楼的人坠落时划出的弧线。',
     choices: [
-      { text: ' · 现金为王，谁劝也不动', risk: 1, eff: { SEC: 4, STRESS: 4, newsK: -20, houseK: -30 } },
-      { text: ' · 别人恐惧我贪婪：抄底楼市与蓝筹', risk: 3, eff: { MONEY: -20000000, newsK: 14, houseK: 8, WILL: 4 }, gamble: { p: 0.5, win: { MONEY: 45000000, NET: 5 }, lose: { MONEY: -12000000, MOOD: -12 } } },
-      { text: ' · 减仓自保，先让家里人安心', risk: 2, eff: { newsK: -8, houseK: -18, MOOD: 3, STRESS: -6 } }
+      { text: ' · 现金为王，谁劝也不动', risk: 1, eff: { SEC: 4, STRESS: 4, newsK: -0.20, houseK: -0.30 } },
+      { text: ' · 别人恐惧我贪婪：抄底楼市与蓝筹', risk: 3, eff: { MONEY: -20000000, newsK: 0.14, houseK: 0.08, WILL: 4 }, gamble: { p: 0.5, win: { MONEY: 45000000, NET: 5 }, lose: { MONEY: -12000000, MOOD: -12 } } },
+      { text: ' · 减仓自保，先让家里人安心', risk: 2, eff: { newsK: -0.08, houseK: -0.18, MOOD: 3, STRESS: -6 } }
     ] },
   { id: 'w_techboom', yearMin: 2005, w: 3,
     text: '【黑天鹅 · 喜】某实验室凌晨两点发了一篇论文，三天后整个科技板块疯了。半导体、AI、新能源全线暴涨，交易软件的服务器挤到崩溃。',
     choices: [
-      { text: ' · 这波科技行情，吃下', risk: 2, eff: { techK: 0.85, MOOD: 6 } },
+      { text: ' · 这波科技行情，吃下', risk: 2, eff: { techK: 0.60, MOOD: 6 } },
       { text: ' · 涨成这样，落袋为安先', risk: 1, eff: { techK: 0.3, SEC: 3 } }
     ] },
   { id: 'w_techcrash', yearMin: 2005, w: 3,
@@ -2416,4 +2416,24 @@ ACHIEVEMENTS.push(
     cond: s => (s.clubs || []).length > 0 },
   { id: 'a_fund', icon: '❤️', name: '泽被后世', desc: '创办个人慈善基金会',
     cond: s => !!(s.flags && s.flags.foundation) }
+);
+
+/* ---- v6.2 新成就：越轨与代价 ---- */
+ACHIEVEMENTS.push(
+  { id: 'a_bastard', icon: '🤫', name: '私生子', desc: '有一个没名分的孩子',
+    cond: s => (s.children || []).some(c => c.illegit && !c.ack) },
+  { id: 'a_ack', icon: '📄', name: '认祖归宗', desc: '把非婚生子女认领入户',
+    cond: s => (s.children || []).some(c => c.illegit && c.ack) },
+  { id: 'a_exposed', icon: '📸', name: '东窗事发', desc: '出轨 / 私生子被配偶撞破',
+    cond: s => !!(s.flags && s.flags.exposed) },
+  { id: 'a_sued', icon: '⚖️', name: '被起诉离婚', desc: '被配偶起诉，财产被法院强行分割',
+    cond: s => !!(s.flags && s.flags.sued) },
+  { id: 'a_cuckoo', icon: '🧬', name: '亲子鉴定', desc: '鼓起勇气做了一次亲子鉴定',
+    cond: s => !!(s.flags && s.flags.paternity_done) },
+  { id: 'a_twins', icon: '👯', name: '双喜临门', desc: '一次生了两个',
+    cond: s => !!(s.flags && s.flags.twins) },
+  { id: 'a_landlord', icon: '🏘', name: '包租公 / 包租婆', desc: '名下同时持有 5 套以上房产',
+    cond: s => (s.market && s.market.props || []).filter(p => p.kind === 'house').length >= 5 },
+  { id: 'a_blacklist', icon: '🚫', name: '社会性死亡', desc: '被圈子彻底除名',
+    cond: s => !!(s.flags && s.flags.blacklisted) }
 );

@@ -903,10 +903,10 @@ function applyEffects(state, eff, silent) {
     s[k] += v;
   }
   // v6.0：新闻/事件的市场情绪（newsK→股市、houseK→楼市），由 marketTick 消费后清零
-  if (eff.newsK && state.market) state.market.newsBias = (state.market.newsBias || 0) + eff.newsK;
-  if (eff.houseK && state.market) state.market.houseBias = (state.market.houseBias || 0) + eff.houseK;
+  if (eff.newsK && state.market) state.market.newsBias = clamp((state.market.newsBias || 0) + eff.newsK, -0.55, 0.80);
+  if (eff.houseK && state.market) state.market.houseBias = clamp((state.market.houseBias || 0) + eff.houseK, -0.55, 0.60);
   // v6.1：科技浪潮情绪（techK→半导体/AI/通信/新能源板块）
-  if (eff.techK && state.market) state.market.techK = (state.market.techK || 0) + eff.techK;
+  if (eff.techK && state.market) state.market.techK = clamp((state.market.techK || 0) + eff.techK, -0.65, 1.20);
   // 事件效果里带的职称（eff.job）统一走 setJob()，孤儿职称会被映射回阶梯
   if (eff.job) setJob(state, eff.job);
   s.HP = clamp(s.HP, 0, 120);
@@ -1546,6 +1546,8 @@ function livingCost(state) {
   if (state.flags.married) cost += 12000000;
   if (state.childCount) cost += state.childCount * 6000000;
   if (state.flags.divorced && state.childCount) cost += state.childCount * 3000000; // 抚养费
+  // v6.2：养在外面的孩子也要吃饭（生活费 + 封口费，藏起来是有成本的）
+  if (typeof illegitSupportCost === 'function') cost += illegitSupportCost(state);
   return Math.round(cost * (typeof eraK === 'function' ? eraK(state) : 1));
 }
 
@@ -1776,6 +1778,9 @@ function step(state) {
   trustTick(state);     // v6.1 家族信托：年度给付（败家子也饿不死）
   retireTick(state);    // v6.1 养老服务：年费与照护
   clubTick(state);      // v6.1 圈层：年费 / 赞助商 / 内幕消息 / 联合投资
+  crisisTick(state);    // v6.2 动态情感危机：偷情与私生子的年度曝光判定
+  propertyTaxTick(state); // v6.2 房产税 / 空置税：房子越多越痛
+  npcTick(state);       // v6.2 NPC 对等：配偶与子女也会主动做事
   if (state.finished) return { type: 'end' };
   loanTick(state);
   checkAchievements(state);
@@ -2153,10 +2158,21 @@ function resolveEvent(state, ev, choiceIndex) {
     const l = lv.candidates.find(x => x.name === ev.loverName) || lv.partner;
     if (ch && ch.flags && ch.flags.indexOf('pregnant_keep') >= 0) {
       const kid = addChild(state);
+      if (kid) {
+        // v6.2：没领证就生下来的，是非婚生子女——法律上权利同等，现实里要自己扛
+        kid.illegit = !state.flags.married;
+        kid.mother = l ? l.name : undefined;
+        kid.ack = true;
+      }
       if (l) l.pregnant = false;
       pushLog(state, `【生育】${kid.gender === 'M' ? '儿子' : '女儿'} ${kid.name} 出生了。你没有婚礼，只有一张出生证明和一堆学费。`, 'money');
+      if (kid && kid.illegit) {
+        pushLog(state, `【非婚生】出生医学证明「父亲」那一栏写着你的名字，但你们没有结婚证。\n` +
+          `法律说 TA 和别的孩子权利同等；街坊的嘴不这么说。`, 'muted');
+      }
       if (!state.flags.married && l && state.age >= 20 && chance(0.5)) {
         marry(state, l);
+        if (kid) kid.illegit = false;   // 婚后补证：孩子跟着变成了婚生
       }
     } else if (ch && ch.flags && ch.flags.indexOf('pregnant_marry') >= 0) {
       if (l && !state.flags.married) {
@@ -2230,6 +2246,147 @@ function resolveEvent(state, ev, choiceIndex) {
         if (state.age >= LOVE_META.marryAge && l.affinity >= LOVE_META.marryAffinity) marry(state, l);
         else { lv.partner = l; state.flags.dating = true; }
       }
+    }
+  }
+
+  // v6.2 · 私生子的三条出路：认 / 养在外面 / 断干净
+  if (ev.id && String(ev.id).indexOf('illegit_at_') === 0) {
+    const lv = loveInit(state);
+    const l = lv.candidates.find(x => x.name === ev.loverName) || lv.partner;
+    const fl = (ch && ch.flags) || [];
+    if (fl.indexOf('illegit_ack') >= 0) {
+      const kid = bearIllegitimate(state, l, true);
+      pushLog(state, `【认领】${kid ? (kid.gender === 'M' ? '儿子 ' : '女儿 ') + kid.name : '这个孩子'} 落在了你的户口本上。` +
+        `从今天起，TA 与婚生子女享有同等的权利——包括将来分这个家。`, 'story');
+      if (state.flags.married && state.spouse) {
+        bumpSuspicion(state, 40, '户口本上多了一个人');
+        state.spouse.affinity = clamp((state.spouse.affinity || 60) - 16, 0, 100);
+      }
+    } else if (fl.indexOf('illegit_hide') >= 0) {
+      const kid = bearIllegitimate(state, l, false);
+      pushLog(state, `【养在外面】${kid ? kid.name : '这个孩子'} 有了一个你给的名字，却没有你家的姓。\n` +
+        `每个月都有一笔钱要打过去。这笔账，你记在只有你自己知道的那一栏里。`, 'warn');
+    } else if (fl.indexOf('illegit_drop') >= 0) {
+      if (l) { l.pregnant = false; l.illegitPreg = false; l.affinity = clamp(l.affinity - 25, 0, 100); }
+      pushLog(state, `【断干净】钱转过去了，人也删了。你告诉自己这件事从来没发生过——\n` +
+        `但有些夜晚，你会想起那张化验单。`, 'warn');
+    }
+  }
+
+  // v6.2 · 东窗事发：你怎么应对，配偶怎么处置
+  if (ev.id && String(ev.id).indexOf('expose_at_') === 0) {
+    const fl = (ch && ch.flags) || [];
+    const sp = state.spouse;
+    if (fl.indexOf('expose_leave') >= 0) {
+      divorce(state, '出轨败露，先提的那个人');
+    } else if (fl.indexOf('expose_buy') >= 0) {
+      const buy = ev.exposeBuy || 0;
+      if (state.stats.MONEY >= buy && buy > 0) {
+        state.stats.MONEY -= buy;
+        if (sp) { sp.suspicion = 72; sp.affinity = clamp((sp.affinity || 60) - 10, 0, 100); }
+        state.flags.spouse_paid = true;
+        pushLog(state, `【摆平】你转了 ${fmtMoney(buy)}。${sp ? sp.name : 'TA'} 收下了，什么也没再说。\n` +
+          `钱能买来沉默，买不回信任。从这天起，家里每一笔账都要过 TA 的手。`, 'warn');
+      } else {
+        pushLog(state, `【摆不平】你掏不出 ${fmtMoney(buy)}。${sp ? sp.name : 'TA'} 看着手机笑了一下：` +
+          `「你连这个都拿不出来，还敢在外面有人？」`, 'warn');
+        spouseSue(state, '婚外情 · 且试图用钱封口');
+      }
+    } else if (fl.indexOf('expose_deny') >= 0) {
+      const smooth = chance(clamp(0.5 - suspicionOf(state) / 200, 0.08, 0.5));
+      if (smooth) {
+        if (sp) sp.suspicion = clamp((sp.suspicion || 0) + 25, 0, 100);
+        pushLog(state, `【抵赖】你把话说得滴水不漏。${sp ? sp.name : 'TA'} 没再追问——但从此家里的空气更冷了。\n` +
+          `你赢了一次。下一次不一定。`, 'muted');
+      } else {
+        pushLog(state, `【抵赖失败】证据摊在桌上：开房记录、转账、还有你删掉又恢复的聊天。\n` +
+          `抵赖在法庭上只会让法官更不喜欢你。`, 'warn');
+        spouseSue(state, '婚外情 · 事发后拒不承认');
+      }
+    } else if (fl.indexOf('expose_admit') >= 0) {
+      const v = spouseVerdict(state);
+      if (v === 'sue') spouseSue(state, ev.exposeVia === 'child' ? '私生子曝光' : '婚外情');
+      else if (v === 'forgive') spouseForgive(state);
+      else if (v === 'coexist') spouseCoexist(state);
+      else spouseBlacklist(state);
+    }
+  }
+
+  // v6.2 · 配偶在外面也有人（NPC 对等：你会的，TA 也会）
+  if (ev.id && String(ev.id).indexOf('spouseaffair_at_') === 0) {
+    const fl = (ch && ch.flags) || [];
+    if (fl.indexOf('sa_ignore') >= 0) {
+      if (state.spouse) state.spouse.affinity = clamp((state.spouse.affinity || 60) - 6, 0, 100);
+      pushLog(state, '【装不知道】你什么都没说。夜里背对着背，你们都很清醒。', 'muted');
+    } else if (fl.indexOf('sa_confront') >= 0) {
+      const v = Math.random();
+      if (v < 0.45) {
+        pushLog(state, `【摊牌】${state.spouse ? state.spouse.name : 'TA'} 承认了，也说了那句你听过的话：「最后一次。」\n` +
+          `你们谁也没有资格审判谁。`, 'warn');
+        if (state.spouse) state.spouse.affinity = clamp((state.spouse.affinity || 60) - 10, 0, 100);
+      } else {
+        divorce(state, '对方也有别人了');
+      }
+    } else if (fl.indexOf('sa_paternity') >= 0) {
+      // 亲子鉴定：孩子到底是不是你的
+      state.flags.paternity_done = true;
+      const kids = (state.children || []).filter(c => c.alive !== false && !c.illegit);
+      const kid = kids.length ? kids[kids.length - 1] : null;
+      if (kid && chance(0.35)) {
+        kid.cuckoo = true;
+        applyEffects(state, { LOVE: -20, SEC: -18, MOOD: -14, STRESS: 16, ETH: -6 });
+        pushLog(state, `【亲子鉴定】报告上写着「排除生物学父亲」。\n` +
+          `${kid.name} 不是你的孩子。这些年你供的学费、抱过的每一次发烧——都是替别人养的。`, 'warn');
+        state.extraQueue = state.extraQueue || [];
+        state.extraQueue.push({ type: 'event', ev: makeCuckooEvent(state, kid) });
+      } else {
+        applyEffects(state, { MOOD: -4, STRESS: 6 });
+        pushLog(state, `【亲子鉴定】报告写着「支持生物学父亲」。你松了一口气，然后为自己的这个念头羞耻了很久。`, 'muted');
+        state.stats.MONEY -= 3000000;
+      }
+    }
+  }
+
+  // v6.2 · 配偶先提的离婚
+  if (ev.id && String(ev.id).indexOf('spousediv_at_') === 0) {
+    const fl = (ch && ch.flags) || [];
+    if (fl.indexOf('sd_yes') >= 0) {
+      divorce(state, `${state.spouseName || '对方'} 先提的`);
+    } else if (fl.indexOf('sd_beg') >= 0) {
+      if (chance(0.5)) {
+        if (state.spouse) {
+          state.spouse.affinity = clamp((state.spouse.affinity || 60) + 25, 0, 100);
+          state.spouse.suspicion = Math.max(0, (state.spouse.suspicion || 0) - 30);
+        }
+        pushLog(state, `【挽留】你把这几年欠的都补上了。${state.spouse ? state.spouse.name : 'TA'} 没走。\n` +
+          `但你也明白，这是最后一次机会。`, 'money');
+      } else {
+        pushLog(state, `【挽留不成】钱能摆平很多事，摆平不了「不想再过了」这四个字。`, 'warn');
+        divorce(state, '挽留无效');
+      }
+    } else if (fl.indexOf('sd_stall') >= 0) {
+      if (state.spouse) state.spouse.affinity = clamp((state.spouse.affinity || 60) - 8, 0, 100);
+      pushLog(state, '【拖着】谁也没再提这件事。这个家就这么悬着——悬着也是一种过法。', 'warn');
+    }
+  }
+
+  // v6.2 · 孩子不是你的
+  if (ev.id && String(ev.id).indexOf('cuckoo_at_') === 0) {
+    const fl = (ch && ch.flags) || [];
+    if (fl.indexOf('ck_divorce') >= 0) divorce(state, '孩子不是自己的');
+    else if (fl.indexOf('ck_sue') >= 0) pushLog(state, '【判决】法院判了。钱要回来了，但判决书上写着你的名字，和那三个字。', 'warn');
+    else if (fl.indexOf('ck_keep') >= 0) pushLog(state, '【还是你的孩子】你把报告烧了。有些真相，知道了就得替它付一辈子的账。', 'story');
+  }
+
+  // v6.2 · 私生子争产（你死了，他们才会出现）
+  if (ev.id && String(ev.id).indexOf('bastardclaim_at_') === 0) {
+    const fl = (ch && ch.flags) || [];
+    if (fl.indexOf('bc_fight') >= 0) {
+      applyEffects(state, { ETH: -8, MOOD: -6, STRESS: 10 });
+      pushLog(state, '【争产】你把律师费付了。法庭上那个年轻人看着你，眉眼像极了二十岁的自己。', 'warn');
+    } else {
+      applyEffects(state, { ETH: 6, WILL: 4, SEC: -4 });
+      pushLog(state, '【认了】你没有打这个官司。血缘这种东西，法庭不判，它自己会找上门。', 'story');
     }
   }
 
@@ -2405,6 +2562,8 @@ function resolveEnding(state, causeId, ctx) {
 function endBy(state, causeId, ctx) {
   state.finished = true;
   state.alive = false;
+  // v6.2：非婚生子女的继承权——死亡也是同一个结算口
+  if (typeof settleBastardClaims === 'function') settleBastardClaims(state);
   const ending = resolveEnding(state, causeId, ctx);
   state.ending = ending;
   // 死亡类结局也要有评分/评级，便于结算页与存档保持一致
@@ -2451,6 +2610,8 @@ function scoreOf(state) {
 function finish(state) {
   state.alive = false;
   state.finished = true;
+  // v6.2：藏了一辈子的孩子，会在葬礼上出现——法律给他们的权利，和你认不认无关
+  if (typeof settleBastardClaims === 'function') settleBastardClaims(state);
   const ending = resolveEnding(state, null);   // 同一条判定路径，只是没有死因
   state.ending = ending;
   state.score = scoreOf(state);
@@ -2815,3 +2976,318 @@ function clubTick(state) {
 
 /* 监狱检查的小工具：服刑中禁止对外活动 */
 function prisonCheck(state) { return (state.prison || 0) > 0; }
+
+/* =========================================================
+ * v6.2.0 · 常识自洽四象限（权利对称 / 因果闭环 / NPC 对等 / 尺度自洽）
+ * ========================================================= */
+
+/* ---------- 象限一：房产税与空置税（有其利，必有其弊） ----------
+ * 第一套自住免征；从第二套起累进；有租金收益的商业地产税率减半；
+ * 住宅没有租金收入 → 视为空置，额外加空置税。买房越多，每年越痛。 */
+const PROP_TAX = {
+  freeCount: 1,
+  baseRate: 0.006,
+  stepRate: 0.0035,
+  capRate: 0.045,
+  vacantRate: 0.010
+};
+
+function propertyTaxTick(state) {
+  if (!state.market || !state.market.props) return 0;
+  const houses = state.market.props.filter(p => p.kind === 'house');
+  if (houses.length <= PROP_TAX.freeCount) return 0;
+  // 最值钱的一套算自住，其余从第二套起累进
+  const sorted = houses.slice().sort((a, b) => (b.value || 0) - (a.value || 0));
+  let tax = 0;
+  for (let i = PROP_TAX.freeCount; i < sorted.length; i++) {
+    const p = sorted[i];
+    const ref = (typeof HOUSES !== 'undefined') ? HOUSES.find(h => h.id === p.refId) : null;
+    const v = p.value || 0;
+    let rate = Math.min(PROP_TAX.capRate, PROP_TAX.baseRate + PROP_TAX.stepRate * (i - PROP_TAX.freeCount));
+    const rented = !!(ref && (ref.rent || 0) > 0);
+    if (rented) rate *= 0.5; else rate += PROP_TAX.vacantRate;   // 有租抵一半，没租算空置
+    tax += Math.round(v * rate);
+  }
+  if (tax <= 0) return 0;
+  // 年代缩放：80 年代的税基和 2030 年代不是一回事
+  tax = Math.round(tax * (typeof eraK === 'function' ? eraK(state) : 1));
+  state.stats.MONEY -= tax;
+  state.market.propTax = tax;
+  pushLog(state, `【房产税】你名下 ${houses.length} 套房产，今年缴了 ${fmtMoney(tax)}。` +
+    `（自住一套免征，其余累进；空置的房子还要多交一笔空置税）`, 'warn');
+  return tax;
+}
+
+/* ---------- 象限二：顶奢载具的连锁反应（有输入，必有输出） ----------
+ * 以前买了顶奢车只在资产表上躺着一个数字；现在它会在该出现的地方说话：
+ * 相亲的排面、求婚的底气、度假的体验、搭讪的成功率。 */
+function luxCarBonus(state) {
+  if (!state.market || !state.market.props) return { cha: 0, net: 0, tier: 0, name: '' };
+  let cha = 0, net = 0, tier = 0, name = '';
+  state.market.props.forEach(p => {
+    let ref = null;
+    if (p.kind === 'car') ref = (typeof CARS !== 'undefined') ? CARS.find(x => x.id === p.refId) : null;
+    else if (p.kind === 'good') ref = (typeof GOODS !== 'undefined') ? GOODS.find(x => x.id === p.refId) : null;
+    if (!ref) return;
+    const c = ref.cha || 0, n = ref.net || 0;
+    if (ref.lux) { cha += c * 1.0; net += n * 1.0; if (tier < 3) { tier = 3; name = ref.name; } }
+    else if (ref.race) { cha += c * 0.8; net += n * 0.6; if (tier < 2) { tier = 2; name = ref.name; } }
+    else if (c >= 9) { cha += c * 0.7; net += n * 0.5; if (tier < 1) { tier = 1; name = ref.name; } }
+  });
+  return { cha: Math.round(cha), net: Math.round(net), tier, name };
+}
+
+/* 座驾加成：相亲对象质量 / 求婚成功率 / 度假体验 / 搭讪成功率 都吃这一份 */
+function rideBonus(state) {
+  const b = luxCarBonus(state);
+  return {
+    tier: b.tier, name: b.name, cha: b.cha, net: b.net,
+    matchQ: Math.round(b.cha * 0.35),                 // 相亲对象质量
+    proposeP: clamp(b.cha / 320, 0, 0.12),            // 求婚成功率
+    vacMood: b.tier >= 3 ? 6 : (b.tier === 2 ? 3 : 1),// 度假心情加成
+    flirtP: clamp(b.cha / 420, 0, 0.10)               // 搭讪成功率
+  };
+}
+
+/* ---------- 象限二：案底封杀（坐过牢，就当不了老师） ---------- */
+const RECORD_BLOCKED_CATS = ['体制内', '教育', '医疗', '法律'];
+const RECORD_BLOCKED_IDS = ['pilot', 'cabincrew', 'astronaut', 'sforce', 'civil', 'teacher', 'doctor', 'nurse', 'lawyer', 'psychiatrist', 'mortician'];
+
+function recordBlocked(state, c) {
+  if (!state.flags || !state.flags.ex_prisoner || !c) return null;
+  if (RECORD_BLOCKED_IDS.indexOf(c.id) >= 0) return '有案底，政审过不去';
+  if (RECORD_BLOCKED_CATS.indexOf(c.cat) >= 0) return '有案底，这一行要开无犯罪记录证明';
+  return null;
+}
+
+/* ---------- 象限三：NPC 行为对等 ---------- */
+
+/* 配偶在外面也有人：从「共处」那天起，TA 就不是省油的灯了 */
+function makeSpouseAffairEvent(state) {
+  const sp = state.spouse || { name: '你爱人' };
+  const hasKid = (state.children || []).some(c => c.alive !== false && !c.illegit);
+  return {
+    id: 'spouseaffair_at_' + state.age,
+    age: [22, 200], w: 0,
+    text: `【TA 也有别人了】${sp.name} 的手机亮在床头，备注是「张总」。\n` +
+      `你忽然想起自己这一年删掉的那些聊天记录——原来这个家里，不只有你一个人在撒谎。`,
+    choices: [
+      { text: '装不知道：把手机放回去', risk: 2, eff: { LOVE: -6, SEC: -6, MOOD: -4, ETH: -2 }, flags: ['sa_ignore'] },
+      { text: '摊牌：把话挑明', risk: 3, eff: { LOVE: -10, SEC: -8, STRESS: 12 }, flags: ['sa_confront'] },
+      ...(hasKid ? [{ text: `做一次亲子鉴定（${fmtMoney(3000000)}）`, risk: 3, eff: { MONEY: -3000000, STRESS: 10 }, flags: ['sa_paternity'] }] : [])
+    ]
+  };
+}
+
+function makeCuckooEvent(state, kid) {
+  return {
+    id: 'cuckoo_at_' + state.age,
+    age: [22, 200], w: 0,
+    text: `【不是你的孩子】${kid ? kid.name : '这个孩子'} 的鉴定报告压在抽屉最底层。\n` +
+      `你可以打官司要回这些年花掉的抚养费，也可以继续当 TA 的爸爸——` +
+      `只是每次 TA 喊你的时候，你都会想起那张纸。`,
+    choices: [
+      { text: '起诉：把抚养费要回来（名声与亲情一起赔进去）', risk: 3, eff: { MONEY: 40000000, ETH: -10, LOVE: -20, FAME: -10, MOOD: -10 }, flags: ['ck_sue'] },
+      { text: '当没发生过：TA 还是你的孩子', risk: 2, eff: { ETH: 6, LOVE: 4, MOOD: -6, WILL: 4 }, flags: ['ck_keep'] },
+      { text: '离婚，什么都别说了', risk: 3, eff: { LOVE: -24, SEC: -16, ETH: -6 }, flags: ['ck_divorce'] }
+    ]
+  };
+}
+
+/* 配偶主动提离婚：不是只有玩家能掀桌子 */
+function spouseInitiateDivorce(state) {
+  const sp = state.spouse;
+  if (!sp || !sp.alive) return false;
+  const aff = sp.affinity || 60;
+  let p = 0;
+  if (aff <= 18) p = 0.30;
+  else if (aff <= 30) p = 0.14;
+  else if (aff <= 42) p = 0.05;
+  if (state.flags.spouse_terms && aff <= 50) p += 0.10;
+  if ((sp.suspicion || 0) >= 85) p += 0.12;
+  if (p <= 0 || !chance(p)) return false;
+  state.extraQueue = state.extraQueue || [];
+  state.extraQueue.push({ type: 'event', ev: {
+    id: 'spousediv_at_' + state.age,
+    age: [22, 200], w: 0,
+    text: `【${sp.name} 提的】「我们离婚吧。」\n话是 TA 先说出口的。你张了张嘴，发现这些年自己也没准备过别的答案。`,
+    choices: [
+      { text: '答应：好聚好散', risk: 2, eff: { LOVE: -18, SEC: -12, MOOD: -8, STRESS: 12 }, flags: ['sd_yes'] },
+      { text: '挽留：把这几年欠的都补上（要花钱，也不一定有用）', risk: 3, eff: { MONEY: -30000000, STRESS: 8 }, flags: ['sd_beg'] },
+      { text: '拖着不离：就这么耗下去', risk: 2, eff: { LOVE: -10, MOOD: -10, SEC: -10, ETH: -4 }, flags: ['sd_stall'] }
+    ]
+  } });
+  return true;
+}
+
+/* 配偶藏私房钱：家里的钱不都在你账上 */
+function spouseFundTick(state) {
+  if (!state.flags.married || !state.spouse || !state.spouse.alive) return 0;
+  const sp = state.spouse;
+  sp.fund = sp.fund || 0;
+  if (state.stats.MONEY < 5000000) return 0;
+  let rate = 0.02;
+  if ((sp.suspicion || 0) >= 60) rate = 0.06;               // 不信你的时候，先给自己留后路
+  if (sp.affair) rate += 0.03;
+  if (state.flags.spouse_terms) rate += 0.02;
+  const amt = Math.round(state.stats.MONEY * rate);
+  if (amt <= 0) return 0;
+  state.stats.MONEY -= amt;
+  sp.fund += amt;
+  // 偶尔会露馅
+  if (chance(0.10)) {
+    pushLog(state, `【私房钱】你翻存折的时候发现少了一笔。${sp.name} 说：「给孩子存的。」\n` +
+      `你没追问。这个家里，谁都在给自己留一条退路。`, 'warn');
+  }
+  return amt;
+}
+
+/* 配偶主动买东西：TA 也是会花钱的社会人 */
+function spouseBuyTick(state) {
+  if (!state.flags.married || !state.spouse || !state.spouse.alive) return null;
+  if (state.stats.MONEY < 30000000 || !chance(0.12)) return null;
+  const sp = state.spouse;
+  const BUYS = [
+    { name: '一台新车', cost: 25000000, eff: { MOOD: 3, CHA: 2 } },
+    { name: '一套小户型（写的 TA 自己名字）', cost: 120000000, eff: { MOOD: 4, SEC: -2 } },
+    { name: '一块表', cost: 18000000, eff: { MOOD: 2, CHA: 1 } },
+    { name: '给孩子报的补习班', cost: 9000000, eff: { MOOD: 2, LOVE: 3 } },
+    { name: '一次说走就走的旅行', cost: 12000000, eff: { MOOD: 5, STRESS: -4 } }
+  ];
+  const b = BUYS[randInt(0, BUYS.length - 1)];
+  if (state.stats.MONEY < b.cost) return null;
+  state.stats.MONEY -= b.cost;
+  applyEffects(state, b.eff);
+  pushLog(state, `【${sp.name} 买的】家里多了一笔支出：${b.name}，${fmtMoney(b.cost)}。\n` +
+    `TA 没有问过你。你想了想，这些年你也没问过 TA。`, 'muted');
+  return b;
+}
+
+/* 子女不是摆设：成年后会啃老、会忤逆、会争产 */
+function childRevoltTick(state) {
+  const kids = (state.children || []).filter(c => c.alive !== false && childAge(state, c) >= 18);
+  if (!kids.length) return null;
+  if ((state.childRevoltYear || 0) + 4 > state.age) return null;
+  if (!chance(0.16)) return null;
+  const kid = kids[randInt(0, kids.length - 1)];
+  const ca = childAge(state, kid);
+  state.childRevoltYear = state.age;
+  const scroll = Math.round(Math.max(3000000, Math.min(60000000, (state.stats.MONEY || 0) * 0.08)));
+  const ask = [
+    {
+      id: 'cr_mooch', title: `${kid.name} 要钱`,
+      text: `【啃老】${kid.name}（${ca} 岁）把筷子一放：「爸/妈，我这个月房租……」\n` +
+        `你已经数不清这是第几次了。TA 有手有脚，也有一份简历。`,
+      choices: [
+        { text: `给 ${fmtMoney(scroll)}`, risk: 2, eff: { MONEY: -scroll, LOVE: 4, MOOD: -2 }, flags: ['cr_give'] },
+        { text: '不给：让 TA 自己想办法', risk: 2, eff: { LOVE: -6, WILL: 3, MOOD: -4, ETH: 2 }, flags: ['cr_no'] },
+        { text: `给钱，但要 TA 搬出去住（一次性 ${fmtMoney(scroll * 3)}）`, risk: 3, eff: { MONEY: -scroll * 3, LOVE: -2, SEC: 4, WILL: 4 }, flags: ['cr_kick'] }
+      ]
+    },
+    {
+      id: 'cr_fight', title: `${kid.name} 要分家产`,
+      text: `【争产】${kid.name}（${ca} 岁）把一份打印好的东西放在你面前：《关于家庭财产明晰化的几点想法》。\n` +
+        `你的孩子请了律师，来跟你谈「你还没死的时候」。`,
+      choices: [
+        { text: '分：现在就把名下的一部分划过去', risk: 3, eff: { MONEY: -Math.round(scroll * 6), LOVE: -4, SEC: -8, MOOD: -8 }, flags: ['cr_split'] },
+        { text: '不分：这个家还没到分的时候', risk: 3, eff: { LOVE: -14, MOOD: -10, WILL: 4, SEC: -4 }, flags: ['cr_deny'] },
+        { text: '立个规矩：钱可以留，但 TA 得回来接手生意', risk: 2, eff: { LOVE: 3, LOY: 4, NET: 3 }, flags: ['cr_deal'] }
+      ]
+    },
+    {
+      id: 'cr_cut', title: `${kid.name} 说不认你了`,
+      text: `【忤逆】${kid.name}（${ca} 岁）最后一句话是：「你们从来没问过我想要什么。」\n` +
+        `门关上的声音不大，但整个屋子都空了。`,
+      choices: [
+        { text: '追出去，把话说清楚', risk: 2, eff: { LOVE: 4, MOOD: -4, STRESS: 6 }, flags: ['cr_chase'] },
+        { text: '让 TA 走：翅膀硬了就自己飞', risk: 3, eff: { LOVE: -10, WILL: 2, SEC: -3 }, flags: ['cr_letgo'] },
+        { text: '什么也不做，坐在原地很久', risk: 1, eff: { LOVE: -6, MOOD: -12, STRESS: 8 }, flags: ['cr_silent'] }
+      ]
+    }
+  ];
+  const ev = ask[randInt(0, ask.length - 1)];
+  ev.id = ev.id + '_at_' + state.age;
+  ev.age = [40, 200]; ev.w = 0;
+  state.extraQueue = state.extraQueue || [];
+  state.extraQueue.push({ type: 'event', ev: ev });
+  return ev;
+}
+
+/* ---------- 象限四：时间与精力的尺度自洽 ---------- */
+
+/* 生育力：男女都有窗口，不是只有女的会老 */
+function fertility(state, gender, age) {
+  const g = gender || state.gender;
+  const a = age === undefined ? state.age : age;
+  let p = 0, why = '';
+  if (g === 'F') {
+    if (a < 18) { p = 0.12; why = '身体还没长开，医生不建议'; }
+    else if (a <= 30) p = 0.46;
+    else if (a <= 35) p = 0.40;
+    else if (a <= 39) p = 0.27;
+    else if (a <= 43) p = 0.13;
+    else if (a <= 45) p = 0.05;
+    else { p = 0; why = '医学上已经不可能了'; }
+  } else {
+    if (a < 18) { p = 0.12; why = '再大一点吧'; }
+    else if (a <= 40) p = 0.44;
+    else if (a <= 50) p = 0.37;
+    else if (a <= 60) p = 0.25;
+    else if (a <= 68) p = 0.12;
+    else if (a <= 75) p = 0.04;
+    else { p = 0; why = '这个年纪，医生只会笑着摇头'; }
+  }
+  p -= (state.stats.STRESS || 0) / 500;
+  if ((state.stats.HP || 60) < 40) p *= 0.6;
+  return { p: Math.max(0, p), why: why };
+}
+
+/* 高龄产妇：不是生不生得出的问题，是拿命换不换的问题 */
+function maternityRisk(state, age) {
+  const a = age === undefined ? state.age : age;
+  if (state.gender !== 'F') return 0;
+  if (a <= 34) return 0;
+  if (a <= 38) return 0.04;
+  if (a <= 42) return 0.10;
+  return 0.18;
+}
+
+/* 职业精力冲突：有些行当是全勤的，没有第二职业 */
+const FULLTIME_CAREERS = ['astronaut', 'sforce', 'pilot', 'racer_pro', 'racer_k'];
+function careerConflictTick(state) {
+  if (!state.career) return null;
+  if (FULLTIME_CAREERS.indexOf(state.career.id) < 0) return null;
+  const hasRaceCar = (state.market && state.market.props || []).some(p => {
+    if (p.kind !== 'car') return false;
+    const ref = (typeof CARS !== 'undefined') ? CARS.find(x => x.id === p.refId) : null;
+    return !!(ref && ref.race);
+  });
+  const inRaceClub = (state.clubs || []).indexOf('club_race') >= 0;
+  if (!hasRaceCar && !inRaceClub) return null;
+  if ((state.conflictYear || 0) + 3 > state.age) return null;
+  state.conflictYear = state.age;
+  applyEffects(state, { LOY: -8, STRESS: 8, MOOD: -4 });
+  pushLog(state, `【分身乏术】单位找你谈了一次话：${hasRaceCar ? '车库里那台赛车' : '赛车俱乐部的会员卡'}，` +
+    `和你的岗位是两件不能同时做的事。人只有一份精力，这个道理到多大都得认。`, 'warn');
+  return true;
+}
+
+/* ---------- 四象限年度总闸 ---------- */
+function npcTick(state) {
+  if (state.prison > 0) return;
+  spouseFundTick(state);
+  spouseBuyTick(state);
+  if (state.flags.married) {
+    const sp = state.spouse;
+    // 配偶在外面有人 → 迟早会被发现
+    if (sp && sp.affair && sp.alive && (sp.affairSince || 0) + 1 <= state.age && chance(0.22)) {
+      state.spouseAffairYear = state.age;
+      state.extraQueue = state.extraQueue || [];
+      state.extraQueue.push({ type: 'event', ev: makeSpouseAffairEvent(state) });
+      sp.affairSince = state.age + randInt(1, 3);
+    }
+    spouseInitiateDivorce(state);
+  }
+  childRevoltTick(state);
+  careerConflictTick(state);
+}

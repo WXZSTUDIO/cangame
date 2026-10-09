@@ -22,7 +22,14 @@ function canMakeWill(state) {
 function willHeirOptions(state) {
   const opts = [];
   (state.children || []).forEach((c, i) => {
-    if (c.alive !== false) opts.push({ kind: 'child', idx: i, label: `${c.name}（${c.gender === 'F' ? '女儿' : '儿子'} · ${childAge(state, c)} 岁）` });
+    if (c.alive !== false) {
+      // v6.2：没认领的私生子在法律上还不是你的孩子——写不进遗嘱（但他们会在你死后出现）
+      if (c.illegit && !c.ack) return;
+      opts.push({
+        kind: 'child', idx: i,
+        label: `${c.name}（${c.gender === 'F' ? '女儿' : '儿子'} · ${childAge(state, c)} 岁${c.illegit ? ' · 非婚生' : ''}）`
+      });
+    }
   });
   if (state.grandCount > 0) {
     opts.push({ kind: 'grand', idx: 0, label: `孙辈（${state.grandCount} 人中你最看好的那一个）` });
@@ -50,7 +57,10 @@ function successionOptions(state) {
   if (!state || !state.childCount) return [];
   const opts = [];
   (state.children || []).forEach((c, i) => {
-    if (c.alive !== false) opts.push({ kind: 'child', idx: i, name: c.name, gender: c.gender, label: `以${c.gender === 'F' ? '女儿' : '儿子'} ${c.name} 之名继续` });
+    if (c.alive !== false) {
+      if (c.illegit && !c.ack) return;   // v6.2：没名分的孩子，进不了继承人名单
+      opts.push({ kind: 'child', idx: i, name: c.name, gender: c.gender, label: `以${c.gender === 'F' ? '女儿' : '儿子'} ${c.name} 之名继续` });
+    }
   });
   if (state.grandCount > 0) opts.push({ kind: 'grand', idx: 0, name: '孙辈', gender: undefined, label: '以孙辈之名继续（隔代传承）' });
   return opts;
@@ -302,4 +312,44 @@ function applyCryoRevive(state) {
   pushLog(state, `【解冻】舱门打开时，护士用一种你听不懂的口音说：欢迎回来。你冻进去那年是 ${c.frozenYear} 年——现在，你当年的病，一支针剂就能治。`, 'story');
   pushLog(state, `【家族】托管账户里的 ${fmtMoney(c.money)} 静静滚了几十年复利，等你回来签字。`, 'money');
   return true;
+}
+
+/* =========================================================
+ * v6.2.0 · 非婚生子女的继承权（权利与义务对称）
+ *
+ * 现实常识：民法典第 1071 条——非婚生子女享有与婚生子女同等的权利。
+ * 所以：
+ *   · 认领过的私生子 → 与婚生子女一样，能进遗嘱、能继承
+ *   · 没认领过的     → 活着时进不了名单，但你一死，他们会带着亲子鉴定来分家
+ * ========================================================= */
+
+/* 还没名分的孩子（活着时藏着的那些） */
+function bastardClaims(state) {
+  return (state.children || [])
+    .filter(c => c.illegit && !c.ack && c.alive !== false)
+    .map(c => ({ name: c.name, mother: c.mother, age: childAge(state, c), gender: c.gender }));
+}
+
+/* 死亡结算：他们会在葬礼上出现 */
+function settleBastardClaims(state) {
+  const claims = bastardClaims(state);
+  if (!claims.length) return null;
+  const worth = Math.max(0, netWorth(state));
+  const share = clamp(0.12 * claims.length, 0, 0.35);
+  const take = Math.min(Math.round(worth * share), Math.max(0, state.stats.MONEY));
+  state.stats.MONEY -= take;
+  applyEffects(state, { FAME: -18, ETH: -6 });
+  pushLog(state, `【争产】葬礼上来了 ${claims.length} 个你生前不曾公开承认的孩子。\n` +
+    `亲子鉴定、律师函、调解书——最后 ${fmtMoney(take)} 划到了他们名下。` +
+    `${claims[0] && claims[0].mother ? `他们的母亲是 ${claims[0].mother}。` : ''}\n` +
+    `法律不问你愿不愿意：你留下来的血脉，人人有份。`, 'warn');
+  state.bastardClaim = { n: claims.length, take: take, names: claims.map(c => c.name) };
+  return { n: claims.length, take: take };
+}
+
+/* 出生页 / 结局页展示用 */
+function bastardInfo(state) {
+  const hid = bastardClaims(state);
+  const ack = (state.children || []).filter(c => c.illegit && c.ack && c.alive !== false);
+  return { hidden: hid.length, ack: ack.length, names: hid.map(c => c.name) };
 }

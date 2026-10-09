@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>人生模拟 · 中国人生重开模拟器</title>
 <meta name="description" content="文字版人生模拟：随机投胎出身、中考高考、职业晋升、恋爱婚姻、贷款与投资，从 0 岁活到 100 岁以上。">
-<link rel="stylesheet" href="assets/style.css?v=6.1.0">
+<link rel="stylesheet" href="assets/style.css?v=6.2.0">
 </head>
 <body>
 
@@ -71,11 +71,13 @@
         <li><b>遗产继承</b>：父母离世时三选一——<b>全额继承</b>／<b>限定继承</b>／<b>放弃继承</b>。</li>
         <li><b>市场</b>：20 岁后可买房（可贷款）、买车、买金条土地商铺比特币，还能炒股——12 只股票随年代涨跌，遇互联网泡沫、6124 点、股灾、疫情会剧烈波动。</li>
         <li><b>天赋</b>：共 <b>124 种</b>天赋。开局随机抽 12 张，用 10 点自由搭配；也可以点「浏览全部」看完所有天赋并按关键词搜索。负面天赋会返还点数。<b>前世记忆</b>能看到投资机会的未来提示。</li>
-        <li><b>存档</b>：每步自动缓存到本机，另有 3 个手动槽，可导出 / 导入存档码跨设备继续。</li>
+        <li><b>越轨有代价</b>：婚外情会怀孕、会生下<b>私生子</b>。你越有名、圈层越高，越容易被曝光——配偶可能起诉离婚强行分割财产，也可能有条件原谅、睁一只眼闭一只眼，甚至让你社会性死亡。</li>
+      <li><b>常识自洽</b>：多套房产要交累进房产税与空置税；出狱后当不了教师、医生、公务员、飞行员；配偶会藏私房钱、主动提离婚；子女成年后会啃老、争产；男人过了 65 也很难再有孩子。</li>
+      <li><b>存档</b>：每步自动缓存到本机，另有 3 个手动槽，可导出 / 导入存档码跨设备继续。</li>
         <li><b>结局</b>：没有唯一的终点——亿万富豪、收租的房东、股神、家族绵延、平凡的程序员……16 种以上结局，看你这一世怎么过。</li>
       </ul>
     </div>
-    <p class="foot">本作人物、公司、事件均为虚构。 · v5.5.0 · 父亲随你姓 · 可以分手 · 职业运动员 · 孩子有名有姓 · 前任能联系 / 复合 / 复婚 · 新版证件照</p>
+    <p class="foot">本作人物、公司、事件均为虚构。 · v6.2.0 · 真人头像 · 家族信托与门阀声望 · 冷冻人 · 银发经济与养老 · 圈层内幕 · <b>非婚生子女与动态情感危机</b> · 私生子有继承权 · 配偶会主动反击</p>
   </div>
 </section>
 
@@ -231,15 +233,15 @@
      顶层 const 存在 TDZ，**只能用 defer、不能用 async**（async 不保序）。
      FCP 关键路径从「HTML+CSS+8 个脚本」缩短为「HTML+CSS」，3G 弱网 2596ms → 522ms。
      ui.js 的 init() 挂在 DOMContentLoaded 上，defer 脚本先于它执行完毕，时序不受影响。 -->
-<script defer src="assets/data.js?v=6.1.0"></script>
-<script defer src="assets/market.js?v=6.1.0"></script>
-<script defer src="assets/engine.js?v=6.1.0"></script>
-<script defer src="assets/school.js?v=6.1.0"></script>
-<script defer src="assets/career.js?v=6.1.0"></script>
-<script defer src="assets/love.js?v=6.1.0"></script>
-<script defer src="assets/pet.js?v=6.1.0"></script>
-<script defer src="assets/legacy.js?v=6.1.0"></script>
-<script defer src="assets/loan.js?v=6.1.0"></script>
-<script defer src="assets/ui.js?v=6.1.0"></script>
+<script defer src="assets/data.js?v=6.2.0"></script>
+<script defer src="assets/market.js?v=6.2.0"></script>
+<script defer src="assets/engine.js?v=6.2.0"></script>
+<script defer src="assets/school.js?v=6.2.0"></script>
+<script defer src="assets/career.js?v=6.2.0"></script>
+<script defer src="assets/love.js?v=6.2.0"></script>
+<script defer src="assets/pet.js?v=6.2.0"></script>
+<script defer src="assets/legacy.js?v=6.2.0"></script>
+<script defer src="assets/loan.js?v=6.2.0"></script>
+<script defer src="assets/ui.js?v=6.2.0"></script>
 </body>
 </html>

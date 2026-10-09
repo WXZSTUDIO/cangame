@@ -1087,14 +1087,24 @@ function renderRelView() {
         sub: dp ? `${loverLabel(dp)} · 交往中。关系是要经营的。` : '交往中。关系是要经营的。', key: 'spouse'
       });
     }
-    (STATE.children || []).forEach(c => {
+    (STATE.children || []).forEach((c, ci) => {
       const ca = childAge(STATE, c);
       const stage = ca < 3 ? '蹒跚学步' : ca < 7 ? '上幼儿园了' : ca < 13 ? '上小学了' : ca < 16 ? '念初中' : ca < 19 ? '念高中' : ca < 23 ? '念大学' : '已经长大';
+      // v6.2：非婚生子女——认没认领，是两套完全不同的权利义务
+      const isIlleg = !!c.illegit;
+      const ackTag = isIlleg ? (c.ack ? '<b>非婚生 · 已认领</b>' : '<b style="color:var(--red)">私生子 · 没名分</b>') : '';
+      const info = isIlleg
+        ? `${ackTag}${c.mother ? ` · 生母 ${esc(c.mother)}` : ''}` +
+          (c.ack ? ' · 与婚生子女同等继承权' : ` · 每年抚养费 ${fmtMoney(CRISIS_META.supportCost)}，随时可能被曝光`)
+        : '';
       cards.push({
-        avaSvg: personAvatar(c.name, c.gender || 'M', ca, ''),
-        name: `${c.name} · ${c.gender === 'F' ? '女儿' : '儿子'}`,
-        sub: `${ca} 岁 · ${stage}。陪伴错过了就回不来了。`,
-        key: null
+        avaSvg: personAvatar(c.name, c.gender || 'M', ca, isIlleg && !c.ack ? 'amber' : ''),
+        name: `${c.name} · ${c.gender === 'F' ? '女儿' : '儿子'}${c.cuckoo ? ' <span class="club-badge">非亲生</span>' : ''}`,
+        sub: `${ca} 岁 · ${stage}。${info ? info + '。' : ''}陪伴错过了就回不来了。`,
+        key: null,
+        multi: (isIlleg && !c.ack && STATE.stats.MONEY >= CRISIS_META.ackCost)
+          ? `<button class="rel-act" onclick="uiAckChild(${ci})">认领入户 ${fmtMoney(CRISIS_META.ackCost)}</button>`
+          : (isIlleg && !c.ack ? `<span class="rel-act dis">认领需 ${fmtMoney(CRISIS_META.ackCost)}</span>` : '')
       });
     });
     if (STATE.childCount) {
@@ -1168,7 +1178,12 @@ function renderRelView() {
       cards.push(sp.alive
         ? {
           avaSvg: personAvatar(sp.name, STATE.gender === 'M' ? 'F' : 'M', sp.age, 'green'), name: sp.name,
-          sub: `感情 ${Math.round(sp.affinity || 60)}% · ${sp.age}岁 · ${sp.job || ''}`, key: 'spouse',
+          sub: `感情 ${Math.round(sp.affinity || 60)}% · ${sp.age}岁 · ${sp.job || ''}` +
+            `${(sp.suspicion || 0) > 25 ? ` · <b style="color:var(--red)">察觉 ${Math.round(sp.suspicion)}%</b>` : ''}` +
+            `${sp.affair ? ' · <b style="color:var(--red)">TA 在外面也有人</b>' : ''}` +
+            `${STATE.flags.spouse_terms ? ' · 有条件的原谅（再犯就没有第二次）' : ''}` +
+            `${STATE.flags.open_marriage ? ' · 各过各的' : ''}` +
+            `${STATE.flags.blacklisted ? ' · <b>已被圈子除名</b>' : ''}`, key: 'spouse',
           multi: `<button class="rel-act" onclick="uiSpouse(0)">陪伴</button>
             <button class="rel-act" onclick="uiSpouse(1)">约会 ${fmtMoney(Math.round(LOVE_META.dateCost * 0.7))}</button>
             <button class="rel-act" onclick="uiSpouse(2)">送礼 ${fmtMoney(Math.round(LOVE_META.giftCost * 0.6))}</button>`
@@ -1179,6 +1194,17 @@ function renderRelView() {
           <button class="btn small" onclick="uiBaby()">🍼 要一个孩子</button>
           <button class="btn small danger" onclick="uiDivorce()">💔 提出离婚</button>
         </div>`;
+        // v6.2：把「纸包不住火」这件事摊在桌面上——玩家有权知道自己站在多高的风险上
+        const lvNow = loveInit(STATE);
+        const secN = (lvNow.candidates || []).filter(x => x.secret || x.illegitPreg).length;
+        const hidN = (typeof hiddenChildren === 'function') ? hiddenChildren(STATE).length : 0;
+        if (secN || hidN) {
+          const rate = (typeof exposureRate === 'function') ? exposureRate(STATE) : 0;
+          extra += `<div class="rel-sub" style="padding:0 4px 8px;border-left:3px solid var(--red)">` +
+            `<b>⚠ 你在藏的东西：${secN ? `偷情 ${secN} 段` : ''}${hidN ? ` · 养在外面的孩子 ${hidN} 个` : ''}</b><br>` +
+            `今年被撞破的概率约 <b>${Math.round(rate * 100)}%</b>（名望越高、圈层越多、藏得越久，概率越大）。` +
+            `配偶的察觉度 <b>${Math.round(sp.suspicion || 0)}%</b>。</div>`;
+        }
       }
     }
     if (!STATE.flags.married && STATE.age >= LOVE_META.marryAge - 2) {
@@ -1198,7 +1224,7 @@ function renderRelView() {
     lv.candidates.forEach((l, i) => {
       const left = (l.lastTouch !== STATE.age) ? LOVE_META.touchesPerYear : Math.max(0, LOVE_META.touchesPerYear - (l.touches || 0));
       const can = left > 0 && l.alive !== false;
-      const intimateBtns = l.affinity >= LOVE_META.touchAffinity && !l.pregnant
+      const intimateBtns = (l.affinity >= LOVE_META.touchAffinity && !l.pregnant) || (married && l.affinity >= LOVE_META.touchAffinity)
         ? `<button class="rel-act" onclick="uiIntimate(${i},0)">${married ? '越界' : '亲密'}</button>
            <button class="rel-act safe" onclick="uiIntimate(${i},1)">${married ? '越界' : '亲密'} · 做好措施 ${fmtMoney(LOVE_META.safeCost)}</button>`
         : '';
@@ -1211,8 +1237,10 @@ function renderRelView() {
       cards.push({
         avaSvg: personAvatar(l.name, l.gender, l.age, married ? 'amber' : 'green'),
         name: l.name,
-        sub: `${loverLabel(l)} · ${l.age}岁 · 好感 <b>${Math.round(l.affinity)}%</b>${l.pregnant ? ' · ⚠ 怀孕了' : ''}` +
-          `${married ? ' · <b style="color:var(--red)">婚外</b>' : ''}${l.secret ? ' · <b style="color:var(--red)">偷情中 · 随时可能被发现</b>' : ''} · 今年还能约 ${left} 次`,
+        sub: `${loverLabel(l)} · ${l.age}岁 · 好感 <b>${Math.round(l.affinity)}%</b>` +
+          `${l.pregnant ? (l.illegitPreg ? ' · <b style="color:var(--red)">⚠ 怀了你的孩子（婚外）</b>' : ' · ⚠ 怀孕了') : ''}` +
+          `${l.hiddenChild ? ' · 有个养在外面的孩子' : ''}` +
+          `${married ? ' · <b style="color:var(--red)">婚外</b>' : ''}${l.secret ? ' · <b style="color:var(--red)">偷情中</b>' : ''} · 今年还能约 ${left} 次`,
         key: null,
         click: can ? `uiLove(${i},'chat')` : '',
         multi: can ? `
@@ -1803,7 +1831,8 @@ function uiIntimate(i, safe) {
   if (r.pregnant) {
     const l = (STATE.love.candidates || [])[i];
     STATE.queue = STATE.queue || [];
-    STATE.queue.unshift({ type: 'event', ev: makePregnantEvent(STATE, l) });
+    // v6.2：婚内出轨怀上的，是私生子——不是同一张表格
+    STATE.queue.unshift({ type: 'event', ev: r.illegit ? makeIllegitEvent(STATE, l) : makePregnantEvent(STATE, l) });
     toast('出事了……');
   }
   if (r.caught) toast('好像有人看见了……');
@@ -1821,6 +1850,21 @@ function uiDivorce() {
       const r = divorce(STATE, '过不下去了');
       if (!r.ok) { toast(r.msg || '现在不行'); return; }
       afterAct('离了');
+      if (GAME_VIEW === 'rel') renderRelView();
+    });
+}
+
+function uiAckChild(i) {
+  const c = (STATE.children || [])[i];
+  if (!c) { toast('没有这个孩子'); return; }
+  uiConfirm(`认领 ${c.name}`,
+    `你会把 ${esc(c.name)} 落到自己的户口本上。<br>` +
+    `从此 TA 与婚生子女<b>享有同等权利</b>：能进遗嘱、能继承家产、也能在「人生终章」后以 TA 之名继续。<br><br>` +
+    `代价是 <b>${fmtMoney(CRISIS_META.ackCost)}</b> 的一次性支出，以及——${STATE.flags.married ? `<b style="color:var(--red)">${esc(STATE.spouse ? STATE.spouse.name : '家里那位')} 会知道</b>。` : '街坊的闲话。'}`,
+    '认领', () => {
+      const r = acknowledgeChild(STATE, i);
+      if (!r.ok) { toast(r.msg || '现在不行'); return; }
+      afterAct('户口本上多了一个人');
       if (GAME_VIEW === 'rel') renderRelView();
     });
 }
@@ -2135,7 +2179,12 @@ function renderEnd() {
     <div><span>声望 / 人脉</span><b>${Math.round(s.FAME)} / ${Math.round(s.NET)}</b></div>
     <div><span>智力 / 意志</span><b>${Math.round(s.INT)} / ${Math.round(s.WILL)}</b></div>
     <div><span>道德 / 心情</span><b>${Math.round(s.ETH || 0)} / ${Math.round(s.MOOD || 0)}</b></div>
-    <div><span>享年</span><b>${STATE.age}岁 · ${fmtYear(STATE)} 年</b></div>`;
+    <div><span>享年</span><b>${STATE.age}岁 · ${fmtYear(STATE)} 年</b></div>
+    ${(STATE.children || []).some(c => c.illegit)
+      ? `<div><span>非婚生子女</span><b>${(STATE.children || []).filter(c => c.illegit).length} 人（${
+          (STATE.children || []).filter(c => c.illegit && c.ack).length ? '已认领 ' + (STATE.children || []).filter(c => c.illegit && c.ack).length + ' 人 · ' : ''
+        }${(STATE.children || []).filter(c => c.illegit && !c.ack).length ? '<span style="color:var(--red)">没名分 ' + (STATE.children || []).filter(c => c.illegit && !c.ack).length + ' 人</span>' : ''}）</b></div>` : ''}
+    ${STATE.bastardClaim ? `<div><span>葬礼上的争产</span><b style="color:var(--red)">${STATE.bastardClaim.n} 人分走 ${fmtMoney(STATE.bastardClaim.take)}</b></div>` : ''}`;
   // v6.1 门阀声望：一代落幕，折算声望点（永久保留，下一代投胎前可用）
   if (typeof settlePrestige === 'function' && STATE.prestigeGained == null) {
     STATE.prestigeGained = settlePrestige(STATE);
