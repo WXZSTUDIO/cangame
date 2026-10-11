@@ -66,9 +66,14 @@ console.log('== 1. AI 产能区间 ==');
   const wg0 = w.goods, bl0 = b.life, rg0 = r.goods;
   M.production.runAll(s);
   const dw = w.goods - wg0, dbl = b.life - bl0, drg = r.goods - rg0;
-  ok(dw >= 3 && dw <= 5, '白队 AI 货物产出 3~5', dw);
-  ok(dbl >= 4 && dbl <= 6, '蓝队 AI 生命药产出 4~6', dbl);
-  ok(drg >= 0 && drg <= 1, '红队 AI 货物产出 0~1', drg);
+  // 区间由 CONFIG 推导（v2.0.1：白 3~5→6~10、蓝产药 4~6→3~5），避免调基线后漂移
+  const P = M.CONFIG.PRODUCTION;
+  ok(dw >= P.white.goodsMin && dw <= P.white.goodsMax,
+    '白队 AI 货物产出 ' + P.white.goodsMin + '~' + P.white.goodsMax, dw);
+  ok(dbl >= P.blue.lifeMin && dbl <= P.blue.lifeMax,
+    '蓝队 AI 生命药产出 ' + P.blue.lifeMin + '~' + P.blue.lifeMax, dbl);
+  ok(drg >= P.red.goodsMin && drg <= P.red.goodsMax,
+    '红队 AI 货物产出 ' + P.red.goodsMin + '~' + P.red.goodsMax, drg);
 }
 
 // ===== 2. 确定性（同 seed 同产出）=====
@@ -257,7 +262,8 @@ console.log('== 11. 防重入 ==');
   const g1 = white.goods;
   M.production.runAll(s);                // 同日再跑应跳过
   ok(white.goods === g1, '同天重复 production.runAll 不重复产出', white.goods);
-  ok(white.goods - g0 >= 3 && white.goods - g0 <= 5, '白队一次产出在区间');
+  ok(white.goods - g0 >= M.CONFIG.PRODUCTION.white.goodsMin && white.goods - g0 <= M.CONFIG.PRODUCTION.white.goodsMax,
+    '白队一次产出在区间 ' + M.CONFIG.PRODUCTION.white.goodsMin + '~' + M.CONFIG.PRODUCTION.white.goodsMax);
 
   const s2 = M.createGameState(9); s2.humanFactionId = 'blue'; s2.phase = 'WAR';
   M.economy.runAll(s2);

@@ -89,7 +89,9 @@ console.log('== 3. 宣战费扣除 / 入奖金池 ==');
   const red = fac(s, 'red'); const pool0 = s.prizePool;
   const r = M.declareWar(s, 'red', 'white', {});
   ok(r.ok === true, '红队宣战成功');
-  ok(red.won === 25 - 4, '红队 won 25 → 21（扣 4）', red.won);
+  // 由 CONFIG 推导，避免调基线后漂移（v2.0.1 红队初始金 25→32）
+  ok(red.won === M.CONFIG.INITIAL.red.won - 4,
+    '红队 won ' + M.CONFIG.INITIAL.red.won + ' → ' + (M.CONFIG.INITIAL.red.won - 4) + '（扣 4）', red.won);
   ok(s.prizePool === pool0 + 4, '奖金池 +4', s.prizePool);
 
   // 白队（提额后）：won 50 → 扣 20 → 30；prizePool +20
@@ -100,18 +102,23 @@ console.log('== 3. 宣战费扣除 / 入奖金池 ==');
   ok(fac(s2, 'white').won === 30, '白队 won 50 → 30（扣 20）', fac(s2, 'white').won);
   ok(s2.prizePool === pool2 + 20, '奖金池 +20', s2.prizePool);
 
-  // 买不起：白队初始 won 10 < 20 → 失败
+  // 买不起：把白队现金压到 10 < 宣战费 20 → 失败
+  // （v2.0.1 白队初始金已提到 32，能付得起 20；这里显式压低以继续覆盖 cannot-afford 分支）
   const s3 = M.createGameState(2024); s3.humanFactionId = 'white'; s3.day = 2; s3.phase = 'WAR';
+  fac(s3, 'white').won = 10;
   const r3 = M.declareWar(s3, 'white', 'red', {});
-  ok(r3.ok === false && r3.reason === 'cannot-afford', '白队初始资源不足宣战失败（cannot-afford）');
+  ok(r3.ok === false && r3.reason === 'cannot-afford', '现金不足宣战失败（cannot-afford）');
+  ok(fac(s3, 'white').won === 10, '失败不扣费（无幽灵扣款）', 'won=' + fac(s3, 'white').won);
 }
 
 // ===== 4. 掠夺率 + 夹零防幽灵（§3.4 PLUNDER）=====
 console.log('== 4. 掠夺率 / 防幽灵 ==');
 {
   // 整数倍：败者 货20 金10 → 胜者获 货4 金1
+  // （显式钉死败者资源：v2.0.1 白队初始金已改 32，不再依赖默认值）
   const s = M.createGameState(99);
   const winner = fac(s, 'red'), loser = fac(s, 'white');
+  loser.goods = 20; loser.won = 10;
   const wg0 = winner.goods, ww0 = winner.won, lg0 = loser.goods, lw0 = loser.won;
   const p = M.applyPlunder(winner, loser);
   ok(p.goods === 4 && p.won === 1, '掠夺 = 败者货×20%(4) + 金×10%(1)', JSON.stringify(p));

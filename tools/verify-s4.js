@@ -124,8 +124,10 @@ console.log('== 2. 生产决策（risky +1）==');
   M.production.runAll(s2);
   const d = red.goods - rg0;
   ok(d >= 0 && d <= 1, 'red（risky 领袖）AI 产出仍封顶区间上限（delta ≤ 1）', 'delta=' + d);
-  // 白队（守成领袖）不受 +1 影响，仍在 3~5
-  ok(white.goods - wg0 >= 3 && white.goods - wg0 <= 5, '白队（守成领袖）产出落 3~5 区间', 'delta=' + (white.goods - wg0));
+  // 白队（守成领袖）不受 +1 影响，仍落在产能区间内（v2.0.1 为 6~10，由 CONFIG 推导）
+  const pw = M.CONFIG.PRODUCTION.white;
+  ok(white.goods - wg0 >= pw.goodsMin && white.goods - wg0 <= pw.goodsMax,
+    '白队（守成领袖）产出落 ' + pw.goodsMin + '~' + pw.goodsMax + ' 区间', 'delta=' + (white.goods - wg0));
 }
 
 // ===== 3. 贸易决策（§5.4② 对头拒单 + 挂单确定性）=====

@@ -11,25 +11,25 @@ var CONFIG = (function () {
   var FACTION_DEFS = [
     {
       id: 'white', name: '白队', color: '#E5E7EB', pop: 6,           // 「可调」劳动力大国
-      initial: { life: 2, goods: 20, won: 10, militaryFund: 0 },     // 「可调」人多药极少
-      production: { goodsMin: 3, goodsMax: 5, lifeMin: 0, lifeMax: 0, ap: 2 }, // 「可调」产能极高
+      initial: { life: 6, goods: 20, won: 32, militaryFund: 0 },     // 「可调」v2.0.1 平衡：6药撑过首夜+32金可买药（原 2/10 首夜必死）
+      production: { goodsMin: 6, goodsMax: 10, lifeMin: 0, lifeMax: 1, ap: 2 }, // 「可调」产能极高（与下方 PRODUCTION 同步）
       patents: []
     },
     {
       id: 'blue', name: '蓝队', color: '#3B82F6', pop: 3,            // 「可调」医药垄断
-      initial: { life: 30, goods: 5, won: 15, militaryFund: 0 },     // 「可调」自带大药库
-      production: { goodsMin: 0, goodsMax: 1, lifeMin: 4, lifeMax: 6, ap: 2 }, // 「可调」专职产药
+      initial: { life: 20, goods: 5, won: 15, militaryFund: 0 },     // 「可调」自带大药库（v2.0.1: 30→20）
+      production: { goodsMin: 0, goodsMax: 1, lifeMin: 3, lifeMax: 5, ap: 2 }, // 「可调」专职产药（与下方 PRODUCTION 同步）
       patents: []
     },
     {
       id: 'red', name: '红队', color: '#EF4444', pop: 3,             // 「可调」军事帝国
-      initial: { life: 8, goods: 5, won: 25, militaryFund: 10 },     // 「可调」战备金充足
+      initial: { life: 10, goods: 5, won: 32, militaryFund: 10 },     // 「可调」战备金充足（v2.0.1: 25→32，红队无产药需现金买药）
       production: { goodsMin: 0, goodsMax: 1, lifeMin: 0, lifeMax: 0, ap: 2 }, // 「可调」产能极低
       patents: []
     },
     {
       id: 'black', name: '黑队', color: '#111827', pop: 1,           // 「可调」孤狼
-      initial: { life: 3, goods: 3, won: 20, militaryFund: 0 },      // 「可调」人少钱多持专利
+      initial: { life: 6, goods: 3, won: 22, militaryFund: 0 },      // 「可调」人少钱多持专利（v2.0.1: 药5→6/金20→22，孤狼需撑到专利回本）
       production: { goodsMin: 1, goodsMax: 2, lifeMin: 0, lifeMax: 0, ap: 2 }, // 「可调」产能低
       patents: ['科技品', '军备件']                                  // 「可调」专利范围
     }
@@ -44,18 +44,27 @@ var CONFIG = (function () {
     DAILY_LIFE_COST: 1,              // 「可调」每人/天扣药；阵营总耗 = 存活人数 × 此值
 
     // —— §3.2 初始资源（极度不平等）——
+    // ⚠ 唯一真源：factions.js 只读 CONFIG.INITIAL（FACTION_DEFS.initial 仅作文档镜像，务必同步）。
+    // v2.0.1 平衡校准结论（tools/sim-balance.js · 400 局 × 2 种子基）：
+    //   白 35~38% / 蓝 19~20% / 红 17~24% / 黑 22~25%，首夜淘汰率 0%，最高阵营 ≤38%（<40% dominance 阈值）。
+    //   校准手法：MAX_DAY 12→8 压缩成短局（长局蓝队靠药垄断必然独赢 95%+）；
+    //             白 药2→6 / 金10→32 / 货3~5→6~10（原首夜必死、必败）；
+    //             红 金25→32（无产药，全靠现金买药续命）；黑 药5→6 / 金20→22（孤狼需撑到专利回本）。
+    //   敏感旋钮警示：黑队初始药 6→7 会让黑队独占 40%（+1 药 ≈ +16pp），改前必跑 sim-balance。
     INITIAL: {
-      white: { life: 2, goods: 20, won: 10, militaryFund: 0 },
-      blue:  { life: 30, goods: 5, won: 15, militaryFund: 0 },
-      red:   { life: 8, goods: 5, won: 25, militaryFund: 10 },
-      black: { life: 3, goods: 3, won: 20, militaryFund: 0 }
+      white: { life: 6, goods: 20, won: 32, militaryFund: 0 },
+      blue:  { life: 20, goods: 5, won: 15, militaryFund: 0 },
+      red:   { life: 10, goods: 5, won: 32, militaryFund: 10 },
+      black: { life: 6, goods: 3, won: 22, militaryFund: 0 }
     },
 
     // —— §3.3 产能系数（确定性区间，每日生产阶段）——
     // 产出公式：out = min + floor(rng()*(max-min+1))
+    // 注：蓝队产药量 3~5→6~9 对胜率「零影响」（蓝队药本就溢出，多产即浪费）——
+    //     真正的瓶颈是蓝队愿意卖出多少，由 ai.js 的 aiDecideTrade 决定。别再靠调蓝队产能找平衡。
     PRODUCTION: {
-      white: { goodsMin: 3, goodsMax: 5, lifeMin: 0, lifeMax: 0, ap: 2 },
-      blue:  { goodsMin: 0, goodsMax: 1, lifeMin: 4, lifeMax: 6, ap: 2 },
+      white: { goodsMin: 6, goodsMax: 10, lifeMin: 0, lifeMax: 1, ap: 2 }, // v2.0.1：产能按人头加权 + 微量自产药
+      blue:  { goodsMin: 0, goodsMax: 1, lifeMin: 3, lifeMax: 5, ap: 2 },  // v2.0.1：日产下调（原 4~6 垄断过肥）
       red:   { goodsMin: 0, goodsMax: 1, lifeMin: 0, lifeMax: 0, ap: 2 },
       black: { goodsMin: 1, goodsMax: 2, lifeMin: 0, lifeMax: 0, ap: 2 }
     },
@@ -79,7 +88,7 @@ var CONFIG = (function () {
 
     // —— §3.5 奖金池与终局 ——  （Sprint 5 精修，此处为最简实现基线）
     PRIZE_SEED: 1000,                // 「可调」奖金池初始种子
-    MAX_DAY: 12,                     // 「可调」达此天数强制终局；或仅剩 ≤1 阵营即终局
+    MAX_DAY: 8,                     // 「可调」达此天数强制终局；或仅剩 ≤1 阵营即终局
     // 阵营奖金总额 = PrizePool × (FactionGoods / ΣAllGoods)
     // 人均奖金     = 阵营奖金总额 ÷ 阵营存活人数（人头稀释）
 

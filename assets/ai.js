@@ -112,7 +112,7 @@ function aiDecideTrade(state) {
     if (needLife > 0) {
       // 急购生命药：贪狼(高 trade)报价更高（urgency）。
       var buyPrice = Math.max(1, Math.round(basePrice * factor * (w.trade > 0.7 ? 1.1 : 1)));
-      placeAISafe(state, { side: 'buy', factionId: f.id, goodsType: lt, qty: Math.min(3, needLife), price: buyPrice });
+      placeAISafe(state, { side: 'buy', factionId: f.id, goodsType: lt, qty: Math.min(4, needLife), price: buyPrice }); // v2.0.1：3→4
     } else if (f.goods < 8 && f.won > 5) {
       placeAISafe(state, { side: 'buy', factionId: f.id, goodsType: gt, qty: randInt(rng, 1, 3), price: Math.max(1, Math.round(basePrice * factor)) });
     } else if (f.goods > 6) {
@@ -123,7 +123,7 @@ function aiDecideTrade(state) {
 
     // 有货盈余 → 卖货换 won（独立于上方，needLife 时也允许，作为购药资金）。
     if (f.goods > 6) {
-      placeAISafe(state, { side: 'sell', factionId: f.id, goodsType: gt, qty: randInt(rng, 1, 3), price: Math.max(1, Math.round(basePrice * factor)) });
+      placeAISafe(state, { side: 'sell', factionId: f.id, goodsType: gt, qty: randInt(rng, 2, 4), price: Math.max(1, Math.round(basePrice * factor)) }); // v2.0.1：1~3→2~4
     }
     // 蓝队（医药垄断）卖出生存盈余外的生命药换 won。
     if (f.id === 'blue' && f.life - required > 1) {

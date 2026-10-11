@@ -85,22 +85,32 @@ console.log('== 3. 结算扣药 / 淘汰 ==');
 {
   const s3 = M.createGameState(2024);
   const white = s3.factions.find(f => f.id === 'white');
-  ok(white.popAlive === 6 && white.life === 2, '白队初始 6 人 / 2 药', 'pop=' + white.popAlive + ' life=' + white.life);
+  ok(white.popAlive === 6 && white.life === 6, '白队初始 6 人 / 6 药（v2.0.1 平衡基线）', 'pop=' + white.popAlive + ' life=' + white.life);
 
   // 通用公式：requiredLife = 存活 × 日耗
   ok(M.CONFIG.DAILY_LIFE_COST === 1, 'DAILY_LIFE_COST = 1');
 
   M.settleDay(s3);
   const w = s3.factions.find(f => f.id === 'white');
-  ok(w.life === 0, '白队药被扣到 0', 'life=' + w.life);
-  ok(w.popAlive < 6, '白队首夜缺药触发淘汰，人数下降', 'pop=' + w.popAlive);
+  ok(w.life === 0, '白队药被扣到 0（刚好撑过首夜）', 'life=' + w.life);
+  ok(w.popAlive === 6, '白队首夜不再必死（v2.0.1 可玩性基线）', 'pop=' + w.popAlive);
+
+  // 缺药淘汰机制仍有效：新局把白队药抽到不足
+  const s3b = M.createGameState(2024);
+  const wb = s3b.factions.find(f => f.id === 'white');
+  wb.life = 2;
+  M.settleDay(s3b);
+  ok(wb.popAlive < 6, '缺药仍触发淘汰（机制未被削弱）', 'pop=' + wb.popAlive);
   ok(w.requiredLife === w.popAlive * M.CONFIG.DAILY_LIFE_COST,
     'requiredLife = 存活 × 日耗', w.requiredLife + ' = ' + w.popAlive + '×' + M.CONFIG.DAILY_LIFE_COST);
   ok(w.deficit >= 0, 'deficit 非负', 'deficit=' + w.deficit);
 
   // 其余阵营首夜不致死（药充足）
+  // 断言改为「由 CONFIG 推导」，避免日后调基线再次漂移（v2.0.1：蓝初始药 30→20，故 20-3=17）
   const blue = s3.factions.find(f => f.id === 'blue');
-  ok(blue.popAlive === 3 && blue.life === 27, '蓝队首夜不淘汰（药足）', 'pop=' + blue.popAlive + ' life=' + blue.life);
+  const blueExpect = M.CONFIG.INITIAL.blue.life - 3 * M.CONFIG.DAILY_LIFE_COST;
+  ok(blue.popAlive === 3 && blue.life === blueExpect, '蓝队首夜不淘汰（药足）',
+    'pop=' + blue.popAlive + ' life=' + blue.life + '（期望 ' + blueExpect + '）');
 }
 
 // ===== 4. 终局分红公式（构造小盘面）=====

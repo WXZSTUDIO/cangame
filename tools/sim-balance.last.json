@@ -1,37 +1,37 @@
 {
-  "N": 200,
+  "N": 400,
   "seedBase": 1,
-  "endedCount": 200,
-  "avgEndDay": 7.7,
-  "avgPrizePool": 1023.8,
+  "endedCount": 400,
+  "avgEndDay": 8,
+  "avgPrizePool": 1020,
   "factions": {
     "white": {
-      "winRate": 0,
-      "avgSurvivalDays": 3.5,
-      "avgPerPerson": null,
-      "firstNightElimRate": 1,
-      "avgEndGoods": null
+      "winRate": 0.3825,
+      "avgSurvivalDays": 7,
+      "avgPerPerson": 643,
+      "firstNightElimRate": 0,
+      "avgEndGoods": 63.4
     },
     "blue": {
-      "winRate": 0.955,
-      "avgSurvivalDays": 7.7,
-      "avgPerPerson": 331.7,
+      "winRate": 0.195,
+      "avgSurvivalDays": 8,
+      "avgPerPerson": 126.7,
       "firstNightElimRate": 0,
-      "avgEndGoods": 9.3
+      "avgEndGoods": 9.5
     },
     "red": {
-      "winRate": 0.04,
-      "avgSurvivalDays": 7.2,
-      "avgPerPerson": 563.2,
+      "winRate": 0.1725,
+      "avgSurvivalDays": 6,
+      "avgPerPerson": 493,
       "firstNightElimRate": 0,
-      "avgEndGoods": 18.5
+      "avgEndGoods": 29.6
     },
     "black": {
-      "winRate": 0.005,
-      "avgSurvivalDays": 5.3,
-      "avgPerPerson": 578.3,
+      "winRate": 0.25,
+      "avgSurvivalDays": 7.8,
+      "avgPerPerson": 384.8,
       "firstNightElimRate": 0,
-      "avgEndGoods": 12
+      "avgEndGoods": 12.9
     }
   }
 }
