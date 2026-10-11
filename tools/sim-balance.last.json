@@ -1,0 +1,37 @@
+{
+  "N": 200,
+  "seedBase": 1,
+  "endedCount": 200,
+  "avgEndDay": 7.7,
+  "avgPrizePool": 1023.8,
+  "factions": {
+    "white": {
+      "winRate": 0,
+      "avgSurvivalDays": 3.5,
+      "avgPerPerson": null,
+      "firstNightElimRate": 1,
+      "avgEndGoods": null
+    },
+    "blue": {
+      "winRate": 0.955,
+      "avgSurvivalDays": 7.7,
+      "avgPerPerson": 331.7,
+      "firstNightElimRate": 0,
+      "avgEndGoods": 9.3
+    },
+    "red": {
+      "winRate": 0.04,
+      "avgSurvivalDays": 7.2,
+      "avgPerPerson": 563.2,
+      "firstNightElimRate": 0,
+      "avgEndGoods": 18.5
+    },
+    "black": {
+      "winRate": 0.005,
+      "avgSurvivalDays": 5.3,
+      "avgPerPerson": 578.3,
+      "firstNightElimRate": 0,
+      "avgEndGoods": 12
+    }
+  }
+}
