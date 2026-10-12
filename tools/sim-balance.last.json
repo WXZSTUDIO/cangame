@@ -1,37 +1,43 @@
 {
-  "N": 400,
+  "N": 100,
   "seedBase": 1,
-  "endedCount": 400,
-  "avgEndDay": 8,
-  "avgPrizePool": 1020,
-  "factions": {
-    "white": {
-      "winRate": 0.3825,
-      "avgSurvivalDays": 7,
-      "avgPerPerson": 643,
-      "firstNightElimRate": 0,
-      "avgEndGoods": 63.4
-    },
-    "blue": {
-      "winRate": 0.195,
-      "avgSurvivalDays": 8,
-      "avgPerPerson": 126.7,
-      "firstNightElimRate": 0,
-      "avgEndGoods": 9.5
-    },
-    "red": {
-      "winRate": 0.1725,
-      "avgSurvivalDays": 6,
-      "avgPerPerson": 493,
-      "firstNightElimRate": 0,
-      "avgEndGoods": 29.6
-    },
-    "black": {
-      "winRate": 0.25,
-      "avgSurvivalDays": 7.8,
-      "avgPerPerson": 384.8,
-      "firstNightElimRate": 0,
-      "avgEndGoods": 12.9
-    }
+  "totalChamp": 100,
+  "distinct": 30,
+  "avgChampPerTeam": "3.33",
+  "maxRate": "11.0",
+  "guardMax": 110,
+  "detOk": true,
+  "balanced": true,
+  "champCount": {
+    "t24": 7,
+    "t25": 7,
+    "t14": 1,
+    "t5": 3,
+    "t3": 11,
+    "t13": 1,
+    "t10": 2,
+    "t12": 3,
+    "t16": 4,
+    "t9": 3,
+    "t11": 4,
+    "t26": 5,
+    "t4": 2,
+    "t20": 3,
+    "t28": 3,
+    "t29": 3,
+    "t7": 3,
+    "t21": 1,
+    "t6": 3,
+    "t22": 4,
+    "t1": 4,
+    "t15": 3,
+    "t2": 1,
+    "t8": 4,
+    "t17": 4,
+    "t18": 3,
+    "t27": 3,
+    "t0": 2,
+    "t23": 2,
+    "t19": 1
   }
 }

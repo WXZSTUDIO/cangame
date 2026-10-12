@@ -1,34 +1,66 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>阵营博弈：生命药与战争 · Sprint 4</title>
-  <link rel="stylesheet" href="assets/style.css" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>战术板 · 篮球经理</title>
+<link rel="stylesheet" href="assets/style.css" />
 </head>
 <body>
-  <header class="topbar">
-    <span class="logo">阵营博弈 · 生命药与战争</span>
-    <span class="sub">Sprint 4 — AI 性格行为树 + 领袖选举</span>
-  </header>
-  <main id="app"><!-- 由 ui.js 渲染 --></main>
+<div class="app">
+  <!-- 选队 -->
+  <section id="screen-pick" class="screen">
+    <h1 class="title">战术板 <span class="accent">·</span> 篮球经理</h1>
+    <p class="sub">选择你要执教的球队，打满一个赛季，拿下总冠军。</p>
+    <div id="team-grid" class="team-grid"></div>
+  </section>
 
-  <!-- 严格按附录 A / ADR-3 的 defer 顺序加载（13 文件终态）：
-       config→rng→state→factions→resource→ai→leader→production→economy→war→settle→engine→ui
-       ai/leader 置于 production 之前：保证初始化 personality 后即可被各 system 咨询；
-       各 system 的 runAll 在调用期引用 ai（守卫 typeof，缺失则回退原逻辑）。 -->
-  <script defer src="assets/config.js"></script>
-  <script defer src="assets/rng.js"></script>
-  <script defer src="assets/state.js"></script>
-  <script defer src="assets/factions.js"></script>
-  <script defer src="assets/resource.js"></script>
-  <script defer src="assets/ai.js"></script>
-  <script defer src="assets/leader.js"></script>
-  <script defer src="assets/production.js"></script>
-  <script defer src="assets/economy.js"></script>
-  <script defer src="assets/war.js"></script>
-  <script defer src="assets/settle.js"></script>
-  <script defer src="assets/engine.js"></script>
-  <script defer src="assets/ui.js"></script>
+  <!-- 主界面 -->
+  <section id="screen-game" class="screen hidden">
+    <header id="hdr" class="hdr"></header>
+
+    <div class="grid2">
+      <div class="col-main">
+        <div class="card" id="card-board">
+          <h2 class="card-h">战术板</h2>
+          <div id="board"></div>
+          <div id="tactic-controls" class="tactic-controls"></div>
+          <div id="lineup-controls" class="lineup-controls"></div>
+        </div>
+        <div class="card" id="card-report">
+          <h2 class="card-h">最新战报</h2>
+          <div id="report"></div>
+        </div>
+      </div>
+
+      <aside class="col-side">
+        <div class="card">
+          <h2 class="card-h">积分榜</h2>
+          <div id="standings"></div>
+        </div>
+        <div class="card">
+          <h2 class="card-h">财务</h2>
+          <div id="finance"></div>
+        </div>
+        <div class="card">
+          <h2 class="card-h">阵容</h2>
+          <div id="roster"></div>
+        </div>
+      </aside>
+    </div>
+
+    <div id="champion" class="champion hidden"></div>
+  </section>
+</div>
+
+<script defer src="assets/config.js"></script>
+<script defer src="assets/rng.js"></script>
+<script defer src="assets/players.js"></script>
+<script defer src="assets/league.js"></script>
+<script defer src="assets/tactics.js"></script>
+<script defer src="assets/match.js"></script>
+<script defer src="assets/season.js"></script>
+<script defer src="assets/engine.js"></script>
+<script defer src="assets/ui.js"></script>
 </body>
 </html>

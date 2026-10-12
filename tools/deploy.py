@@ -36,15 +36,11 @@ PUBLISH = [
     'assets/style.css',
     'assets/config.js',
     'assets/rng.js',
-    'assets/state.js',
-    'assets/factions.js',
-    'assets/resource.js',
-    'assets/ai.js',
-    'assets/leader.js',
-    'assets/production.js',
-    'assets/economy.js',
-    'assets/war.js',
-    'assets/settle.js',
+    'assets/players.js',
+    'assets/league.js',
+    'assets/tactics.js',
+    'assets/match.js',
+    'assets/season.js',
     'assets/engine.js',
     'assets/ui.js',
 ]
@@ -96,12 +92,30 @@ def ensure_clone(repo, sub=''):
     return path
 
 
+def _clear_dir(root):
+    """清空目录内容（不删 .git），保证目标为干净镜像而非合并残留"""
+    if not os.path.isdir(root):
+        return
+    for nm in os.listdir(root):
+        if nm == '.git':
+            continue
+        p2 = os.path.join(root, nm)
+        try:
+            if os.path.isdir(p2):
+                shutil.rmtree(p2, ignore_errors=True)
+            else:
+                os.remove(p2)
+        except OSError:
+            pass
+
+
 def sync(repo, sub, msg):
     print(f'==> {repo}' + (f'  (/{sub})' if sub else '  (根目录)'))
     path = ensure_clone(repo, sub)
     dest_root = os.path.join(path, sub) if sub else path
 
     if sub:
+        _clear_dir(dest_root)
         for rel in PUBLISH:
             src = os.path.join(ROOT, rel)
             if not os.path.exists(src):
@@ -111,6 +125,7 @@ def sync(repo, sub, msg):
             shutil.copyfile(src, dst)
         run(['git', 'add', '-A', sub], cwd=path, check=True)
     else:
+        _clear_dir(path)
         for entry in os.listdir(ROOT):
             if entry in SKIP_DIRS or entry in {'.git', '.sync', '.gh_token'}:
                 continue
@@ -118,7 +133,7 @@ def sync(repo, sub, msg):
             dst = os.path.join(path, entry)
             if os.path.isdir(src):
                 shutil.copytree(src, dst, dirs_exist_ok=True,
-                                ignore=shutil.ignore_patterns('.git', '__pycache__'))
+                                ignore=shutil.ignore_patterns('.git', '__pycache__', '.workbuddy'))
             else:
                 shutil.copyfile(src, dst)
         run(['git', 'add', '-A'], cwd=path, check=True)
@@ -141,7 +156,7 @@ def sync(repo, sub, msg):
 
 
 def main():
-    msg = 'chore: 同步 cangame v2 改动'
+    msg = 'feat: cangame v3 篮球经理页游 — 战术板 Chalkboard + 比赛引擎 + 赛季/季后赛'
     only = 'both'
     for a in sys.argv[1:]:
         if a.startswith('--msg='):
