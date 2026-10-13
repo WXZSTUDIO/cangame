@@ -1,7 +1,7 @@
-// cangame v3.2 · 配置（唯一可调数值源）
-// XBA 逆向：14 队金字塔联赛 / 杯赛 / 胜者为王 / 球星系统 / 6v6 战术相克
+// cangame v3.4 · 配置（唯一可调数值源）
+// XBA 逆向：金字塔联赛 / 街球杯赛 / 冠军杯(512淘汰) / 联盟系统 / 经营细化 / 竞猜 / 球星 / 6v6 战术
 var CONFIG = {
-  VERSION: '3.3.0',
+  VERSION: '3.4.0',
   SEED_DEFAULT: 20261014,
 
   // —— 职业联赛（XBA 金字塔）：1级联赛×1 + 2级联赛×2，每个联赛 14 队 ——
@@ -70,9 +70,23 @@ var CONFIG = {
   },
 
   FINANCE: {
-    HOME_GATE: 1200, SPONSOR_BASE: 800, BANKRUPT: -50000, SAL_K: 1.6, CLUTCH_SAL_BONUS: 30,
-    AD_BASE: 300, JERSEY_BASE: 150
+    STADIUM_CAP: 8000,        // 主场容量（经营细化：票价×上座率）
+    AD_PER_SLOT: 240,         // 每个广告位单轮价值（随球迷/威望放大）
+    JERSEY_BASE: 150,         // 球衣销售基础（随战绩/球星/极限球员放大）
+    SPONSOR_BASE: 800, BANKRUPT: -50000, SAL_K: 1.6, CLUTCH_SAL_BONUS: 30
   },
+
+  // —— 经营细化：票价档位 + 上座率（XBA：上座率 80%–90% 净收入最高）——
+  PRICE: {
+    default: 'mid',
+    options: [
+      { key: 'low',  label: '低价 ¥30', price: 30, att: 0.95 },
+      { key: 'mid',  label: '中价 ¥55', price: 55, att: 0.88 },
+      { key: 'high', label: '高价 ¥90', price: 90, att: 0.70 }
+    ]
+  },
+  // 球衣销售放大系数（单场战绩 + 球星 + 极限球员）
+  JERSEY: { perWin: 1.4, starBonus: 0.10, extremeBonus: 0.20 },
 
   // —— 训练（普通训练：训练点制）——
   TRAINING: {
@@ -122,14 +136,41 @@ var CONFIG = {
     MIN_ENTRY: 0.5   // 报名人数≥上限 50% 才发全额奖金（XBA 规则，展示用）
   },
 
-  // —— 冠军杯赛（XBA 逆向：联赛前 2 名受邀 → 小组单循环 → 决赛淘汰）——
+  // —— 冠军杯赛（XBA 逆向：512 人制单淘汰 + 报名分阶段）——
+  // 规模 512（AI 俱乐部填充 + 人类资格队）；报名三阶段：优先邀请函→盟邀请函→全员
   CHAMPIONSHIP: {
-    openRound: 3,        // 第 3 轮开放报名/抽签
-    groupRounds: 5,      // 6 队单循环 5 轮
-    finalRound: 8,       // 第 8 轮打决赛
-    groupPrize: [20000, 10000],     // 小组第1/第2 名资金
-    groupPrestige: [2, 1],          // 小组第1/第2 名威望
-    championPrize: { cash: 1000000, prestige: 500 } // 总冠军（已按本游戏经济缩放）
+    size: 512,            // 单淘汰规模（2 的幂）
+    openRound: 6,         // 第 6 轮开放报名（优先邀请函：各级联赛前 2）
+    phase2Round: 9,       // 第 9 轮开放盟邀请函（联盟排名资格）
+    phase3Round: 12,      // 第 12 轮开放全员报名
+    bracketStart: 14,     // 第 14 轮抽签/首轮开打
+    gap: 1,               // 每联赛轮推进一 bracket 轮
+    championPrize: { cash: 1000000, prestige: 500, kings: 30 }, // 总冠军
+    runPrize: 8000        // 每赢一轮奖金
+  },
+
+  // —— 联盟系统（XBA 逆向：联盟首页/盟战/联盟威望/联盟杯赛/至尊杯邀请函）——
+  ALLIANCE: {
+    poolSize: 8,          // AI 联盟数量（单机版模拟工会）
+    warGap: 4,            // 每 4 轮一场盟战
+    warPrestige: 8,       // 盟战胜场为联盟加威望
+    warKings: 3,          // 盟战胜场给经理王者积分
+    cupRound: 13,         // 联盟杯赛抽签轮（每赛季一次）
+    cupGap: 2,
+    cupPrize: [60000, 20000, 8000],
+    cupPrestige: [30, 15, 5],
+    supremeTopN: 6,       // 联盟排名前 6 获至尊杯邀请函
+    supremeCheckRound: 16,
+    supremeRound: 18,
+    supremeGap: 2,
+    supremePrize: { cash: 1500000, prestige: 800, kings: 50 }
+  },
+
+  // —— 有奖竞猜（XBA 逆向：押注比赛结果赢资金）——
+  BET: {
+    maxStakePct: 0.4,     // 单注最多押资金 40%
+    baseOdd: 1.9,         // 基础赔率（按实力差微调）
+    featured: 3           // 每轮展示可押注场次
   },
 
   // —— 转会市场（XBA 逆向：系统球员池，按综合定价买卖）——

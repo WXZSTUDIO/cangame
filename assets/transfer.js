@@ -9,6 +9,7 @@ function transfer_genPool(state, rng) {
       p.isExtreme = true;
       p.overall = clamp(p.overall + randInt(rng, 3, 8), CONFIG.PLAYER.ATTR_MIN, CONFIG.PLAYER.ATTR_MAX);
       p.a = p.a; // 重算综合已含在 overall
+      p.jersey = randInt(rng, 0, 99); // 极限球员专属球衣号码（可刷）
     }
     p.marketPrice = Math.round((p.overall * p.overall * T.priceK + (extreme ? 50000 : 0)) / 100) * 100;
     p.salary = players_salary(p);
@@ -49,6 +50,20 @@ function transfer_buy(state, playerId) {
   return { ok: true, player: p.name, overall: p.overall };
 }
 
+// 极限球员刷球衣：重滚专属号码，触发球迷增长 + 球衣销售收入（XBA 极限球员玩法）
+function transfer_jersey(state, playerId) {
+  const human = teamById(state, state.humanTeamId);
+  const p = human.players.find(function (x) { return x.id === playerId; });
+  if (!p) return { ok: false, reason: 'no-player' };
+  if (!p.isExtreme) return { ok: false, reason: 'not-extreme' };
+  p.jersey = randInt(makeRNG(deriveSeed(state.seed, state.round * 131 + idNum(p.id) + 7)), 0, 99);
+  const sale = randInt(makeRNG(deriveSeed(state.seed, state.round * 17 + idNum(p.id))), 8000, 30000);
+  state.finance.cash += sale; state.finance.income += sale;
+  state.fans = clamp(state.fans + 300, 0, 9999999);
+  state.log.push('👕 极限球员 ' + p.name + ' 换新球衣 #' + p.jersey + '，球衣热卖 +¥' + sale + '、球迷 +300');
+  return { ok: true, jersey: p.jersey, sale: sale };
+}
+
 if (typeof module !== 'undefined') {
-  module.exports = { transfer_genPool, transfer_buy };
+  module.exports = { transfer_genPool, transfer_buy, transfer_jersey };
 }

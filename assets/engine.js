@@ -15,19 +15,27 @@ function engine_newGame(seed, humanTeamId) {
     schedule: null,
     finance: {
       cash: 0, income: 0, expense: 0, salaryCap: 0,
+      ticketPrice: CONFIG.PRICE.default,   // 经营细化：票价档位
       revenue: { ad: 0, gate: 0, jersey: 0 }
     },
     trainPts: CONFIG.TRAINING.START_POINTS,
     kingsPts: 0,                 // 王者积分（球星训练 / 胜者为王）
     kings: null,                 // 胜者为王进行中的场次
     cups: null,
-    championship: null,          // 冠军杯赛（联赛前2受邀）
+    championship: null,          // 冠军杯赛（512 淘汰）
     prestige: 0,                 // 威望（冠军杯/盟战来源）
     fans: 1000,                  // 球迷数量（影响球票/广告）
     transferPool: [],             // 转会市场系统球员池
     transferBought: 0,
     seasonStats: {},             // 本赛季球员技术统计 {pid:{pts,reb,ast,stl,blk,gp}}
     trophies: [],                // 荣誉室
+    bets: [],                    // 有奖竞猜
+    alliances: null,             // AI 联盟池
+    alliance: null,              // 玩家联盟
+    allianceWar: null,           // 盟战状态
+    allianceCup: null,           // 联盟杯赛
+    supremeInvite: false,        // 至尊杯邀请函
+    supremeCup: null,            // 至尊杯
     seasonSummary: null,         // 赛季结束摘要（冠军/升降级/排名）
     lastResults: [], lastResult: null, lastCupResult: null, lastKingsResult: null, lastChampResult: null,
     log: []
@@ -44,6 +52,7 @@ function engine_newGame(seed, humanTeamId) {
   state.schedule = buildAllSchedules(state, rng);
   state.cups = buildCupInstances(state);
   state.transferPool = transfer_genPool(state, rng);
+  alliance_init(state);   // 生成 AI 联盟池（独立子种子，不影响联赛）
   const caps = teams.map(function (t) { return t.players.reduce(function (s, p) { return s + p.salary; }, 0); });
   state.finance.salaryCap = Math.round(caps.reduce(function (a, b) { return a + b; }, 0) / caps.length);
   const human = teamById(state, state.humanTeamId);
@@ -99,50 +108,86 @@ function engine_advanceRound(state) {
     const games = state.schedule[ld.id][state.round] || [];
     const isMyLeague = !!state.leagues[ld.id].teamIds.some(function (id) { return id === state.humanTeamId; });
     games.forEach(function (g) {
-      const seed = deriveSeed(state.seed, state.season * 131 + state.round * 17 + idNum(g[0]) * 3 + idNum(g[1]) * 7);
-      const res = simulateGame(state, g[0], g[1], seed);
       const ht = teamById(state, g[0]), at = teamById(state, g[1]);
+      const seed = deriveSeed(state.seed, state.season * 131 + state.round * 17 + idNum(g[0]) * 3 + idNum(g[1]) * 7);
+      const ha = availableCount(ht), aa = availableCount(at);
+      let res;
+      if (ha < 5 || aa < 5) {
+        // 特殊比分 20:0：对手伤退无法完赛，判可出场方 20:0 胜
+        const winner = ha >= 5 ? g[0] : g[1];
+        const wTeam = teamById(state, winner);
+        res = { homeId: g[0], awayId: g[1], hScore: winner === g[0] ? 20 : 0, aScore: winner === g[1] ? 20 : 0, winner: winner, force20: true, log: ['对手伤退无法完赛，判 20:0'], hBox: initBox(ht), aBox: initBox(at) };
+        state.log.push('⚠ 特殊比分：' + wTeam.name + ' 因对手伤退被判 20:0 胜');
+      } else {
+        res = simulateGame(state, g[0], g[1], seed);
+      }
       if (res.winner === g[0]) { ht.wins++; at.losses++; } else { at.wins++; ht.losses++; }
       ht.pf += res.hScore; ht.pa += res.aScore;
       at.pf += res.aScore; at.pa += res.hScore;
       if (isMyLeague) results.push(res);
       if (g[0] === state.humanTeamId || g[1] === state.humanTeamId) {
         state.lastLog = res; state.lastResult = res;
-        // 累积本队球员赛季技术统计
-        const box = (g[0] === state.humanTeamId) ? res.hBox : res.aBox;
-        Object.keys(box.players).forEach(function (pid) {
-          const s = state.seasonStats[pid] || (state.seasonStats[pid] = { pts: 0, reb: 0, ast: 0, stl: 0, blk: 0, gp: 0 });
-          const row = box.players[pid];
-          s.pts += row.pts; s.reb += row.reb; s.ast += row.ast; s.stl += row.stl; s.blk += row.blk; s.gp++;
-        });
+        // 累积本队球员赛季技术统计（20:0 强制局不计个人数据）
+        if (!res.force20) {
+          const box = (g[0] === state.humanTeamId) ? res.hBox : res.aBox;
+          Object.keys(box.players).forEach(function (pid) {
+            const s = state.seasonStats[pid] || (state.seasonStats[pid] = { pts: 0, reb: 0, ast: 0, stl: 0, blk: 0, gp: 0 });
+            const row = box.players[pid];
+            s.pts += row.pts; s.reb += row.reb; s.ast += row.ast; s.stl += row.stl; s.blk += row.blk; s.gp++;
+          });
+        }
       }
     });
   });
   state.lastResults = results;
+  // 竞猜结算（本轮回合内已押注比赛）
+  bet_tick(state, results.map(function (r) { return { homeId: r.homeId, awayId: r.awayId, winner: r.winner }; }));
 
-  // 杯赛轮 + 冠军杯（联赛轮打完后进行）
+  // 杯赛轮 + 冠军杯 + 联盟系统（联赛轮打完后进行）
   cup_tick(state, state.round + 1);
   championship_tick(state, state.round + 1);
+  alliance_warTick(state, state.round + 1);
+  alliance_cup_tick(state, state.round + 1);
+  alliance_supremeCheck(state, state.round + 1);
+  supreme_tick(state, state.round + 1);
 
-  // 财务：XBA 三大收入 + 工资摊销
+  // 财务：经营细化（票价×上座率 / 广告位 / 球衣销售） + 工资摊销
   const human = teamById(state, state.humanTeamId);
   const rev = state.finance.revenue;
-  rev.ad += CONFIG.FINANCE.AD_BASE;
+  const F = CONFIG.FINANCE, PR = CONFIG.PRICE, J = CONFIG.JERSEY;
+  const priceOpt = PR.options.find(function (o) { return o.key === state.finance.ticketPrice; }) || PR.options[1];
   const myGames = state.schedule[human.leagueId][state.round] || [];
   const humanHome = myGames.some(function (g) { return g[0] === state.humanTeamId; });
-  if (humanHome) rev.gate += CONFIG.FINANCE.HOME_GATE;
-  rev.jersey += CONFIG.FINANCE.JERSEY_BASE;
-  state.finance.income += CONFIG.FINANCE.AD_BASE + CONFIG.FINANCE.JERSEY_BASE + (humanHome ? CONFIG.FINANCE.HOME_GATE : 0);
   const humanWon = results.some(function (r) {
     return (r.homeId === state.humanTeamId && r.winner === r.homeId) || (r.awayId === state.humanTeamId && r.winner === r.awayId);
   });
+
+  let adInc = 0, gateInc = 0, jerseyInc = 0;
+  if (humanHome) {
+    // 上座率：基准受票价档影响，威望/球迷小幅加成；高票价拉低上座率
+    const att = clamp(priceOpt.att * (1 + (state.prestige || 0) / 600 + (state.fans || 0) / 200000), 0.6, 0.95);
+    gateInc = Math.round(priceOpt.price * F.STADIUM_CAP * att);
+    rev.gate += gateInc;
+  }
+  // 广告位：球迷越多广告位越多，威望放大单价
+  const adSlots = Math.floor((state.fans || 0) / 4000) + 1;
+  adInc = Math.round(adSlots * F.AD_PER_SLOT * (1 + (state.prestige || 0) / 300));
+  rev.ad += adInc;
+  // 球衣销售：随上轮战绩 + 球星/极限球员加成
+  const stars = human.players.filter(function (p) { return p.star; }).length;
+  const extremes = human.players.filter(function (p) { return p.isExtreme; }).length;
+  jerseyInc = Math.round(F.JERSEY_BASE * (1 + (humanWon ? J.perWin - 1 : 0) + stars * J.starBonus + extremes * J.extremeBonus));
+  rev.jersey += jerseyInc;
+
+  const roundInc = adInc + gateInc + jerseyInc;
+  state.finance.income += roundInc;
   training_tick(state, humanWon);
   // 球迷随战绩波动（影响球票/广告）
   state.fans = clamp(state.fans + (humanWon ? 40 : -20), 0, 9999999);
   const salarySum = human.players.reduce(function (s, p) { return s + p.salary; }, 0);
   const amort = Math.round(salarySum / state.totalRounds);
   state.finance.expense += amort;
-  state.finance.cash += CONFIG.FINANCE.AD_BASE + CONFIG.FINANCE.JERSEY_BASE + (humanHome ? CONFIG.FINANCE.HOME_GATE : 0) - amort;
+  state.finance.cash += roundInc - amort;
 
   engine_applyPostGame(state, state.round);
   state.round++;

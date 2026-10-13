@@ -115,7 +115,11 @@ function seasonRoll(state, rng) {
   state.phase = 'REGULAR';
   state.schedule = buildAllSchedules(state, rng);
   state.cups = buildCupInstances(state);
-  state.championship = null;   // 新赛季重置冠军杯（第 3 轮重新开放）
+  state.championship = null;   // 新赛季重置冠军杯（重新开放报名）
+  state.allianceCup = null;    // 联盟杯赛每赛季一次
+  state.supremeInvite = false; // 至尊杯邀请函重新评定
+  state.supremeCup = null;
+  state.bets = [];             // 竞猜每赛季清空
   return summary;
 }
 

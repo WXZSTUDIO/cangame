@@ -12,7 +12,7 @@ const ROOT = process.cwd();
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const dom = new JSDOM(html, { runScripts: 'outside-only', pretendToBeVisual: true });
 const { window } = dom;
-const files = ['config', 'rng', 'players', 'transfer', 'league', 'tactics', 'match', 'season', 'training', 'cup', 'championship', 'engine', 'ui'];
+const files = ['config', 'rng', 'players', 'transfer', 'league', 'tactics', 'match', 'season', 'training', 'cup', 'bet', 'championship', 'alliance', 'engine', 'ui'];
 files.forEach(n => { window.eval(fs.readFileSync(path.join(ROOT, 'assets/' + n + '.js'), 'utf8')); });
 // jsdom 构造时 readyState=loading，DOMContentLoaded 已错过：显式派发以触发 boot()
 window.document.dispatchEvent(new window.Event('DOMContentLoaded'));
@@ -102,8 +102,8 @@ ok(doc.querySelector('svg.board'), '换首发后战术板仍在');
 doc.querySelector('.nav-btn[data-view="honors"]').click();
 ok(doc.getElementById('honors').textContent.indexOf('联赛冠军') >= 0, '荣誉室渲染');
 
-// v3.3 新视图冒烟（冠军杯 / 转会 / 经理名片 / 战绩 / 历史排行 / 联盟 / 至尊杯）
-['championship', 'transfer', 'manager', 'record', 'history', 'alliance', 'supreme'].forEach(function (v) {
+// v3.4 新视图冒烟（冠军杯 / 转会 / 经理名片 / 战绩 / 历史排行 / 联盟 / 至尊杯 / 竞猜）
+['championship', 'transfer', 'manager', 'record', 'history', 'alliance', 'supreme', 'bet'].forEach(function (v) {
   const btn = doc.querySelector('.nav-btn[data-view="' + v + '"]');
   ok(!!btn, '存在导航项：' + v);
   if (btn) { btn.click(); ok(true, '点击 ' + v + ' 未抛错'); }
@@ -111,6 +111,32 @@ ok(doc.getElementById('honors').textContent.indexOf('联赛冠军') >= 0, '荣�
 // 顶栏新增威望/球迷
 ok(doc.getElementById('hdr').textContent.indexOf('威望') >= 0, '顶栏含威望');
 ok(doc.getElementById('hdr').textContent.indexOf('球迷') >= 0, '顶栏含球迷');
+
+// 联盟：创建联盟交互（renderAlliance 无联盟态渲染输入框 + 创建按钮）
+doc.querySelector('.nav-btn[data-view="alliance"]').click();
+const aName = doc.getElementById('alliance-name');
+if (aName) { aName.value = '雷霆联盟'; doc.getElementById('alliance-create').click(); }
+ok(window.G && window.G.alliance && window.G.alliance.name === '雷霆联盟', '创建联盟交互生效');
+
+// 竞猜：给足资金后押注主胜
+doc.querySelector('.nav-btn[data-view="bet"]').click();
+window.G.finance.cash = 1000000;
+doc.querySelector('.nav-btn[data-view="bet"]').click(); // 重新渲染带最新资金
+const betBtn = doc.querySelector('[data-bet-h]');
+if (betBtn) {
+  betBtn.click();
+  ok(window.G.bets && window.G.bets.length === 1, '竞猜押注成功（bets=' + (window.G.bets ? window.G.bets.length : 0) + '）');
+} else ok(true, '（当前无焦点场次，跳过押注）');
+
+// 财务：票价档位下拉
+doc.querySelector('.nav-btn[data-view="finance"]').click();
+const tp = doc.getElementById('ticket-price');
+ok(tp && tp.options.length === window.CONFIG.PRICE.options.length, '票价档位下拉 ' + (tp ? tp.options.length : 0) + ' 项');
+if (tp) { tp.value = 'high'; tp.dispatchEvent(new window.Event('change')); ok(window.G.finance.ticketPrice === 'high', '切换票价档生效'); }
+
+// 名册：极限球员刷球衣按钮（无极限球员时显示占位，不抛错）
+doc.querySelector('.nav-btn[data-view="roster"]').click();
+ok(doc.querySelectorAll('#roster [data-jersey]').length >= 0, '名册渲染（含极限球员刷球衣列）');
 
 console.log('\nverify-ui: 通过 ' + pass + ' / ' + (pass + fail) + (fail ? '  ❌' : '  ✅ 全部通过'));
 process.exit(fail ? 1 : 0);

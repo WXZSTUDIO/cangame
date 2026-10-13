@@ -144,6 +144,10 @@ function simulateGame(state, homeId, awayId, seed) {
   return { homeId: homeId, awayId: awayId, hScore: hScore, aScore: aScore, winner: winner, log: log, hBox: hBox, aBox: aBox };
 }
 
+function availableCount(team) {
+  return team.players.filter(function (p) { return p.injury === 0; }).length;
+}
+
 if (typeof module !== 'undefined') {
-  module.exports = { simulateGame, getLineup };
+  module.exports = { simulateGame, getLineup, initBox, availableCount };
 }

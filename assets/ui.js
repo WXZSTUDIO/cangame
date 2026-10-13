@@ -55,7 +55,7 @@ function renderAll() {
   renderRounds(); renderStandings(); renderStats(); renderLogs();
   renderCups(); renderChampionship(); renderKings(); renderTraining();
   renderFinance(); renderHonors(); renderRoster(); renderSideRoster(); renderSeasonEnd();
-  renderTransfer(); renderManager(); renderRecord(); renderHistory(); renderAlliance(); renderSupreme();
+  renderTransfer(); renderManager(); renderRecord(); renderHistory(); renderAlliance(); renderSupreme(); renderBet();
   switchView(curView);
 }
 
@@ -445,18 +445,29 @@ function renderTraining() {
   });
 }
 
-/* ---------- 财务 · 经营 ---------- */
+/* ---------- 财务 · 经营（细化：票价/上座率/广告位/球衣）---------- */
 function renderFinance() {
   const t = teamById(G, G.humanTeamId);
   const sal = t.players.reduce(function (s, p) { return s + p.salary; }, 0);
   const over = sal > G.finance.salaryCap;
   const rev = G.finance.revenue || { ad: 0, gate: 0, jersey: 0 };
   const adSlots = Math.floor((G.fans || 0) / 4000) + 1;
+  const PR = CONFIG.PRICE;
+  const priceOpt = PR.options.find(function (o) { return o.key === G.finance.ticketPrice; }) || PR.options[1];
+  const att = clamp(priceOpt.att * (1 + (G.prestige || 0) / 600 + (G.fans || 0) / 200000), 0.6, 0.95);
+  const stars = t.players.filter(function (p) { return p.star; }).length;
+  const extremes = t.players.filter(function (p) { return p.isExtreme; }).length;
+
+  // 票价控制
+  let ctrl = '<div class="sub">主场票价：<select id="ticket-price">';
+  PR.options.forEach(function (o) { ctrl += '<option value="' + o.key + '"' + (o.key === G.finance.ticketPrice ? ' selected' : '') + '>' + o.label + '（上座率约 ' + Math.round(o.att * 100) + '%）</option>'; });
+  ctrl += '</select> <span class="sub">当前预估上座率 ' + Math.round(att * 100) + '%</span></div>';
+
   const rows = [
     ['球队资金', '¥' + G.finance.cash.toLocaleString(), G.finance.cash < CONFIG.FINANCE.BANKRUPT ? 'warn' : ''],
-    ['— 广告收入', '+' + rev.ad, ''],
-    ['— 主场门票', '+' + rev.gate, ''],
-    ['— 球衣销售', '+' + rev.jersey, ''],
+    ['— 广告收入', '+' + rev.ad + '（' + adSlots + ' 广告位）', ''],
+    ['— 主场门票', '+' + rev.gate + '（¥' + priceOpt.price + '×' + CONFIG.FINANCE.STADIUM_CAP + '×' + Math.round(att * 100) + '%）', ''],
+    ['— 球衣销售', '+' + rev.jersey + '（球星 ' + stars + ' / 极限 ' + extremes + '）', ''],
     ['累计支出', '-' + G.finance.expense, ''],
     ['工资总额', '' + sal, over ? 'warn' : ''],
     ['工资帽', '' + G.finance.salaryCap, ''],
@@ -464,12 +475,15 @@ function renderFinance() {
     ['球迷数量', (G.fans || 0).toLocaleString() + '（广告位 ' + adSlots + '）', ''],
     ['威望', '' + (G.prestige || 0), '']
   ];
-  let html = rows.map(function (r) {
+  let html = ctrl;
+  html += rows.map(function (r) {
     return '<div class="fin-row"><span>' + r[0] + '</span><span class="num ' + r[2] + '">' + r[1] + '</span></div>';
   }).join('');
-  html += '<p class="sub" style="margin-top:10px">经营提示：净胜分越高票房越好；上座率 80%–90% 净收入最高；可悬挂广告位 = 球迷数/4000 + 1。</p>';
+  html += '<p class="sub" style="margin-top:10px">经营提示：票价越低上座率越高，但单价低；中价（¥55）通常净收入最佳（上座率约 88%）。球迷与威望放大广告与票房；球星/极限球员拉升球衣销量。</p>';
   if (over) html += '<p class="warn" style="font-size:var(--fs-xs);margin:8px 0 0">⚠ 工资超帽，注意财务健康。</p>';
   document.getElementById('finance').innerHTML = html;
+  const sel = document.getElementById('ticket-price');
+  if (sel) sel.onchange = function () { G.finance.ticketPrice = sel.value; renderFinance(); };
 }
 
 /* ---------- 荣誉室 ---------- */
@@ -491,16 +505,25 @@ function renderHonors() {
 /* ---------- 名册 ---------- */
 function renderRoster() {
   const t = teamById(G, G.humanTeamId);
-  let html = '<table><thead><tr><th>球员</th><th>位</th><th>年龄</th><th>综合</th><th>年薪</th><th>合同</th><th>状态</th></tr></thead><tbody>';
+  let html = '<table><thead><tr><th>球员</th><th>位</th><th>年龄</th><th>综合</th><th>年薪</th><th>合同</th><th>状态</th><th>极限球衣</th></tr></thead><tbody>';
   t.players.slice().sort(function (a, b) { return b.overall - a.overall; }).forEach(function (p) {
     const status = p.injury > 0 ? '<span class="tag warn">伤' + p.injury + '轮</span>'
       : (p.stamina < 40 ? '<span class="tag lose">疲</span>' : '<span class="tag win">就绪</span>');
+    const jerseyCell = p.isExtreme
+      ? '#' + (p.jersey != null ? p.jersey : '?') + ' <button class="mini-btn" data-jersey="' + p.id + '">刷球衣</button>'
+      : '<span class="sub">—</span>';
     html += '<tr><td>' + p.name + starHTML(p) + ' <small class="sub">' + p.trait + '</small></td><td>' + p.pos + '</td><td class="num">' + p.age + '</td>' +
       '<td class="num">' + p.overall + '<div class="bar"><i style="width:' + p.overall + '%"></i></div></td>' +
-      '<td class="num">' + p.salary + '</td><td class="num">' + p.contractYears + '年</td><td>' + status + '</td></tr>';
+      '<td class="num">' + p.salary + '</td><td class="num">' + p.contractYears + '年</td><td>' + status + '</td><td>' + jerseyCell + '</td></tr>';
   });
   html += '</tbody></table>';
   document.getElementById('roster').innerHTML = html;
+  document.querySelectorAll('[data-jersey]').forEach(function (b) {
+    b.onclick = function () {
+      const res = transfer_jersey(G, b.dataset.jersey);
+      if (res.ok) { renderAll(); switchView('roster'); }
+    };
+  });
 }
 
 /* ---------- 右侧球员面板（首发/替补页签）---------- */
@@ -532,43 +555,46 @@ function renderSeasonEnd() {
     '<p class="sub">赛程与杯赛已重置，点击顶部「开始新赛季」继续。</p>';
 }
 
-/* ---------- 冠军杯赛（联赛前2受邀 → 小组循环 → 决赛淘汰）---------- */
+/* ---------- 冠军杯赛（512 人制单淘汰 + 报名三阶段）---------- */
 function renderChampionship() {
   const el = document.getElementById('championship');
   const C = CONFIG.CHAMPIONSHIP;
   const c = G.championship;
   if (!c || !c.opened) {
-    el.innerHTML = '<p class="sub">冠军杯为职业队顶级杯赛：每赛季第 ' + C.openRound + ' 轮开放，由 <b>各级联赛前 2 名</b>获得邀请函参赛。' +
-      '小组单循环后前 2 名进决赛。当前尚未开放报名。</p>';
+    el.innerHTML = '<p class="sub">冠军杯为职业队顶级杯赛：每赛季第 ' + C.openRound + ' 轮开放报名。' +
+      '报名分三阶段——<b>优先邀请函</b>（各级联赛前 2）→ <b>盟邀请函</b>（联盟排名资格）→ <b>全员可报</b>。' +
+      '最终 ' + C.size + ' 强单淘汰，夺冠即封王。当前尚未开放。</p>';
     return;
   }
-  const invited = c.invited.map(function (id) { const t = teamById(G, id); return t ? t.name : id; });
-  const invitedMe = c.invited.indexOf(G.humanTeamId) >= 0;
-  let html = '<p class="sub">' + (invitedMe ? '🎫 你凭借联赛排名获得冠军杯邀请函！' : '你未进入本赛季联赛前 2，未能获得冠军杯邀请函（可下赛季再战）。') + '</p>';
-  html += '<div class="sub">受邀 ' + c.invited.length + ' 队：' + invited.join('、') + '</div>';
-
-  // 小组积分榜
-  const ranked = c.invited.slice().sort(function (a, b) {
-    if (c.rec[b].w !== c.rec[a].w) return c.rec[b].w - c.rec[a].w;
-    return (c.rec[b].pf - c.rec[b].pa) - (c.rec[a].pf - c.rec[a].pa);
-  });
-  html += '<h3 class="sub">小组赛积分榜（已打 ' + c.groupIdx + '/' + c.schedule.length + ' 轮）</h3>';
-  html += '<table><thead><tr><th>球队</th><th>胜</th><th>负</th><th>净胜分</th></tr></thead><tbody>';
-  ranked.forEach(function (id) {
-    const t = teamById(G, id), r = c.rec[id];
-    const you = id === G.humanTeamId ? ' class="you"' : '';
-    html += '<tr' + you + '><td>' + (t ? t.name : id) + '</td><td class="num">' + r.w + '</td><td class="num">' + r.l + '</td><td class="num">' + (r.pf - r.pa > 0 ? '+' : '') + (r.pf - r.pa) + '</td></tr>';
-  });
-  html += '</tbody></table>';
-
-  if (c.done && c.final) {
-    const champ = teamById(G, c.champion);
-    html += '<div class="star">🏆 冠军杯总冠军：' + (champ ? champ.name : c.champion) + (c.champion === G.humanTeamId ? '（就是你！+¥' + C.championPrize.cash + ' +' + C.championPrize.prestige + ' 威望）' : '') + '</div>';
-  } else if (c.groupIdx >= c.schedule.length) {
-    html += '<p class="sub">小组赛结束，决赛即将打响……</p>';
+  let html = '<div class="sub">阶段：<b>' + championship_phaseText(G) + '</b></div>';
+  if (c.humanEntry) {
+    const tag = { priority: '优先邀请函（联赛前2）', alliance: '盟邀请函（联盟资格）', open: '全员自由报名' }[c.humanEntry];
+    html += '<div class="star">🎫 你已以「' + tag + '」身份入围 ' + C.size + ' 强！</div>';
   }
-  if (c.myResult) html += '<p class="stat-note">你最近一场：' + (c.myResult.won ? '✔ 胜' : '✘ 负') + '（第 ' + (c.myResult.round + 1) + ' 轮）</p>';
+
+  if (c.bracket) {
+    const totalRounds = Math.log2(c.size);
+    html += '<p class="sub">淘汰赛进度：第 ' + (c.roundIdx + 1) + ' / ' + totalRounds + ' 轮' + (c.done ? '（已决出冠军）' : '') + '</p>';
+    // 玩家下一轮对手
+    if (!c.done && c.bracket[c.roundIdx]) {
+      const pair = c.bracket[c.roundIdx].find(function (p) { return p[0] === 'HUMAN' || p[1] === 'HUMAN'; });
+      if (pair) {
+        const oppId = pair[0] === 'HUMAN' ? pair[1] : pair[0];
+        const opp = c.byId[oppId];
+        html += '<div class="sub">⚔ 本轮对手：' + (opp ? opp.name : oppId) + '</div>';
+      }
+    }
+    if (c.myResult) html += '<p class="stat-note">最近一场（第 ' + (c.myResult.round + 1) + ' 轮）：' + (c.myResult.won ? '✔ 胜 ' : '✘ 负 ') + (c.myResult.opp || '') + '（' + c.myResult.hScore + ':' + c.myResult.aScore + '）</p>';
+    if (c.done && c.champion === 'HUMAN') html += '<div class="star">🏆 你夺得「冠军杯」总冠军！+¥' + C.championPrize.cash + ' +' + C.championPrize.prestige + ' 威望 +' + C.championPrize.kings + ' 王者积分</div>';
+    else if (c.done) html += '<div class="star">🏆 冠军杯总冠军：' + (c.byId[c.champion] ? c.byId[c.champion].name : c.champion) + '</div>';
+  } else if (c.phase === 'open' && !c.humanEntry && (G.round + 1) >= C.phase3Round) {
+    html += '<button class="mini-btn" id="champ-reg-open">全员报名参赛</button>';
+  } else if (!c.humanEntry) {
+    html += '<p class="sub">你尚未获得入围资格：先冲联赛前 2（优先邀请函），或加入联盟（盟邀请函），或等第 ' + C.phase3Round + ' 轮全员开放。</p>';
+  }
   el.innerHTML = html;
+  const rb = document.getElementById('champ-reg-open');
+  if (rb) rb.onclick = function () { const res = championship_registerOpen(G); if (res.ok) renderAll(); else { rb.textContent = { 'already': '已入围', 'too-early': '未到时间', 'closed': '已截止' }[res.reason] || '不可报名'; } };
 }
 
 /* ---------- 转会市场 ---------- */
@@ -641,16 +667,128 @@ function renderHistory() {
   el.innerHTML = html;
 }
 
-/* ---------- 联盟 / 至尊杯（敬请期待）---------- */
+/* ---------- 联盟系统（首页 / 盟战 / 联盟威望 / 联盟杯赛 / 至尊杯邀请函）---------- */
 function renderAlliance() {
-  document.getElementById('alliance').innerHTML =
-    '<p class="sub">联盟是玩家的工会组织。联盟参与 <b>联盟至尊杯</b>、<b>盟战</b>，并为成员争取冠军杯邀请函（盟）。</p>' +
-    '<p class="warn">⚙ 联盟系统将在后续版本开放（联盟首页 / 盟战 / 联盟威望 / 联盟杯赛 / 至尊杯邀请函）。当前为单机模拟版本。</p>';
+  const el = document.getElementById('alliance');
+  const A = CONFIG.ALLIANCE;
+  if (!G.alliance) {
+    let html = '<p class="sub">联盟是你的工会。创建或加入一个联盟，参与 <b>盟战</b> 攒联盟威望，凭排名争夺 <b>至尊杯邀请函</b>。</p>';
+    html += '<div class="sub">创建联盟：<input id="alliance-name" maxlength="8" placeholder="联盟名" style="width:120px" /> <button class="mini-btn" id="alliance-create">创建</button></div>';
+    html += '<h3 class="sub">或加入现有联盟（按威望排序）</h3>';
+    const ranked = G.alliances.slice().sort(function (a, b) { return b.prestige - a.prestige; });
+    html += '<table><thead><tr><th>联盟</th><th>威望</th><th>实力</th><th></th></tr></thead><tbody>';
+    ranked.forEach(function (al) {
+      html += '<tr><td>' + al.name + '</td><td class="num">' + al.prestige + '</td><td class="num">' + al.rating + '</td>' +
+        '<td><button class="mini-btn" data-alliance-join="' + al.id + '">加入</button></td></tr>';
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+    document.getElementById('alliance-create').onclick = function () {
+      const name = document.getElementById('alliance-name').value.trim();
+      const res = alliance_create(G, name);
+      if (res.ok) renderAll(); else { document.getElementById('alliance-create').textContent = '已加入'; }
+    };
+    document.querySelectorAll('[data-alliance-join]').forEach(function (b) {
+      b.onclick = function () { const res = alliance_join(G, b.dataset.allianceJoin); if (res.ok) renderAll(); };
+    });
+    return;
+  }
+  const my = G.alliance;
+  const ranked = G.alliances.slice().sort(function (a, b) { return b.prestige - a.prestige; });
+  const myRank = ranked.findIndex(function (x) { return x.id === my.id; }) + 1;
+  let html = '<div class="fin-row"><span>我的联盟</span><span class="num">' + my.name + '</span></div>';
+  html += '<div class="fin-row"><span>联盟威望</span><span class="num star">' + my.prestige + '</span></div>';
+  html += '<div class="fin-row"><span>联盟排名</span><span class="num">' + myRank + ' / ' + G.alliances.length + '</span></div>';
+  html += '<div class="fin-row"><span>至尊杯资格</span><span class="num">' + (G.supremeInvite ? '✅ 已获邀请函' : '需进入前 ' + A.supremeTopN + ' 名') + '</span></div>';
+  html += '<button class="mini-btn" id="alliance-leave">退出联盟</button>';
+
+  // 盟战状态
+  html += '<h3 class="sub">盟战（每 ' + A.warGap + ' 轮一场，胜场 +' + A.warPrestige + ' 联盟威望 / +' + A.warKings + ' 王者积分）</h3>';
+  html += '<p class="sub">最近一场盟战：第 ' + (G.allianceWar ? G.allianceWar.lastRound : 0) + ' 轮' + (G.log.filter(function (l) { return l.indexOf('盟战') >= 0; }).slice(-1)[0] ? '（' + G.log.filter(function (l) { return l.indexOf('盟战') >= 0; }).slice(-1)[0] + '）' : '') + '</p>';
+
+  // 联盟杯赛
+  html += '<h3 class="sub">联盟杯赛（每赛季一次，联盟代表淘汰赛）</h3>';
+  if (!G.allianceCup) html += '<p class="sub">第 ' + A.cupRound + ' 轮开赛。</p>';
+  else if (G.allianceCup.done) html += '<p class="sub">本赛季联盟杯赛冠军：' + (G.allianceCup.byId[G.allianceCup.champion] ? G.allianceCup.byId[G.allianceCup.champion].name : G.allianceCup.champion) + (G.allianceCup.champion === my.id ? '（你的联盟！）' : '') + '</p>';
+  else html += '<p class="sub">进行中：第 ' + (G.allianceCup.roundIdx + 1) + ' 轮' + (G.allianceCup.myResult ? '（你' + (G.allianceCup.myResult.won ? '胜' : '负') + ' ' + G.allianceCup.myResult.opp + '）' : '') + '</p>';
+
+  // 联盟排名榜
+  html += '<h3 class="sub">联盟威望排行（前 ' + A.supremeTopN + ' 名获至尊杯邀请函）</h3>';
+  html += '<table><thead><tr><th>排名</th><th>联盟</th><th>威望</th><th>资格</th></tr></thead><tbody>';
+  ranked.forEach(function (al, i) {
+    const you = al.id === my.id ? ' class="you"' : '';
+    const qual = i < A.supremeTopN ? ' <span class="tag win">至尊杯</span>' : '';
+    html += '<tr' + you + '><td>' + (i + 1) + qual + '</td><td>' + al.name + '</td><td class="num">' + al.prestige + '</td><td>' + (i < A.supremeTopN ? '✅' : '—') + '</td></tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+  const bl = document.getElementById('alliance-leave');
+  if (bl) bl.onclick = function () { alliance_leave(G); renderAll(); };
 }
+
 function renderSupreme() {
-  document.getElementById('supreme').innerHTML =
-    '<p class="sub">至尊杯为联盟荣誉之战：每赛季联盟杯赛前 6 名获得 <b>至尊杯邀请函</b>，代表联盟出战淘汰赛。</p>' +
-    '<p class="warn">⚙ 联盟至尊杯将在联盟系统开放后上线。</p>';
+  const el = document.getElementById('supreme');
+  const A = CONFIG.ALLIANCE;
+  if (!G.alliance) {
+    el.innerHTML = '<p class="sub">至尊杯为联盟荣誉之战：每赛季联盟排名前 ' + A.supremeTopN + ' 获 <b>至尊杯邀请函</b>，代表联盟出战淘汰赛。先加入联盟并攒威望吧。</p>';
+    return;
+  }
+  if (!G.supremeInvite) {
+    const ranked = G.alliances.slice().sort(function (a, b) { return b.prestige - a.prestige; });
+    const myRank = ranked.findIndex(function (x) { return x.id === G.alliance.id; }) + 1;
+    el.innerHTML = '<p class="sub">你的联盟当前排名第 ' + myRank + ' / ' + G.alliances.length + '，需进入前 ' + A.supremeTopN + ' 名方可获得至尊杯邀请函（多打盟战攒威望）。</p>';
+    return;
+  }
+  let html = '<div class="star">🎫 你的联盟已获至尊杯邀请函！</div>';
+  if (!G.supremeCup) html += '<p class="sub">至尊杯第 ' + A.supremeRound + ' 轮开战（联盟代表淘汰赛）。</p>';
+  else if (G.supremeCup.done) html += '<div class="star">👑 至尊杯冠军：' + (G.supremeCup.byId[G.supremeCup.champion] ? G.supremeCup.byId[G.supremeCup.champion].name : G.supremeCup.champion) + (G.supremeCup.champion === G.alliance.id ? '（你的联盟问鼎！+¥' + A.supremePrize.cash + ' +' + A.supremePrize.prestige + ' 威望 +' + A.supremePrize.kings + ' 王者积分）' : '') + '</div>';
+  else html += '<p class="sub">进行中：第 ' + (G.supremeCup.roundIdx + 1) + ' 轮' + (G.supremeCup.myResult ? '（你' + (G.supremeCup.myResult.won ? '胜' : '负') + ' ' + G.supremeCup.myResult.opp + '）' : '') + '</p>';
+  el.innerHTML = html;
+}
+
+/* ---------- 有奖竞猜 ---------- */
+function renderBet() {
+  const el = document.getElementById('bet');
+  const featured = bet_featured(G);
+  let html = '<p class="sub">押注下轮焦点对阵（单注最多押资金 ' + Math.round(CONFIG.BET.maxStakePct * 100) + '%）。比赛结束后自动结算，命中按赔率收回。</p>';
+  if (!featured.length) {
+    html += '<p class="sub">当前无可用竞猜场次（非赛季中或非焦点对阵）。</p>';
+  } else {
+    html += '<table><thead><tr><th>主队</th><th>客队</th><th>主胜赔率</th><th>客胜赔率</th><th>押注</th></tr></thead><tbody>';
+    featured.forEach(function (m) {
+      html += '<tr><td>' + m.home + '</td><td>' + m.away + '</td>' +
+        '<td class="num">' + m.oddHome + '</td><td class="num">' + m.oddAway + '</td>' +
+        '<td><button class="mini-btn" data-bet-h="' + m.homeId + '" data-bet-a="' + m.awayId + '">押主</button> ' +
+        '<button class="mini-btn" data-bet-a2="' + m.awayId + '" data-bet-h2="' + m.homeId + '">押客</button></td></tr>';
+    });
+    html += '</tbody></table>';
+  }
+  // 已押注列表
+  const bets = G.bets || [];
+  if (bets.length) {
+    html += '<h3 class="sub">我的竞猜（' + bets.filter(function (b) { return !b.resolved; }).length + ' 未结算）</h3>';
+    html += '<table><thead><tr><th>对阵</th><th>押注</th><th>赔率</th><th>状态</th></tr></thead><tbody>';
+    bets.slice().reverse().forEach(function (b) {
+      const ht = teamById(G, b.homeId), at = teamById(G, b.awayId);
+      const pickName = b.pick === b.homeId ? (ht ? ht.name : b.homeId) : (at ? at.name : b.awayId);
+      const st = b.resolved ? (b.won ? '<span class="tag win">命中 +¥' + b.payout + '</span>' : '<span class="tag lose">落空</span>') : '<span class="sub">待结算</span>';
+      html += '<tr><td>' + (ht ? ht.name : b.homeId) + ' vs ' + (at ? at.name : b.awayId) + '</td><td>押 ' + pickName + ' ¥' + b.amount + '</td><td class="num">' + b.odd + '</td><td>' + st + '</td></tr>';
+    });
+    html += '</tbody></table>';
+  }
+  el.innerHTML = html;
+  document.querySelectorAll('[data-bet-h]').forEach(function (b) {
+    b.onclick = function () { doBet(b.dataset.betH, b.dataset.betA, b.dataset.betH); };
+  });
+  document.querySelectorAll('[data-bet-a2]').forEach(function (b) {
+    b.onclick = function () { doBet(b.dataset.betH2, b.dataset.betA2, b.dataset.betA2); };
+  });
+}
+function doBet(homeId, awayId, pick) {
+  const amt = Math.max(1000, Math.round(G.finance.cash * CONFIG.BET.maxStakePct / 2));
+  const res = bet_place(G, homeId, awayId, pick, amt);
+  if (res.ok) { renderAll(); switchView('bet'); }
+  else { alert({ 'min': '至少押 ¥1000', 'over-stake': '超过单注上限', 'no-cash': '资金不足', 'closed': '已停盘', 'dup': '该场已押' }[res.reason] || '不可押注'); }
 }
 
 boot();
