@@ -21,9 +21,15 @@ function engine_newGame(seed, humanTeamId) {
     kingsPts: 0,                 // 王者积分（球星训练 / 胜者为王）
     kings: null,                 // 胜者为王进行中的场次
     cups: null,
+    championship: null,          // 冠军杯赛（联赛前2受邀）
+    prestige: 0,                 // 威望（冠军杯/盟战来源）
+    fans: 1000,                  // 球迷数量（影响球票/广告）
+    transferPool: [],             // 转会市场系统球员池
+    transferBought: 0,
+    seasonStats: {},             // 本赛季球员技术统计 {pid:{pts,reb,ast,stl,blk,gp}}
     trophies: [],                // 荣誉室
     seasonSummary: null,         // 赛季结束摘要（冠军/升降级/排名）
-    lastResults: [], lastResult: null, lastCupResult: null, lastKingsResult: null,
+    lastResults: [], lastResult: null, lastCupResult: null, lastKingsResult: null, lastChampResult: null,
     log: []
   };
   // 联赛划分：前 14 队 → 1级，其后 14 → 2级A，再 14 → 2级B
@@ -37,6 +43,7 @@ function engine_newGame(seed, humanTeamId) {
   });
   state.schedule = buildAllSchedules(state, rng);
   state.cups = buildCupInstances(state);
+  state.transferPool = transfer_genPool(state, rng);
   const caps = teams.map(function (t) { return t.players.reduce(function (s, p) { return s + p.salary; }, 0); });
   state.finance.salaryCap = Math.round(caps.reduce(function (a, b) { return a + b; }, 0) / caps.length);
   const human = teamById(state, state.humanTeamId);
@@ -99,13 +106,23 @@ function engine_advanceRound(state) {
       ht.pf += res.hScore; ht.pa += res.aScore;
       at.pf += res.aScore; at.pa += res.hScore;
       if (isMyLeague) results.push(res);
-      if (g[0] === state.humanTeamId || g[1] === state.humanTeamId) { state.lastLog = res; state.lastResult = res; }
+      if (g[0] === state.humanTeamId || g[1] === state.humanTeamId) {
+        state.lastLog = res; state.lastResult = res;
+        // 累积本队球员赛季技术统计
+        const box = (g[0] === state.humanTeamId) ? res.hBox : res.aBox;
+        Object.keys(box.players).forEach(function (pid) {
+          const s = state.seasonStats[pid] || (state.seasonStats[pid] = { pts: 0, reb: 0, ast: 0, stl: 0, blk: 0, gp: 0 });
+          const row = box.players[pid];
+          s.pts += row.pts; s.reb += row.reb; s.ast += row.ast; s.stl += row.stl; s.blk += row.blk; s.gp++;
+        });
+      }
     });
   });
   state.lastResults = results;
 
-  // 杯赛轮（联赛轮打完后进行）
+  // 杯赛轮 + 冠军杯（联赛轮打完后进行）
   cup_tick(state, state.round + 1);
+  championship_tick(state, state.round + 1);
 
   // 财务：XBA 三大收入 + 工资摊销
   const human = teamById(state, state.humanTeamId);
@@ -120,6 +137,8 @@ function engine_advanceRound(state) {
     return (r.homeId === state.humanTeamId && r.winner === r.homeId) || (r.awayId === state.humanTeamId && r.winner === r.awayId);
   });
   training_tick(state, humanWon);
+  // 球迷随战绩波动（影响球票/广告）
+  state.fans = clamp(state.fans + (humanWon ? 40 : -20), 0, 9999999);
   const salarySum = human.players.reduce(function (s, p) { return s + p.salary; }, 0);
   const amort = Math.round(salarySum / state.totalRounds);
   state.finance.expense += amort;

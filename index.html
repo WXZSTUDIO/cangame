@@ -34,10 +34,19 @@
         <button class="nav-btn" data-view="logs">联赛日志</button>
         <div class="nav-h">杯赛</div>
         <button class="nav-btn" data-view="cups">街球杯赛</button>
+        <button class="nav-btn" data-view="championship">冠军杯赛</button>
         <button class="nav-btn" data-view="kings">胜者为王</button>
+        <div class="nav-h">转会·市场</div>
+        <button class="nav-btn" data-view="transfer">转会市场</button>
         <div class="nav-h">俱乐部</div>
-        <button class="nav-btn" data-view="finance">财务</button>
+        <button class="nav-btn" data-view="finance">财务·经营</button>
         <button class="nav-btn" data-view="honors">荣誉室</button>
+        <button class="nav-btn" data-view="manager">经理名片</button>
+        <button class="nav-btn" data-view="record">我的战绩</button>
+        <button class="nav-btn" data-view="history">历史积分排行</button>
+        <div class="nav-h">联盟</div>
+        <button class="nav-btn" data-view="alliance">联盟首页</button>
+        <button class="nav-btn" data-view="supreme">至尊杯</button>
         <div class="nav-team" id="nav-team"></div>
       </nav>
 
@@ -95,6 +104,27 @@
         <div id="view-roster" class="view hidden">
           <div class="card"><h2 class="card-h">球队名册</h2><div id="roster"></div></div>
         </div>
+        <div id="view-championship" class="view hidden">
+          <div class="card"><h2 class="card-h">冠军杯赛</h2><div id="championship"></div></div>
+        </div>
+        <div id="view-transfer" class="view hidden">
+          <div class="card"><h2 class="card-h">转会市场</h2><div id="train-info-tf" class="sub"></div><div id="transfer"></div></div>
+        </div>
+        <div id="view-manager" class="view hidden">
+          <div class="card"><h2 class="card-h">经理名片</h2><div id="manager"></div></div>
+        </div>
+        <div id="view-record" class="view hidden">
+          <div class="card"><h2 class="card-h">我的战绩</h2><div id="record"></div></div>
+        </div>
+        <div id="view-history" class="view hidden">
+          <div class="card"><h2 class="card-h">历史积分排行</h2><div id="history"></div></div>
+        </div>
+        <div id="view-alliance" class="view hidden">
+          <div class="card"><h2 class="card-h">联盟首页</h2><div id="alliance"></div></div>
+        </div>
+        <div id="view-supreme" class="view hidden">
+          <div class="card"><h2 class="card-h">至尊杯</h2><div id="supreme"></div></div>
+        </div>
         <div id="season-end" class="champion hidden"></div>
       </main>
 
@@ -116,12 +146,14 @@
 <script defer src="assets/config.js"></script>
 <script defer src="assets/rng.js"></script>
 <script defer src="assets/players.js"></script>
+<script defer src="assets/transfer.js"></script>
 <script defer src="assets/league.js"></script>
 <script defer src="assets/tactics.js"></script>
 <script defer src="assets/match.js"></script>
 <script defer src="assets/season.js"></script>
 <script defer src="assets/training.js"></script>
 <script defer src="assets/cup.js"></script>
+<script defer src="assets/championship.js"></script>
 <script defer src="assets/engine.js"></script>
 <script defer src="assets/ui.js"></script>
 </body>

@@ -1,7 +1,7 @@
 // cangame v3.2 · 配置（唯一可调数值源）
 // XBA 逆向：14 队金字塔联赛 / 杯赛 / 胜者为王 / 球星系统 / 6v6 战术相克
 var CONFIG = {
-  VERSION: '3.2.0',
+  VERSION: '3.3.0',
   SEED_DEFAULT: 20261014,
 
   // —— 职业联赛（XBA 金字塔）：1级联赛×1 + 2级联赛×2，每个联赛 14 队 ——
@@ -106,18 +106,38 @@ var CONFIG = {
     EXIT_KEEP_PCT: 0.6           // 非里程碑退出只得 60% 积分
   },
 
-  // —— 街球杯赛（XBA 逆向：新人杯/小杯赛/大杯赛，淘汰赛制）——
+  // —— 街球杯赛（XBA 逆向：新人杯/小杯赛/大杯赛/大师杯，淘汰赛制）——
   CUP: {
     // 每个杯赛：开赛轮 = rounds 数组（依次 1/16→1/8→1/4→1/2→决赛 视 size 而定）
     TYPES: [
       { id: 'rookie', name: '新人杯', size: 16, startRound: 4, gap: 2, only: 'first-season',
-        prize: [50000, 20000, 10000, 5000], kings: 6, desc: '新赛季首次参赛保护杯（16 队淘汰赛）' },
-      { id: 'major', name: '大杯赛', size: 16, startRound: 14, gap: 2, only: 'all',
+        prize: [50000, 20000, 10000, 5000], kings: 6, desc: '新赛季首次参赛保护杯（仅第一赛季，16 队淘汰赛）' },
+      { id: 'small', name: '小杯赛', size: 8, startRound: 10, gap: 3, only: 'all',
+        prize: [30000, 12000, 6000, 3000], kings: 4, desc: '赛季中热身（8 队淘汰赛，全等级可报）' },
+      { id: 'big', name: '大杯赛', size: 16, startRound: 16, gap: 3, only: 'all',
         prize: [80000, 30000, 15000, 8000], kings: 8, desc: '全等级开放 · 每赛季一次（16 队淘汰赛）' },
-      { id: 'minor', name: '小杯赛', size: 8, startRound: 22, gap: 2, only: 'all',
-        prize: [30000, 12000, 6000, 3000], kings: 4, desc: '赛季末热身（8 队淘汰赛）' }
+      { id: 'master', name: '大师杯', size: 16, startRound: 22, gap: 3, only: 'all', reqCupWin: true,
+        prize: [150000, 60000, 30000, 12000], kings: 12, desc: '最高等级街球杯（需先夺得任意杯赛冠军方可报名）' }
     ],
     MIN_ENTRY: 0.5   // 报名人数≥上限 50% 才发全额奖金（XBA 规则，展示用）
+  },
+
+  // —— 冠军杯赛（XBA 逆向：联赛前 2 名受邀 → 小组单循环 → 决赛淘汰）——
+  CHAMPIONSHIP: {
+    openRound: 3,        // 第 3 轮开放报名/抽签
+    groupRounds: 5,      // 6 队单循环 5 轮
+    finalRound: 8,       // 第 8 轮打决赛
+    groupPrize: [20000, 10000],     // 小组第1/第2 名资金
+    groupPrestige: [2, 1],          // 小组第1/第2 名威望
+    championPrize: { cash: 1000000, prestige: 500 } // 总冠军（已按本游戏经济缩放）
+  },
+
+  // —— 转会市场（XBA 逆向：系统球员池，按综合定价买卖）——
+  TRANSFER: {
+    poolSize: 14,
+    priceK: 2.2,        // 身价 ≈ overall² × priceK
+    extremeRate: 0.2,   // 极限球员占比
+    resellRate: 0.5     // 转出回收比例
   },
 
   // 心情：影响比赛命中，每轮向基线回归

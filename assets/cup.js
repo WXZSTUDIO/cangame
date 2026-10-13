@@ -10,7 +10,7 @@ function buildCupInstances(state) {
     for (let i = 0; i < nRounds; i++) rounds.push(def.startRound + i * def.gap);
     list[def.id] = {
       id: def.id, name: def.name, size: def.size, only: def.only,
-      desc: def.desc, prize: def.prize, kings: def.kings,
+      desc: def.desc, prize: def.prize, kings: def.kings, reqCupWin: def.reqCupWin,
       rounds: rounds,          // 各轮次对应的联赛轮（1-based）
       registered: false,
       bracket: null,           // [[aId,bId,...], ...] 每轮对阵
@@ -21,13 +21,15 @@ function buildCupInstances(state) {
   return list;
 }
 
-// 报名（新人杯仅第一赛季可报）
+// 报名（新人杯仅第一赛季可报；大师杯需先夺过任意杯赛冠军）
 function cup_register(state, cupId) {
   const cup = state.cups[cupId];
   if (!cup) return { ok: false, reason: 'no-cup' };
   if (cup.registered) return { ok: false, reason: 'already' };
   if (cup.done || cup.roundIdx > 0) return { ok: false, reason: 'closed' };
   if (cup.only === 'first-season' && state.season > 1) return { ok: false, reason: 'not-rookie' };
+  if (cup.reqCupWin && !(state.trophies || []).some(function (t) { return t.kind === 'cup'; }))
+    return { ok: false, reason: 'need-cup-win' };
   cup.registered = true;
   state.log.push('📋 已报名「' + cup.name + '」（' + cup.size + ' 队淘汰赛，第 ' + cup.rounds[0] + ' 轮开打）');
   return { ok: true };

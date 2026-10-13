@@ -52,8 +52,8 @@ function ppClock(i, total) {
 
 function initBox(team) {
   const players = {};
-  team.players.forEach(function (p) { players[p.id] = { id: p.id, name: p.name, pos: p.pos, pts: 0, reb: 0, ast: 0, stl: 0, to: 0, fgm: 0, fga: 0 }; });
-  return { teamId: team.id, teamName: team.name, players: players, teamReb: 0, teamTo: 0, teamStl: 0 };
+  team.players.forEach(function (p) { players[p.id] = { id: p.id, name: p.name, pos: p.pos, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0, to: 0, fgm: 0, fga: 0 }; });
+  return { teamId: team.id, teamName: team.name, players: players, teamReb: 0, teamTo: 0, teamStl: 0, teamBlk: 0 };
 }
 
 function simulateGame(state, homeId, awayId, seed) {
@@ -134,6 +134,7 @@ function simulateGame(state, homeId, awayId, seed) {
       } else {
         const rp = bestBy(defLine, 'REB').player;
         defBox.teamReb++; defBox.players[rp.id].reb++;
+        if (rng() < 0.25) { defBox.teamBlk++; defBox.players[rp.id].blk++; }
         if (!state.simQuiet) log.push(clk + ' ' + defTeam.name + ' ' + rp.name + ' ' + PP_ACTION.DREB);
         ball = ball === 'home' ? 'away' : 'home';
       }

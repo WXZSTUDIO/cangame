@@ -1,25 +1,23 @@
 {
-  "N": 60,
+  "N": 40,
   "seedBase": 1,
-  "distinct": 13,
-  "maxRate": "13.3",
+  "distinct": 11,
+  "maxRate": "15.0",
   "avgScore": "-",
   "guardMax": 26,
   "detOk": true,
   "balanced": true,
   "champCount": {
     "t13": 5,
-    "t7": 7,
-    "t11": 8,
-    "t1": 4,
-    "t6": 6,
+    "t1": 5,
+    "t3": 1,
+    "t6": 4,
     "t2": 6,
+    "t12": 1,
     "t10": 5,
-    "t12": 4,
-    "t5": 5,
-    "t4": 4,
-    "t9": 2,
-    "t8": 3,
-    "t3": 1
+    "t11": 3,
+    "t4": 5,
+    "t7": 4,
+    "t5": 1
   }
 }

@@ -53,8 +53,9 @@ function startGame(teamId) {
 function renderAll() {
   renderTopbar(); renderNavTeam(); renderBoard(); renderReport();
   renderRounds(); renderStandings(); renderStats(); renderLogs();
-  renderCups(); renderKings(); renderTraining();
+  renderCups(); renderChampionship(); renderKings(); renderTraining();
   renderFinance(); renderHonors(); renderRoster(); renderSideRoster(); renderSeasonEnd();
+  renderTransfer(); renderManager(); renderRecord(); renderHistory(); renderAlliance(); renderSupreme();
   switchView(curView);
 }
 
@@ -76,6 +77,8 @@ function renderTopbar() {
     '<div class="tb-item"><small>联赛排名</small><b>' + (myRank > 0 ? myRank + '/14' : '-') + '</b></div>' +
     '<div class="tb-item"><small>训练点</small><b class="accent">' + G.trainPts + '</b></div>' +
     '<div class="tb-item"><small>王者积分</small><b class="star">' + G.kingsPts + '</b></div>' +
+    '<div class="tb-item"><small>威望</small><b class="star">' + (G.prestige || 0) + '</b></div>' +
+    '<div class="tb-item"><small>球迷</small><b>' + (G.fans || 0).toLocaleString() + '</b></div>' +
     '<button class="btn btn-primary" id="btn-advance">' + btnLabel + '</button>' +
     '<div class="broadcast">📣 ' + broadcast + '</div>';
   document.getElementById('btn-advance').onclick = onAdvance;
@@ -283,21 +286,26 @@ function renderStandings() {
   document.getElementById('standings').innerHTML = html;
 }
 
-/* ---------- 技术统计 ---------- */
+/* ---------- 技术统计（本赛季累积：MVP综合/得分/篮板/助攻/抢断/封盖）---------- */
 function renderStats() {
   const el = document.getElementById('stats');
-  const r = G.lastResult;
-  if (!r) { el.innerHTML = '<p class="sub">打完第一场后展示。</p>'; return; }
-  const humanIsHome = r.homeId === G.humanTeamId;
-  const box = humanIsHome ? r.hBox : r.aBox;
-  const opp = humanIsHome ? r.aBox : r.hBox;
-  const rows = Object.values(box.players).sort(function (a, b) { return b.pts - a.pts; });
-  let html = '<table><thead><tr><th>球员</th><th>位</th><th>得分</th><th>篮板</th><th>助攻</th><th>抢断</th><th>失误</th><th>投篮</th></tr></thead><tbody>';
-  rows.forEach(function (p) {
-    html += '<tr><td>' + p.name + '</td><td>' + p.pos + '</td><td class="num">' + p.pts + '</td><td class="num">' + p.reb + '</td><td class="num">' + p.ast + '</td><td class="num">' + p.stl + '</td><td class="num">' + p.to + '</td><td class="num">' + p.fgm + '/' + p.fga + '</td></tr>';
+  const t = teamById(G, G.humanTeamId);
+  const keys = Object.keys(G.seasonStats || {});
+  if (!keys.length) { el.innerHTML = '<p class="sub">打完首轮后展示本赛季累积技术统计。</p>'; return; }
+  const rows = keys.map(function (pid) {
+    const p = t.players.find(function (x) { return x.id === pid; });
+    const s = G.seasonStats[pid];
+    const g = Math.max(1, s.gp);
+    const mvp = Math.round((s.pts + s.reb * 1.2 + s.ast * 1.5 + s.stl * 2 + s.blk * 2) / g * 10) / 10;
+    return { name: p ? p.name : pid, pos: p ? p.pos : '-', overall: p ? p.overall : 0, mvp: mvp, pts: s.pts, reb: s.reb, ast: s.ast, stl: s.stl, blk: s.blk, gp: s.gp };
+  }).sort(function (a, b) { return b.mvp - a.mvp; });
+  let html = '<p class="sub">本赛季我队球员累积技术统计（按 MVP 综合排序）</p>';
+  html += '<table><thead><tr><th>MVP</th><th>球员</th><th>位</th><th>综合</th><th>得分</th><th>篮板</th><th>助攻</th><th>抢断</th><th>封盖</th><th>场</th></tr></thead><tbody>';
+  rows.forEach(function (r) {
+    html += '<tr><td class="num">' + r.mvp + '</td><td>' + r.name + '</td><td>' + r.pos + '</td><td class="num">' + r.overall + '</td>' +
+      '<td class="num">' + r.pts + '</td><td class="num">' + r.reb + '</td><td class="num">' + r.ast + '</td><td class="num">' + r.stl + '</td><td class="num">' + r.blk + '</td><td class="num">' + r.gp + '</td></tr>';
   });
   html += '</tbody></table>';
-  html += '<p class="stat-note">对手合计 ' + Object.values(opp.players).reduce(function (s, p) { return s + p.pts; }, 0) + ' 分 · 球队篮板 ' + box.teamReb + ' · 抢断 ' + box.teamStl + '</p>';
   el.innerHTML = html;
 }
 
@@ -437,25 +445,29 @@ function renderTraining() {
   });
 }
 
-/* ---------- 财务 ---------- */
+/* ---------- 财务 · 经营 ---------- */
 function renderFinance() {
   const t = teamById(G, G.humanTeamId);
   const sal = t.players.reduce(function (s, p) { return s + p.salary; }, 0);
   const over = sal > G.finance.salaryCap;
   const rev = G.finance.revenue || { ad: 0, gate: 0, jersey: 0 };
+  const adSlots = Math.floor((G.fans || 0) / 4000) + 1;
   const rows = [
     ['球队资金', '¥' + G.finance.cash.toLocaleString(), G.finance.cash < CONFIG.FINANCE.BANKRUPT ? 'warn' : ''],
-    ['— 广告收入', '+' + rev.ad + ' 万', ''],
-    ['— 主场门票', '+' + rev.gate + ' 万', ''],
-    ['— 球衣销售', '+' + rev.jersey + ' 万', ''],
-    ['累计支出', '-' + G.finance.expense + ' 万', ''],
-    ['工资总额', sal + ' 万', over ? 'warn' : ''],
-    ['工资帽', G.finance.salaryCap + ' 万', ''],
-    ['球队等级', teamLevel(G.finance.cash), '']
+    ['— 广告收入', '+' + rev.ad, ''],
+    ['— 主场门票', '+' + rev.gate, ''],
+    ['— 球衣销售', '+' + rev.jersey, ''],
+    ['累计支出', '-' + G.finance.expense, ''],
+    ['工资总额', '' + sal, over ? 'warn' : ''],
+    ['工资帽', '' + G.finance.salaryCap, ''],
+    ['球队等级', teamLevel(G.finance.cash), ''],
+    ['球迷数量', (G.fans || 0).toLocaleString() + '（广告位 ' + adSlots + '）', ''],
+    ['威望', '' + (G.prestige || 0), '']
   ];
   let html = rows.map(function (r) {
     return '<div class="fin-row"><span>' + r[0] + '</span><span class="num ' + r[2] + '">' + r[1] + '</span></div>';
   }).join('');
+  html += '<p class="sub" style="margin-top:10px">经营提示：净胜分越高票房越好；上座率 80%–90% 净收入最高；可悬挂广告位 = 球迷数/4000 + 1。</p>';
   if (over) html += '<p class="warn" style="font-size:var(--fs-xs);margin:8px 0 0">⚠ 工资超帽，注意财务健康。</p>';
   document.getElementById('finance').innerHTML = html;
 }
@@ -518,6 +530,127 @@ function renderSeasonEnd() {
     '<p class="sub">⬆ 升入 1级：' + (s.promoted.join('、') || '—') + '</p>' +
     '<p class="sub">⬇ 降至 2级：' + (s.relegated.join('、') || '—') + '</p>' +
     '<p class="sub">赛程与杯赛已重置，点击顶部「开始新赛季」继续。</p>';
+}
+
+/* ---------- 冠军杯赛（联赛前2受邀 → 小组循环 → 决赛淘汰）---------- */
+function renderChampionship() {
+  const el = document.getElementById('championship');
+  const C = CONFIG.CHAMPIONSHIP;
+  const c = G.championship;
+  if (!c || !c.opened) {
+    el.innerHTML = '<p class="sub">冠军杯为职业队顶级杯赛：每赛季第 ' + C.openRound + ' 轮开放，由 <b>各级联赛前 2 名</b>获得邀请函参赛。' +
+      '小组单循环后前 2 名进决赛。当前尚未开放报名。</p>';
+    return;
+  }
+  const invited = c.invited.map(function (id) { const t = teamById(G, id); return t ? t.name : id; });
+  const invitedMe = c.invited.indexOf(G.humanTeamId) >= 0;
+  let html = '<p class="sub">' + (invitedMe ? '🎫 你凭借联赛排名获得冠军杯邀请函！' : '你未进入本赛季联赛前 2，未能获得冠军杯邀请函（可下赛季再战）。') + '</p>';
+  html += '<div class="sub">受邀 ' + c.invited.length + ' 队：' + invited.join('、') + '</div>';
+
+  // 小组积分榜
+  const ranked = c.invited.slice().sort(function (a, b) {
+    if (c.rec[b].w !== c.rec[a].w) return c.rec[b].w - c.rec[a].w;
+    return (c.rec[b].pf - c.rec[b].pa) - (c.rec[a].pf - c.rec[a].pa);
+  });
+  html += '<h3 class="sub">小组赛积分榜（已打 ' + c.groupIdx + '/' + c.schedule.length + ' 轮）</h3>';
+  html += '<table><thead><tr><th>球队</th><th>胜</th><th>负</th><th>净胜分</th></tr></thead><tbody>';
+  ranked.forEach(function (id) {
+    const t = teamById(G, id), r = c.rec[id];
+    const you = id === G.humanTeamId ? ' class="you"' : '';
+    html += '<tr' + you + '><td>' + (t ? t.name : id) + '</td><td class="num">' + r.w + '</td><td class="num">' + r.l + '</td><td class="num">' + (r.pf - r.pa > 0 ? '+' : '') + (r.pf - r.pa) + '</td></tr>';
+  });
+  html += '</tbody></table>';
+
+  if (c.done && c.final) {
+    const champ = teamById(G, c.champion);
+    html += '<div class="star">🏆 冠军杯总冠军：' + (champ ? champ.name : c.champion) + (c.champion === G.humanTeamId ? '（就是你！+¥' + C.championPrize.cash + ' +' + C.championPrize.prestige + ' 威望）' : '') + '</div>';
+  } else if (c.groupIdx >= c.schedule.length) {
+    html += '<p class="sub">小组赛结束，决赛即将打响……</p>';
+  }
+  if (c.myResult) html += '<p class="stat-note">你最近一场：' + (c.myResult.won ? '✔ 胜' : '✘ 负') + '（第 ' + (c.myResult.round + 1) + ' 轮）</p>';
+  el.innerHTML = html;
+}
+
+/* ---------- 转会市场 ---------- */
+function renderTransfer() {
+  document.getElementById('train-info-tf').innerHTML =
+    '球队资金 <b class="num accent">¥' + G.finance.cash.toLocaleString() + '</b> · 系统球员池（含极限球员，标 ⚡）。买入即入替补，满员则替换综合最低者并回收半价。';
+  const pool = G.transferPool || [];
+  if (!pool.length) { document.getElementById('transfer').innerHTML = '<p class="sub">转会窗口已关闭（球员均已签走）。</p>'; return; }
+  let html = '<table><thead><tr><th>球员</th><th>位</th><th>综合</th><th>身价</th><th>购入</th></tr></thead><tbody>';
+  pool.slice().sort(function (a, b) { return b.overall - a.overall; }).forEach(function (p) {
+    const can = G.finance.cash >= p.marketPrice;
+    const ext = p.isExtreme ? ' <span class="star">⚡极限</span>' : '';
+    html += '<tr><td>' + p.name + ext + ' <small class="sub">' + p.trait + '</small></td><td>' + p.pos + '</td><td class="num">' + p.overall +
+      '<div class="bar"><i style="width:' + p.overall + '%"></i></div></td>' +
+      '<td class="num">¥' + p.marketPrice.toLocaleString() + '</td>' +
+      '<td><button class="mini-btn" data-buy="' + p.id + '"' + (can ? '' : ' disabled') + '>买入</button></td></tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('transfer').innerHTML = html;
+  document.querySelectorAll('[data-buy]').forEach(function (b) {
+    b.onclick = function () {
+      const res = transfer_buy(G, b.dataset.buy);
+      if (res.ok) { renderAll(); switchView('transfer'); }
+      else b.textContent = { 'no-cash': '资金不足', 'no-player': '已下架' }[res.reason] || '失败';
+    };
+  });
+}
+
+/* ---------- 经理名片 ---------- */
+function renderManager() {
+  const t = teamById(G, G.humanTeamId);
+  const el = document.getElementById('manager');
+  let html = '<div class="fin-row"><span>执教球队</span><span class="num">' + t.name + '</span></div>';
+  html += '<div class="fin-row"><span>所属联赛</span><span class="num">' + ui_leagueName(t) + '</span></div>';
+  html += '<div class="fin-row"><span>王者积分</span><span class="num star">' + G.kingsPts + '</span></div>';
+  html += '<div class="fin-row"><span>威望</span><span class="num star">' + (G.prestige || 0) + '</span></div>';
+  html += '<div class="fin-row"><span>球迷</span><span class="num">' + (G.fans || 0).toLocaleString() + '</span></div>';
+  html += '<div class="fin-row"><span>奖杯总数</span><span class="num">' + G.trophies.length + '</span></div>';
+  html += '<div class="fin-row"><span>当前战绩</span><span class="num">' + t.wins + ' 胜 ' + t.losses + ' 负</span></div>';
+  el.innerHTML = html;
+}
+
+/* ---------- 我的战绩 ---------- */
+function renderRecord() {
+  const el = document.getElementById('record');
+  const t = teamById(G, G.humanTeamId);
+  let html = '<p class="sub">第 ' + G.season + ' 赛季 · ' + ui_leagueName(t) + ' · 第 ' + (G.phase === 'REGULAR' ? (G.round + 1) : '—') + ' 轮</p>';
+  html += '<div class="fin-row"><span>本赛季战绩</span><span class="num">' + t.wins + ' 胜 ' + t.losses + ' 负</span></div>';
+  html += '<div class="fin-row"><span>净胜分</span><span class="num">' + (t.pf - t.pa > 0 ? '+' : '') + (t.pf - t.pa) + '</span></div>';
+  html += '<div class="fin-row"><span>历史夺冠</span><span class="num">' + t.titles + ' 次</span></div>';
+  if (G.seasonSummary) {
+    html += '<div class="fin-row"><span>上季排名</span><span class="num">' + (G.seasonSummary.humanRank || '-') + ' 位</span></div>';
+    html += '<div class="fin-row"><span>上季冠军</span><span class="num">' + (teamById(G, G.seasonSummary.champion) || {}).name + '</span></div>';
+  }
+  const cups = (G.trophies || []).filter(function (x) { return x.kind === 'cup' || x.kind === 'championship'; });
+  html += '<h3 class="sub">已夺杯赛</h3>';
+  html += cups.length ? '<ul class="trophy-list">' + cups.slice().reverse().map(function (tr) { return '<li>🏆 第' + tr.season + '赛季 · ' + tr.name + '</li>'; }).join('') + '</ul>'
+    : '<p class="sub">暂无杯赛奖杯，去杯赛页面争冠吧。</p>';
+  el.innerHTML = html;
+}
+
+/* ---------- 历史积分排行 ---------- */
+function renderHistory() {
+  const el = document.getElementById('history');
+  let html = '<p class="sub">胜者为王「历史积分排行」为跨服榜单（需联网对战）。本端为单机模拟，展示你当前的王者积分战绩：</p>';
+  html += '<table><thead><tr><th>名次</th><th>经理</th><th>王者积分</th><th>威望</th></tr></thead><tbody>';
+  html += '<tr class="you"><td>1</td><td>你（' + teamById(G, G.humanTeamId).name + '）</td><td class="num star">' + G.kingsPts + '</td><td class="num">' + (G.prestige || 0) + '</td></tr>';
+  html += '</tbody></table>';
+  html += '<p class="sub">提示：王者积分为你所有（道具/盟战/历史）积分总和；使用历史积分会影响本榜排名。</p>';
+  el.innerHTML = html;
+}
+
+/* ---------- 联盟 / 至尊杯（敬请期待）---------- */
+function renderAlliance() {
+  document.getElementById('alliance').innerHTML =
+    '<p class="sub">联盟是玩家的工会组织。联盟参与 <b>联盟至尊杯</b>、<b>盟战</b>，并为成员争取冠军杯邀请函（盟）。</p>' +
+    '<p class="warn">⚙ 联盟系统将在后续版本开放（联盟首页 / 盟战 / 联盟威望 / 联盟杯赛 / 至尊杯邀请函）。当前为单机模拟版本。</p>';
+}
+function renderSupreme() {
+  document.getElementById('supreme').innerHTML =
+    '<p class="sub">至尊杯为联盟荣誉之战：每赛季联盟杯赛前 6 名获得 <b>至尊杯邀请函</b>，代表联盟出战淘汰赛。</p>' +
+    '<p class="warn">⚙ 联盟至尊杯将在联盟系统开放后上线。</p>';
 }
 
 boot();

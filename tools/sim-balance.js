@@ -1,7 +1,7 @@
 // cangame v3.2 · 平衡脚本（批量赛季：冠军分布 / 升降级流通 / 确定性）
 const fs = require('fs'), vm = require('vm'), path = require('path');
 const ROOT = process.cwd();
-const FILES = ['config', 'rng', 'players', 'league', 'tactics', 'match', 'season', 'training', 'cup', 'engine']
+const FILES = ['config', 'rng', 'players', 'transfer', 'league', 'tactics', 'match', 'season', 'training', 'cup', 'championship', 'engine']
   .map(n => 'assets/' + n + '.js');
 const ctx = { console, Math, JSON, Date, isNaN, parseInt, parseFloat, Number, String, Array, Object, Boolean };
 vm.createContext(ctx);
@@ -43,7 +43,7 @@ const maxTeam = Object.keys(champCount).sort((x, y) => champCount[y] - champCoun
 const maxRate = maxTeam ? (champCount[maxTeam] / N * 100).toFixed(1) : '0';
 const avgScore = gamesSum ? (scoreSum / gamesSum).toFixed(1) : '-';
 
-console.log('=== cangame v3.2 平衡报告（金字塔联赛） ===');
+console.log('=== cangame v3.3 平衡报告（金字塔联赛 + 冠军杯 + 转会） ===');
 console.log('赛季数 N =', N, ' 种子基 =', seedBase);
 console.log('不同冠军队伍数 =', distinct, '/ 14（1级联赛规模）');
 console.log('最热队夺冠占比 =', maxRate + '%');

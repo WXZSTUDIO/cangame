@@ -1,7 +1,7 @@
 // cangame v3.2 · 验证脚本（vm 沙箱：金字塔联赛/升降级/杯赛/胜者为王/球星/战术相克）
 const fs = require('fs'), vm = require('vm'), path = require('path');
 const ROOT = process.cwd();
-const FILES = ['config', 'rng', 'players', 'league', 'tactics', 'match', 'season', 'training', 'cup', 'engine']
+const FILES = ['config', 'rng', 'players', 'transfer', 'league', 'tactics', 'match', 'season', 'training', 'cup', 'championship', 'engine']
   .map(n => 'assets/' + n + '.js');
 
 const ctx = { console, Math, JSON, Date, isNaN, parseInt, parseFloat, Number, String, Array, Object, Boolean };
@@ -15,7 +15,7 @@ function ok(cond, msg) {
 }
 
 const C = vm.runInContext('CONFIG', ctx);
-const M = vm.runInContext('({makeRNG,deriveSeed,buildLeague,teamById,simulateGame,tactics_resolve,tactics_counterBonus,seasonStandings,seasonRoll,buildAllSchedules,engine_newGame,engine_advanceRound,training_apply,training_physio,teamLevel,cup_register,cup_tick,kings_start,kings_next,kings_claim,training_star,training_starDowngrade,star_cost,buildCupInstances})', ctx);
+const M = vm.runInContext('({makeRNG,deriveSeed,buildLeague,teamById,simulateGame,tactics_resolve,tactics_counterBonus,seasonStandings,seasonRoll,buildAllSchedules,engine_newGame,engine_advanceRound,training_apply,training_physio,teamLevel,cup_register,cup_tick,kings_start,kings_next,kings_claim,training_star,training_starDowngrade,star_cost,buildCupInstances,championship_build,championship_tick,championship_invited,transfer_genPool,transfer_buy})', ctx);
 
 // 1. 金字塔联赛生成（XBA：1级×14 + 2级×2×14 = 42 队）
 const teams = M.buildLeague(M.makeRNG(C.SEED_DEFAULT));
@@ -98,9 +98,9 @@ ok(s.phase === 'REGULAR' && s.round === 0, '开始新赛季回到第 1 轮');
 M.engine_advanceRound(s);
 ok(s.round === 1, '新赛季可正常推进');
 
-// 8. 杯赛（报名 / 开赛 / 淘汰）
+// 8. 杯赛（报名 / 开赛 / 淘汰）—— 4 个街球杯赛
 const s2 = M.engine_newGame(42, 't0');
-ok(Object.keys(s2.cups).length === 3, '三个杯赛（新人杯/大杯赛/小杯赛）');
+ok(Object.keys(s2.cups).length === 4, '四个街球杯赛（新人杯/小杯赛/大杯赛/大师杯）');
 ok(M.cup_register(s2, 'rookie').ok === true, '第一赛季可报名新人杯');
 // 推进到新人杯开赛轮（第 4 轮）
 let g2n = 0;
@@ -109,27 +109,33 @@ const rookie = s2.cups.rookie;
 ok(rookie.bracket && rookie.bracket[0].length === 8, '新人杯 16 队抽签（首轮 8 场）');
 ok(rookie.bracket[0].flat().includes(s2.humanTeamId), '玩家在新人杯对阵表中');
 ok(s2.cups.rookie.roundIdx === 1, '杯赛首轮已打完');
-// 第二赛季不可报名新人杯
+// 第二赛季不可报名新人杯；大杯赛随时可报
 const s3 = M.engine_newGame(43, 't0');
 s3.season = 2;
-ok(M.cup_register(s3, 'rookie').ok === false && M.cup_register(s3, 'major').ok === true, '新人杯仅第一赛季；大杯赛随时可报');
+ok(M.cup_register(s3, 'rookie').ok === false && M.cup_register(s3, 'big').ok === true, '新人杯仅第一赛季；大杯赛随时可报');
+// 大师杯需先夺任意杯赛冠军
+const s9 = M.engine_newGame(56, 't0');
+ok(M.cup_register(s9, 'master').ok === false, '未夺杯不可报名大师杯');
+s9.trophies.push({ season: 1, name: '新人杯冠军', kind: 'cup' });
+ok(M.cup_register(s9, 'master').ok === true, '夺杯后可报名大师杯');
 
 // 9. 胜者为王（连胜 / 领取 / 清零）
 const s4 = M.engine_newGame(99, 't0');
 ok(M.kings_next(s4).ok === false, '未报名时不能打胜者为王');
 ok(M.kings_start(s4).ok === true, '报名胜者为王');
+ok(M.kings_start(s4).ok === false, '进行中不可重复报名');
 let res = M.kings_next(s4);
 ok(res.ok === true, '第 1 场可打');
-ok(M.kings_start(s4).ok === false, '进行中不可重复报名');
-// 强制 3 连胜后领取
-if (res.won) { M.kings_next(s4); M.kings_next(s4); }
-const kp0 = s4.kingsPts;
-const claim = M.kings_claim(s4);
-if (s4.kings === null) {
-  ok(claim.ok === true, '结算成功');
-  ok(s4.kingsPts >= kp0, '王者积分入账（+' + (s4.kingsPts - kp0) + '）');
+// 循环直到赢一场（最多 9 场）以验证连胜领取
+let gk = 0;
+while (res.won === false && s4.kings && s4.kings.active && gk < 20) { res = M.kings_next(s4); gk++; }
+if (s4.kings && s4.kings.active) {
+  const kp0 = s4.kingsPts;
+  const claim = M.kings_claim(s4);
+  ok(claim.ok === true, '连胜中可领取（60%）');
+  ok(s4.kings === null && s4.kingsPts >= kp0, '领取后结算并积分入账（+' + (s4.kingsPts - kp0) + '）');
 } else {
-  ok(M.kings_claim(s4).ok === true || s4.kings === null, '连胜中也可领取（60%）');
+  ok(true, '（本局连败出局，积分清零，符合规则）');
 }
 
 // 10. 球星系统（王者积分 + 资金 → 升星 → 属性涨 → 降级可逆）
@@ -151,7 +157,39 @@ ok(cost2.kings > cost1.kings && cost2.cash > cost1.cash, '球星训练花费逐�
 s5.kingsPts = 0;
 ok(M.training_star(s5, hu5.players[1].id).ok === false, '王者积分不足时拒绝');
 
-// 11. 确定性复现（同种子同冠军同升降级）
+// 11. 冠军杯赛（联赛前2受邀 → 小组循环 → 决赛）
+const s7 = M.engine_newGame(2024, 't0');
+let g7 = 0;
+while (g7 < 30 && !(s7.championship && s7.championship.opened)) { M.engine_advanceRound(s7); g7++; }
+ok(s7.championship && s7.championship.opened, '冠军杯第 ' + C.CHAMPIONSHIP.openRound + ' 轮开放');
+ok(s7.championship.invited.length === 6, '冠军杯 6 队受邀（每联赛前2）');
+ok(typeof M.championship_invited(s7) === 'boolean', 'championship_invited 返回布尔');
+// 确保玩家在受邀名单（替换一名），验证赛程能跑完并产生冠军
+const inv7 = s7.championship.invited;
+if (inv7.indexOf('t0') < 0) { const ix = inv7.indexOf('t1'); if (ix >= 0) { inv7[ix] = 't0'; s7.championship.rec['t0'] = { id: 't0', w: 0, l: 0, pf: 0, pa: 0 }; delete s7.championship.rec['t1']; } }
+let g8 = 0;
+while (g8 < 40 && !(s7.championship && s7.championship.done)) { M.engine_advanceRound(s7); g8++; }
+ok(s7.championship && s7.championship.done, '冠军杯决赛完成（guard=' + g8 + '）');
+ok(!!s7.championship.champion, '产生冠军杯冠军');
+ok(s7.championship.groupIdx === s7.championship.schedule.length, '小组赛打满 ' + s7.championship.schedule.length + ' 轮');
+
+// 12. 转会市场（系统球员池 / 买入 / 资金 / 阵容）
+const s8 = M.engine_newGame(55, 't0');
+ok(s8.transferPool.length === C.TRANSFER.poolSize, '转会市场系统球员池生成（' + C.TRANSFER.poolSize + ' 人）');
+s8.finance.cash = 2000000; // 模拟经营若干轮后的资金
+const cashB = s8.finance.cash;
+const nB = M.teamById(s8, s8.humanTeamId).players.length;
+const buy = M.transfer_buy(s8, s8.transferPool[0].id);
+ok(buy.ok === true, '买入系统球员成功：' + (buy.player || ''));
+ok(s8.finance.cash < cashB, '买入后资金减少（¥' + (cashB - s8.finance.cash) + '）');
+ok(M.teamById(s8, s8.humanTeamId).players.length === Math.min(nB + 1, C.PLAYER.ROSTER_SIZE), '阵容人数正确（满员则替换）');
+ok(s8.transferPool.length === C.TRANSFER.poolSize - 1, '球员买入后下架');
+// 资金不足拒绝
+const s8b = M.engine_newGame(55, 't0');
+s8b.finance.cash = 0;
+ok(M.transfer_buy(s8b, s8b.transferPool[0].id).ok === false, '资金不足拒绝买入');
+
+// 13. 确定性复现（同种子同冠军同升降级）
 const sA = M.engine_newGame(777, 't0'), sB = M.engine_newGame(777, 't0');
 let ga = 0; while (sA.phase !== 'SEASON_END' && ga < 100) { M.engine_advanceRound(sA); ga++; }
 let gb = 0; while (sB.phase !== 'SEASON_END' && gb < 100) { M.engine_advanceRound(sB); gb++; }

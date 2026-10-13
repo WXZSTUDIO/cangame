@@ -12,7 +12,7 @@ const ROOT = process.cwd();
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const dom = new JSDOM(html, { runScripts: 'outside-only', pretendToBeVisual: true });
 const { window } = dom;
-const files = ['config', 'rng', 'players', 'league', 'tactics', 'match', 'season', 'training', 'cup', 'engine', 'ui'];
+const files = ['config', 'rng', 'players', 'transfer', 'league', 'tactics', 'match', 'season', 'training', 'cup', 'championship', 'engine', 'ui'];
 files.forEach(n => { window.eval(fs.readFileSync(path.join(ROOT, 'assets/' + n + '.js'), 'utf8')); });
 // jsdom 构造时 readyState=loading，DOMContentLoaded 已错过：显式派发以触发 boot()
 window.document.dispatchEvent(new window.Event('DOMContentLoaded'));
@@ -61,7 +61,7 @@ ok(doc.querySelectorAll('[data-physio]').length === 12, '每行有理疗按钮')
 ok(doc.querySelectorAll('[data-star]').length === 12, '每行有球星训练按钮');
 // 杯赛页：3 张杯赛卡 + 报名按钮
 doc.querySelector('.nav-btn[data-view="cups"]').click();
-ok(doc.querySelectorAll('.cup-card').length === 3, '杯赛页 3 张卡（新人杯/大杯赛/小杯赛）');
+ok(doc.querySelectorAll('.cup-card').length === 4, '杯赛页 4 张卡（新人杯/小杯赛/大杯赛/大师杯）');
 const regBtn = doc.querySelector('[data-cup-reg]');
 if (regBtn) { regBtn.click(); ok(true, '杯赛报名点击未抛错'); }
 // 胜者为王页
@@ -101,6 +101,16 @@ ok(doc.querySelector('svg.board'), '换首发后战术板仍在');
 // 荣誉室
 doc.querySelector('.nav-btn[data-view="honors"]').click();
 ok(doc.getElementById('honors').textContent.indexOf('联赛冠军') >= 0, '荣誉室渲染');
+
+// v3.3 新视图冒烟（冠军杯 / 转会 / 经理名片 / 战绩 / 历史排行 / 联盟 / 至尊杯）
+['championship', 'transfer', 'manager', 'record', 'history', 'alliance', 'supreme'].forEach(function (v) {
+  const btn = doc.querySelector('.nav-btn[data-view="' + v + '"]');
+  ok(!!btn, '存在导航项：' + v);
+  if (btn) { btn.click(); ok(true, '点击 ' + v + ' 未抛错'); }
+});
+// 顶栏新增威望/球迷
+ok(doc.getElementById('hdr').textContent.indexOf('威望') >= 0, '顶栏含威望');
+ok(doc.getElementById('hdr').textContent.indexOf('球迷') >= 0, '顶栏含球迷');
 
 console.log('\nverify-ui: 通过 ' + pass + ' / ' + (pass + fail) + (fail ? '  ❌' : '  ✅ 全部通过'));
 process.exit(fail ? 1 : 0);

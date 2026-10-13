@@ -115,6 +115,7 @@ function seasonRoll(state, rng) {
   state.phase = 'REGULAR';
   state.schedule = buildAllSchedules(state, rng);
   state.cups = buildCupInstances(state);
+  state.championship = null;   // 新赛季重置冠军杯（第 3 轮重新开放）
   return summary;
 }
 
