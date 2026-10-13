@@ -67,8 +67,30 @@ var CONFIG = {
   },
 
   FINANCE: {
-    HOME_GATE: 1200, SPONSOR_BASE: 800, BANKRUPT: -50000, SAL_K: 1.6, CLUTCH_SAL_BONUS: 30
-  }
+    HOME_GATE: 1200, SPONSOR_BASE: 800, BANKRUPT: -50000, SAL_K: 1.6, CLUTCH_SAL_BONUS: 30,
+    AD_BASE: 300,        // 广告收入：每轮固定（XBA 三大收入之一）
+    JERSEY_BASE: 150     // 球衣销售：每轮固定
+  },
+
+  // —— XBA 逆向 · 训练系统（xinren4 教程：训练点/体力/心情/次日生效）——
+  TRAINING: {
+    POINTS_PER_WIN: 3, POINTS_PER_LOSS: 1,  // 训练点：打比赛获得
+    START_POINTS: 10,
+    COST_POINTS: 5, COST_STAMINA: 8, COST_MOOD: 4, // 一次训练的代价
+    GAIN_MIN: 1, GAIN_MAX: 3,               // 属性提升区间
+    ATTRS: ['SHO', 'TRE', 'DRV', 'PAS', 'REB', 'DEF', 'SPD', 'STA', 'IQ', 'CLU'],
+    PHYSIO_CASH: 100, PHYSIO_STAMINA: 15, PHYSIO_MOOD: 10  // 理疗中心
+  },
+
+  // 心情：影响比赛命中（低落惩罚 / 高涨加成），每轮向基线回归
+  MOOD: { BASE: 70, LOW: 40, HIGH: 75, LOW_PENALTY: 0.015, HIGH_BONUS: 0.010, RECOVER: 2 },
+
+  // 球队等级（XBA：业余球队 → 职业）
+  TEAM_LEVEL: [
+    { min: 0, name: '业余球队' },
+    { min: 20000, name: '职业球队' },
+    { min: 60000, name: '豪门球队' }
+  ]
 };
 
 if (typeof module !== 'undefined') { module.exports = CONFIG; }

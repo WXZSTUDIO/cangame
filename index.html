@@ -15,41 +15,73 @@
     <div id="team-grid" class="team-grid"></div>
   </section>
 
-  <!-- 主界面 -->
+  <!-- 主界面（XBA 三栏架构）-->
   <section id="screen-game" class="screen hidden">
-    <header id="hdr" class="hdr"></header>
+    <!-- 顶部状态条 -->
+    <header id="hdr" class="topbar"></header>
 
-    <div class="grid2">
-      <div class="col-main">
-        <div class="card" id="card-board">
-          <h2 class="card-h">战术板</h2>
-          <div id="board"></div>
-          <div id="tactic-controls" class="tactic-controls"></div>
-          <div id="lineup-controls" class="lineup-controls"></div>
-        </div>
-        <div class="card" id="card-report">
-          <h2 class="card-h">最新战报</h2>
-          <div id="report"></div>
-        </div>
-      </div>
+    <div class="shell">
+      <!-- 左侧导航 -->
+      <nav id="nav" class="nav">
+        <div class="nav-h">球队办公室</div>
+        <button class="nav-btn" data-view="tactics">战术板</button>
+        <button class="nav-btn" data-view="report">联赛比赛</button>
+        <button class="nav-btn" data-view="rounds">上轮·本轮</button>
+        <button class="nav-btn" data-view="standings">积分榜</button>
+        <button class="nav-btn" data-view="stats">技术统计</button>
+        <button class="nav-btn" data-view="training">球员训练</button>
+        <button class="nav-btn" data-view="finance">财务</button>
+        <div class="nav-h">俱乐部</div>
+        <button class="nav-btn" data-view="roster">名册</button>
+        <div class="nav-team" id="nav-team"></div>
+      </nav>
 
-      <aside class="col-side">
-        <div class="card">
-          <h2 class="card-h">积分榜</h2>
-          <div id="standings"></div>
+      <!-- 主区 -->
+      <main class="main">
+        <div id="view-tactics" class="view hidden">
+          <div class="card">
+            <h2 class="card-h">战术板</h2>
+            <div id="board"></div>
+            <div id="tactic-controls" class="tactic-controls"></div>
+            <div id="lineup-controls" class="lineup-controls"></div>
+          </div>
         </div>
-        <div class="card">
-          <h2 class="card-h">财务</h2>
-          <div id="finance"></div>
+        <div id="view-report" class="view hidden">
+          <div class="card">
+            <h2 class="card-h">最新战报</h2>
+            <div id="report"></div>
+          </div>
         </div>
+        <div id="view-rounds" class="view hidden">
+          <div class="card"><h2 class="card-h">上轮赛果</h2><div id="round-prev"></div></div>
+          <div class="card"><h2 class="card-h">本轮对阵</h2><div id="round-next"></div></div>
+        </div>
+        <div id="view-standings" class="view hidden">
+          <div class="card"><h2 class="card-h">联赛积分榜</h2><div id="standings"></div></div>
+        </div>
+        <div id="view-stats" class="view hidden">
+          <div class="card"><h2 class="card-h">我队技术统计（上一场）</h2><div id="stats"></div></div>
+        </div>
+        <div id="view-training" class="view hidden">
+          <div class="card"><h2 class="card-h">球员训练</h2><div id="train-info" class="sub"></div><div id="training"></div></div>
+        </div>
+        <div id="view-finance" class="view hidden">
+          <div class="card"><h2 class="card-h">财务</h2><div id="finance"></div></div>
+        </div>
+        <div id="view-roster" class="view hidden">
+          <div class="card"><h2 class="card-h">球队名册</h2><div id="roster"></div></div>
+        </div>
+        <div id="champion" class="champion hidden"></div>
+      </main>
+
+      <!-- 右侧球员面板（常驻）-->
+      <aside class="side">
         <div class="card">
-          <h2 class="card-h">阵容</h2>
-          <div id="roster"></div>
+          <h2 class="card-h">球员名单</h2>
+          <div id="side-roster"></div>
         </div>
       </aside>
     </div>
-
-    <div id="champion" class="champion hidden"></div>
   </section>
 </div>
 
@@ -60,6 +92,7 @@
 <script defer src="assets/tactics.js"></script>
 <script defer src="assets/match.js"></script>
 <script defer src="assets/season.js"></script>
+<script defer src="assets/training.js"></script>
 <script defer src="assets/engine.js"></script>
 <script defer src="assets/ui.js"></script>
 </body>

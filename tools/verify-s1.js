@@ -1,7 +1,7 @@
 // cangame v3 · 验证脚本（vm 沙箱，加载顺序同 index.html，不含 ui）
 const fs = require('fs'), vm = require('vm'), path = require('path');
 const ROOT = process.cwd();
-const FILES = ['config', 'rng', 'players', 'league', 'tactics', 'match', 'season', 'engine']
+const FILES = ['config', 'rng', 'players', 'league', 'tactics', 'match', 'season', 'training', 'engine']
   .map(n => 'assets/' + n + '.js');
 
 const ctx = { console, Math, JSON, Date, isNaN, parseInt, parseFloat, Number, String, Array, Object, Boolean };
@@ -15,7 +15,7 @@ function ok(cond, msg) {
 }
 
 const C = vm.runInContext('CONFIG', ctx);
-const M = vm.runInContext('({makeRNG,deriveSeed,buildLeague,teamById,simulateGame,getLineup,tactics_resolve,tactics_counterBonus,seasonStandings,endRegular,engine_newGame,engine_advanceRound})', ctx);
+const M = vm.runInContext('({makeRNG,deriveSeed,buildLeague,teamById,simulateGame,getLineup,tactics_resolve,tactics_counterBonus,seasonStandings,endRegular,engine_newGame,engine_advanceRound,training_apply,training_physio,training_tick,teamLevel})', ctx);
 
 // 1. 联赛生成
 const teams = M.buildLeague(M.makeRNG(C.SEED_DEFAULT));
@@ -61,6 +61,37 @@ ok(champ.wins + champ.losses >= C.LEAGUE.REGULAR_ROUNDS, '冠军打满常规赛'
 // 6. 积分榜有序
 const st = M.seasonStandings(s);
 ok(st[0].team.wins - st[0].team.losses >= st[29].team.wins - st[29].team.losses, '积分榜按胜场差降序');
+
+// 8. XBA 逆向系统：训练点 / 训练 / 理疗 / 心情 / 三大收入 / 球队等级
+const s2 = M.engine_newGame(42, 't0');
+ok(s2.trainPts === C.TRAINING.START_POINTS, '初始训练点 ' + C.TRAINING.START_POINTS, s2.trainPts);
+ok(s2.teams.every(t => t.players.every(p => p.mood === C.MOOD.BASE)), '全员初始心情 ' + C.MOOD.BASE);
+const ptsBefore = s2.trainPts;
+M.engine_advanceRound(s2); // 推进一轮
+ok(s2.trainPts > ptsBefore, '一轮后训练点入账（+' + (s2.trainPts - ptsBefore) + '）');
+ok(s2.finance.revenue && s2.finance.revenue.ad === C.FINANCE.AD_BASE, '广告收入入账 ' + s2.finance.revenue.ad);
+ok(s2.finance.revenue.jersey === C.FINANCE.JERSEY_BASE, '球衣销售入账 ' + s2.finance.revenue.jersey);
+const hu = M.teamById(s2, s2.humanTeamId);
+const huPlayed = s2.lastResults.some(r => r.homeId === s2.humanTeamId || r.awayId === s2.humanTeamId);
+if (huPlayed) ok(s2.finance.revenue.gate > 0 || s2.lastResults.every(r => r.homeId !== s2.humanTeamId), '门票收入按主场计');
+const tp0 = s2.trainPts;
+const target = hu.players.find(p => p.injury === 0 && p.stamina > 30);
+const sho0 = target.a.SHO;
+const r1 = M.training_apply(s2, target.id, 'SHO');
+ok(r1.ok === true, '训练成功：' + target.name + ' SHO +' + (r1.gain || '?'));
+ok(s2.trainPts === tp0 - C.TRAINING.COST_POINTS, '训练扣除训练点 ' + C.TRAINING.COST_POINTS);
+ok(target.a.SHO === Math.min(C.PLAYER.ATTR_MAX, sho0 + r1.gain), '训练后 SHO = 原值+' + r1.gain);
+ok(r1.gain >= C.TRAINING.GAIN_MIN && r1.gain <= C.TRAINING.GAIN_MAX, '训练增益在区间内');
+// 训练点耗尽 → 拒绝
+s2.trainPts = 0;
+ok(M.training_apply(s2, target.id, 'DEF').ok === false, '训练点不足时拒绝训练');
+s2.trainPts = 50;
+const cash0 = s2.finance.cash;
+const st0 = target.stamina;
+ok(M.training_physio(s2, target.id).ok === true, '理疗成功');
+ok(target.stamina > st0 && s2.finance.cash === cash0 - C.TRAINING.PHYSIO_CASH, '理疗恢复体力并扣款');
+ok(M.teamLevel(0) === '业余球队' && M.teamLevel(25000) === '职业球队' && M.teamLevel(99999) === '豪门球队', '球队等级阈值正确');
+ok(hu.players.every(p => p.mood >= 0 && p.mood <= 100), '心情在 0~100 区间（回归后）');
 
 // 7. 确定性复现（同种子同冠军）
 const sA = M.engine_newGame(777, 't0'), sB = M.engine_newGame(777, 't0');

@@ -13,7 +13,11 @@ function engine_newGame(seed, humanTeamId) {
     phase: 'REGULAR',
     schedule: schedule,
     playoff: null,
-    finance: { cash: 0, income: 0, expense: 0, salaryCap: 0 },
+    finance: {
+      cash: 0, income: 0, expense: 0, salaryCap: 0,
+      revenue: { ad: 0, gate: 0, jersey: 0 } // XBA 三大收入拆分
+    },
+    trainPts: CONFIG.TRAINING.START_POINTS,
     lastResults: [], lastLog: null, lastResult: null,
     log: []
   };
@@ -72,11 +76,18 @@ function engine_advanceRound(state) {
       if (g[0] === state.humanTeamId || g[1] === state.humanTeamId) { state.lastLog = res; state.lastResult = res; }
     });
     state.lastResults = results;
-    // 财务：每轮赞助 + 主场比赛门票；工资摊销
+    // 财务：XBA 三大收入（广告 / 主场门票 / 球衣销售）+ 工资摊销
     const human = teamById(state, state.humanTeamId);
-    state.finance.income += CONFIG.FINANCE.SPONSOR_BASE;
+    const rev = state.finance.revenue;
+    rev.ad += CONFIG.FINANCE.AD_BASE;
     const humanHome = games.some(function (g) { return g[0] === state.humanTeamId; });
-    if (humanHome) state.finance.income += CONFIG.FINANCE.HOME_GATE;
+    if (humanHome) rev.gate += CONFIG.FINANCE.HOME_GATE;
+    rev.jersey += CONFIG.FINANCE.JERSEY_BASE;
+    state.finance.income += CONFIG.FINANCE.AD_BASE + CONFIG.FINANCE.JERSEY_BASE + (humanHome ? CONFIG.FINANCE.HOME_GATE : 0);
+    const humanWon = results.some(function (r) {
+      return (r.homeId === state.humanTeamId && r.winner === r.homeId) || (r.awayId === state.humanTeamId && r.winner === r.awayId);
+    });
+    training_tick(state, humanWon);
     const salarySum = human.players.reduce(function (s, p) { return s + p.salary; }, 0);
     const amort = Math.round(salarySum / state.totalRounds);
     state.finance.expense += amort;

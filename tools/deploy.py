@@ -41,6 +41,7 @@ PUBLISH = [
     'assets/tactics.js',
     'assets/match.js',
     'assets/season.js',
+    'assets/training.js',
     'assets/engine.js',
     'assets/ui.js',
 ]

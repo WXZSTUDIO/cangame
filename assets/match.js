@@ -102,6 +102,12 @@ function simulateGame(state, homeId, awayId, seed) {
       + M.IQ_COEF * (sp.a.IQ - dp.a.IQ)
       + tactics_counterBonus(offTac, defTac);
     if (sh.acc > M.FATIGUE_MIN_THRESHOLD) p -= M.FATIGUE_SHOOT_PENALTY * (sh.acc - M.FATIGUE_MIN_THRESHOLD);
+    // 心情修正（XBA 逆向：低落惩罚 / 高涨加成）
+    const mo = CONFIG.MOOD;
+    if (sp.mood != null) {
+      if (sp.mood < mo.LOW) p -= mo.LOW_PENALTY * ((mo.LOW - sp.mood) / mo.LOW);
+      else if (sp.mood > mo.HIGH) p += mo.HIGH_BONUS * ((sp.mood - mo.HIGH) / (100 - mo.HIGH));
+    }
     if (i > total - total / 5 && Math.abs(hScore - aScore) <= M.CLUTCH_DIFF) {
       const trail = ball === 'home' ? hScore < aScore : aScore < hScore;
       if (trail) p += M.CLUTCH_BONUS * (sp.a.CLU - 60) / 40;

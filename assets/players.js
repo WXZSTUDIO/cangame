@@ -28,7 +28,7 @@ function genPlayer(rng, opts) {
     trait: P.TRAITS[Math.floor(rng() * P.TRAITS.length)],
     a: a, overall: 0,
     salary: 0, contractYears: randInt(rng, 1, 4),
-    stamina: 100, injury: 0
+    stamina: 100, injury: 0, mood: CONFIG.MOOD.BASE
   };
   p.overall = players_overall(p);
   p.salary = players_salary(p);

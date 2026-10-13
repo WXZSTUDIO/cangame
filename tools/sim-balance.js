@@ -1,7 +1,7 @@
 // cangame v3 · 平衡脚本（批量对局，统计冠军分布/比分/确定性）
 const fs = require('fs'), vm = require('vm'), path = require('path');
 const ROOT = process.cwd();
-const FILES = ['config', 'rng', 'players', 'league', 'tactics', 'match', 'season', 'engine']
+const FILES = ['config', 'rng', 'players', 'league', 'tactics', 'match', 'season', 'training', 'engine']
   .map(n => 'assets/' + n + '.js');
 const ctx = { console, Math, JSON, Date, isNaN, parseInt, parseFloat, Number, String, Array, Object, Boolean };
 vm.createContext(ctx);
