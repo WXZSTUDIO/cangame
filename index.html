@@ -11,33 +11,45 @@
   <!-- 选队 -->
   <section id="screen-pick" class="screen">
     <h1 class="title">战术板 <span class="accent">·</span> 篮球经理</h1>
-    <p class="sub">选择你要执教的球队，打满一个赛季，拿下总冠军。</p>
+    <p class="sub">42 队金字塔联赛（1级×1 + 2级×2）· 前2升后4降 · 街球杯赛 · 胜者为王。<br>选择你要执教的球队，从 2级杀进 1级，捧起奖杯。</p>
     <div id="team-grid" class="team-grid"></div>
   </section>
 
-  <!-- 主界面（XBA 三栏架构）-->
+  <!-- 主界面（XBA 布局：顶栏 + 左导航 + 主区 Tab + 右侧球员面板）-->
   <section id="screen-game" class="screen hidden">
-    <!-- 顶部状态条 -->
     <header id="hdr" class="topbar"></header>
 
     <div class="shell">
-      <!-- 左侧导航 -->
+      <!-- 左侧导航（XBA 树状分组）-->
       <nav id="nav" class="nav">
-        <div class="nav-h">球队办公室</div>
+        <div class="nav-h">球队管理</div>
         <button class="nav-btn" data-view="tactics">战术板</button>
+        <button class="nav-btn" data-view="training">球员训练</button>
+        <button class="nav-btn" data-view="roster">名册</button>
+        <div class="nav-h">联赛</div>
         <button class="nav-btn" data-view="report">联赛比赛</button>
         <button class="nav-btn" data-view="rounds">上轮·本轮</button>
         <button class="nav-btn" data-view="standings">积分榜</button>
         <button class="nav-btn" data-view="stats">技术统计</button>
-        <button class="nav-btn" data-view="training">球员训练</button>
-        <button class="nav-btn" data-view="finance">财务</button>
+        <button class="nav-btn" data-view="logs">联赛日志</button>
+        <div class="nav-h">杯赛</div>
+        <button class="nav-btn" data-view="cups">街球杯赛</button>
+        <button class="nav-btn" data-view="kings">胜者为王</button>
         <div class="nav-h">俱乐部</div>
-        <button class="nav-btn" data-view="roster">名册</button>
+        <button class="nav-btn" data-view="finance">财务</button>
+        <button class="nav-btn" data-view="honors">荣誉室</button>
         <div class="nav-team" id="nav-team"></div>
       </nav>
 
-      <!-- 主区 -->
+      <!-- 主区：Tab 行（对齐 XBA：联赛排名|上轮·本轮|技术统计|联赛日志）+ 视图 -->
       <main class="main">
+        <div class="tabs" id="tabs">
+          <button class="tab-btn" data-view="standings">联赛排名</button>
+          <button class="tab-btn" data-view="rounds">上轮·本轮</button>
+          <button class="tab-btn" data-view="stats">技术统计</button>
+          <button class="tab-btn" data-view="logs">联赛日志</button>
+        </div>
+
         <div id="view-tactics" class="view hidden">
           <div class="card">
             <h2 class="card-h">战术板</h2>
@@ -57,27 +69,43 @@
           <div class="card"><h2 class="card-h">本轮对阵</h2><div id="round-next"></div></div>
         </div>
         <div id="view-standings" class="view hidden">
-          <div class="card"><h2 class="card-h">联赛积分榜</h2><div id="standings"></div></div>
+          <div class="card"><h2 class="card-h" id="standings-title">联赛积分榜</h2><div id="standings"></div></div>
         </div>
         <div id="view-stats" class="view hidden">
           <div class="card"><h2 class="card-h">我队技术统计（上一场）</h2><div id="stats"></div></div>
         </div>
+        <div id="view-logs" class="view hidden">
+          <div class="card"><h2 class="card-h">联赛日志</h2><div id="logs"></div></div>
+        </div>
+        <div id="view-cups" class="view hidden">
+          <div class="card"><h2 class="card-h">街球杯赛</h2><div id="cups"></div></div>
+        </div>
+        <div id="view-kings" class="view hidden">
+          <div class="card"><h2 class="card-h">胜者为王</h2><div id="kings"></div></div>
+        </div>
         <div id="view-training" class="view hidden">
-          <div class="card"><h2 class="card-h">球员训练</h2><div id="train-info" class="sub"></div><div id="training"></div></div>
+          <div class="card"><h2 class="card-h">球员训练 / 球星训练营</h2><div id="train-info" class="sub"></div><div id="training"></div></div>
         </div>
         <div id="view-finance" class="view hidden">
           <div class="card"><h2 class="card-h">财务</h2><div id="finance"></div></div>
         </div>
+        <div id="view-honors" class="view hidden">
+          <div class="card"><h2 class="card-h">荣誉室</h2><div id="honors"></div></div>
+        </div>
         <div id="view-roster" class="view hidden">
           <div class="card"><h2 class="card-h">球队名册</h2><div id="roster"></div></div>
         </div>
-        <div id="champion" class="champion hidden"></div>
+        <div id="season-end" class="champion hidden"></div>
       </main>
 
-      <!-- 右侧球员面板（常驻）-->
+      <!-- 右侧球员面板（XBA：首发/替补两个页签）-->
       <aside class="side">
         <div class="card">
           <h2 class="card-h">球员名单</h2>
+          <div class="side-tabs">
+            <button class="side-tab active" data-st="starters">首发</button>
+            <button class="side-tab" data-st="bench">替补</button>
+          </div>
           <div id="side-roster"></div>
         </div>
       </aside>
@@ -93,6 +121,7 @@
 <script defer src="assets/match.js"></script>
 <script defer src="assets/season.js"></script>
 <script defer src="assets/training.js"></script>
+<script defer src="assets/cup.js"></script>
 <script defer src="assets/engine.js"></script>
 <script defer src="assets/ui.js"></script>
 </body>

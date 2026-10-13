@@ -139,3 +139,21 @@ tbody tr{border-bottom:1px solid var(--line)}
 .mini-btn:hover{border-color:var(--accent); color:var(--accent)}
 .mini-btn:disabled{opacity:.4; cursor:not-allowed}
 .stat-note{color:var(--chalk-dim); font-size:var(--fs-xs); margin:var(--s2) 0 0}
+
+/* ===== v3.2 · XBA 逆向追加（Tab 行 / 广播 / 杯赛 / 胜者为王 / 球星）===== */
+.topbar{flex-wrap:wrap}
+.broadcast{flex-basis:100%; color:var(--chalk-dim); font-size:var(--fs-xs); border-top:1px dashed var(--line); padding-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.tabs{display:flex; gap:2px; border:1px solid var(--line); border-radius:var(--r1); overflow:hidden; background:rgba(255,255,255,.02)}
+.tab-btn{flex:1; font-family:inherit; cursor:pointer; background:transparent; color:var(--chalk-dim); border:0; padding:10px 4px; font-size:var(--fs-s); border-bottom:2px solid transparent; transition:color var(--d-fast),background var(--d-fast)}
+.tab-btn:hover{color:var(--chalk); background:rgba(255,255,255,.04)}
+.tab-btn.active{color:var(--accent); background:rgba(255,122,60,.10); border-bottom-color:var(--accent); font-weight:var(--w-semi)}
+.star{color:#c084fc; font-weight:var(--w-semi)}
+.cup-card{border:1px solid var(--line); border-radius:var(--r1); padding:var(--s3); margin-bottom:var(--s3); background:rgba(255,255,255,.02)}
+.cup-head{display:flex; align-items:center; gap:var(--s3); flex-wrap:wrap; margin-bottom:4px}
+.cup-head b{font-size:var(--fs-l)}
+.bracket-r{font-size:var(--fs-xs); color:var(--chalk-dim); margin-top:4px; line-height:1.9}
+.bracket-r b{color:var(--chalk); margin-right:var(--s2)}
+.log-line{padding:5px 0; border-bottom:1px solid var(--line); font-size:var(--fs-s); color:var(--chalk-dim)}
+.side-tabs{display:flex; gap:2px; margin-bottom:var(--s2)}
+.side-tab{flex:1; font-family:inherit; cursor:pointer; background:transparent; color:var(--chalk-dim); border:1px solid var(--line); border-radius:var(--r1); padding:5px 0; font-size:var(--fs-xs)}
+.side-tab.active{color:var(--accent); border-color:var(--accent); background:rgba(255,122,60,.10)}

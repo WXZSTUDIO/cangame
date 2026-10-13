@@ -63,7 +63,7 @@ function simulateGame(state, homeId, awayId, seed) {
   const ht = tactics_resolve(home), at = tactics_resolve(away);
   const hLine = getLineup(home, ht), aLine = getLineup(away, at);
   const hBox = initBox(home), aBox = initBox(away);
-  const poss = Math.round(M.POSSESSIONS * tactics_paceFactor(ht.pace));
+  const poss = Math.round(M.POSSESSIONS * tactics_paceFactor(ht));
   const total = poss * 2;
   let hScore = 0, aScore = 0, ball = 'home', log = [];
 
@@ -86,7 +86,7 @@ function simulateGame(state, homeId, awayId, seed) {
       const dp = bestBy(defLine, 'DEF').player;
       offBox.players[tp.id].to++; offBox.teamTo++;
       defBox.teamStl++; defBox.players[dp.id].stl++;
-      log.push(clk + ' ' + offTeam.name + ' ' + tp.name + ' ' + PP_ACTION.TO);
+      if (!state.simQuiet) log.push(clk + ' ' + offTeam.name + ' ' + tp.name + ' ' + PP_ACTION.TO);
       ball = ball === 'home' ? 'away' : 'home';
       continue;
     }
@@ -123,18 +123,18 @@ function simulateGame(state, homeId, awayId, seed) {
         const ap = pickOnCourt(rng, offLine, sh);
         if (ap) offBox.players[ap.id].ast++;
       }
-      log.push(clk + ' ' + offTeam.name + ' ' + sp.name + ' ' + (isThree ? PP_ACTION['3M'] : PP_ACTION['2M']) + ' (' + hScore + '-' + aScore + ')');
+      if (!state.simQuiet) log.push(clk + ' ' + offTeam.name + ' ' + sp.name + ' ' + (isThree ? PP_ACTION['3M'] : PP_ACTION['2M']) + ' (' + hScore + '-' + aScore + ')');
     } else {
       offBox.players[sp.id].fga++;
       const rb = clamp(M.REB_BASE + M.REB_COEF * (avgAttr(offLine, 'REB') - avgAttr(defLine, 'REB')), 0.2, 0.8);
       if (rng() < rb) {
         const rp = pickOnCourt(rng, offLine).player ? pickShooter(rng, offLine).player : offLine[0].player;
         offBox.teamReb++; offBox.players[rp.id].reb++;
-        log.push(clk + ' ' + offTeam.name + ' ' + rp.name + ' ' + PP_ACTION.OREB);
+        if (!state.simQuiet) log.push(clk + ' ' + offTeam.name + ' ' + rp.name + ' ' + PP_ACTION.OREB);
       } else {
         const rp = bestBy(defLine, 'REB').player;
         defBox.teamReb++; defBox.players[rp.id].reb++;
-        log.push(clk + ' ' + defTeam.name + ' ' + rp.name + ' ' + PP_ACTION.DREB);
+        if (!state.simQuiet) log.push(clk + ' ' + defTeam.name + ' ' + rp.name + ' ' + PP_ACTION.DREB);
         ball = ball === 'home' ? 'away' : 'home';
       }
     }

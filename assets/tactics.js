@@ -1,11 +1,10 @@
-// cangame v3 · 战术系统（克制矩阵 + 阵容评分）
+// cangame v3.2 · 战术系统（XBA 逆向：6 进攻 × 6 防守 + 相克矩阵 + 阵容评分）
 function tactics_default() {
-  return { pace: '稳', offense: '均衡', defense: '盯人', rotation: '均衡' };
+  return { offense: '整体', defense: '2-3联防', rotation: '均衡' };
 }
 function tactics_resolve(team) {
   const d = tactics_default();
   if (team && team.tactics) {
-    d.pace = team.tactics.pace || d.pace;
     d.offense = team.tactics.offense || d.offense;
     d.defense = team.tactics.defense || d.defense;
     d.rotation = team.tactics.rotation || d.rotation;
@@ -13,21 +12,19 @@ function tactics_resolve(team) {
   return d;
 }
 
-// 攻方战术对守方战术的命中加成（封顶 ±0.10）
+// 攻方战术对守方战术的命中加成（查相克表，封顶 ±COUNTER_CAP）
 function tactics_counterBonus(atk, def) {
-  let b = 0;
-  const c = CONFIG.COUNTER;
-  const k1 = atk.offense + '_' + def.defense; if (c[k1]) b += c[k1];
-  const k2 = atk.pace + '_' + def.pace; if (c[k2]) b += c[k2];
-  const k3 = atk.pace + '_' + def.defense; if (c[k3]) b += c[k3];
-  return clamp(b, -0.10, 0.10);
+  const c = CONFIG.TACTICS;
+  const k = atk.offense + '_' + def.defense;
+  return clamp(c.COUNTER[k] || 0, -c.COUNTER_CAP, c.COUNTER_CAP);
 }
 
-function tactics_paceFactor(pace) {
-  return CONFIG.TACTICS.PACE_POS_FACTOR[pace] || 1.0;
+// 进攻战术自带节奏（快攻回合数更多）
+function tactics_paceFactor(tac) {
+  return CONFIG.TACTICS.OFF_TEMPO[tac.offense] || 1.0;
 }
 
-// 阵容评分（进攻/防守/篮板），用首发 + 板凳深度
+// 阵容评分（进攻/防守/篮板），用首发 + 板凳深度；战术适配微调
 function tactics_lineupRating(team, tac) {
   const starters = team.lineup.map(function (id) {
     return team.players.find(function (p) { return p.id === id; });
@@ -37,14 +34,22 @@ function tactics_lineupRating(team, tac) {
     if (!arr.length) return 60;
     return arr.reduce(function (s, p) { return s + p.a[key]; }, 0) / arr.length;
   }
-  const off = avg(starters, 'SHO') * 0.4 + avg(starters, 'TRE') * 0.25 + avg(starters, 'DRV') * 0.2 + avg(starters, 'IQ') * 0.15;
-  const def = avg(starters, 'DEF') * 0.6 + avg(bench, 'DEF') * 0.15 + avg(starters, 'SPD') * 0.25;
+  const bigs = avg(starters.filter(function (x) { return x.pos === 'C' || x.pos === 'PF'; }), 'SHO');
+  const guards = avg(starters.filter(function (x) { return x.pos === 'PG' || x.pos === 'SG'; }), 'SHO');
+  const all = avg(starters, 'SHO');
+  let off = all * 0.5 + avg(starters, 'TRE') * 0.2 + avg(starters, 'DRV') * 0.15 + avg(starters, 'IQ') * 0.15;
+  // 战术与人员适配（XBA 攻略：内线强攻需要强力 C/PF，外线需要外线火力）
+  if (tac.offense === '内线强攻') off += (bigs - all) * 0.4;
+  if (tac.offense === '中锋策应') off += (bigs - all) * 0.2 + (avg(starters, 'PAS') - 65) * 0.1;
+  if (tac.offense === '外线') off += (guards - all) * 0.35;
+  if (tac.offense === '快攻') off += (avg(starters, 'SPD') - 65) * 0.2;
+  if (tac.offense === '整体') off += (avg(starters, 'IQ') - 65) * 0.15;
+  if (tac.offense === '挡拆') off += (avg(starters, 'IQ') - 65) * 0.1;
+  let def = avg(starters, 'DEF') * 0.6 + avg(bench, 'DEF') * 0.15 + avg(starters, 'SPD') * 0.25;
+  if (tac.defense === '2-3联防' || tac.defense === '2-1-2联防') def += (avg(starters.filter(function (x) { return x.pos === 'C' || x.pos === 'PF'; }), 'DEF') - 65) * 0.2;
+  if (tac.defense === '盯内') def += (avg(starters.filter(function (x) { return x.pos === 'C' || x.pos === 'PF'; }), 'DEF') - 65) * 0.25;
+  if (tac.defense === '盯外' || tac.defense === '3-2联防') def += (guards > 0 ? (avg(starters.filter(function (x) { return x.pos !== 'C'; }), 'DEF') - 65) * 0.2 : 0);
   const reb = avg(starters, 'REB') * 0.7 + avg(bench, 'REB') * 0.3;
-  // 进攻倾向微调
-  if (tac.offense === '外线') off += 3;
-  if (tac.offense === '内线') off += 1;
-  if (tac.defense === '联防') def += 2;
-  if (tac.defense === '夹击') def += 3;
   return { off: Math.round(off), def: Math.round(def), reb: Math.round(reb) };
 }
 

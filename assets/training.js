@@ -39,6 +39,65 @@ function training_physio(state, playerId) {
   return { ok: true, player: p.name };
 }
 
+// —— 球星系统（XBA 逆向：王者积分+资金训练，每级最高 +7%，可降级重训）——
+function star_cost(level) { // 升到第 level 级的花费
+  const S = CONFIG.STAR;
+  return {
+    kings: S.KINGS_PTS_BASE + (level - 1) * S.KINGS_PTS_STEP,
+    cash: S.CASH_BASE + (level - 1) * S.CASH_STEP
+  };
+}
+
+function training_star(state, playerId) {
+  const S = CONFIG.STAR;
+  const t = teamById(state, state.humanTeamId);
+  const p = t.players.find(function (x) { return x.id === playerId; });
+  if (!p) return { ok: false, reason: 'no-player' };
+  const cur = p.star || 0;
+  if (cur >= S.MAX_LEVEL) return { ok: false, reason: 'max' };
+  const cost = star_cost(cur + 1);
+  if (state.kingsPts < cost.kings) return { ok: false, reason: 'no-kings' };
+  if (state.finance.cash < cost.cash) return { ok: false, reason: 'no-cash' };
+
+  state.kingsPts -= cost.kings;
+  state.finance.cash -= cost.cash;
+  state.finance.expense += cost.cash;
+  const rng = makeRNG(deriveSeed(state.seed, state.season * 613 + state.round * 37 + p.a.SHO + p.a.DEF * 3 + cur * 101));
+  const gains = {};
+  CONFIG.PLAYER.ATTRS.forEach(function (k) {
+    const pct = randFloat(rng, S.GAIN_PCT_MIN, S.GAIN_PCT_MAX);
+    const g = Math.max(1, Math.round(p.a[k] * pct));
+    const prev = p.a[k];
+    p.a[k] = clamp(p.a[k] + g, CONFIG.PLAYER.ATTR_MIN, CONFIG.PLAYER.ATTR_MAX);
+    gains[k] = p.a[k] - prev;   // 记录实际增量（受钳制），降级可精确还原
+  });
+  p.star = cur + 1;
+  p.starGains = (p.starGains || []).concat([gains]);
+  p.overall = players_overall(p);
+  state.log.push('⭐ 球星训练：' + p.name + ' 升到 ' + p.star + ' 星（综合 ' + p.overall + '）');
+  return { ok: true, level: p.star, gains: gains, player: p.name };
+}
+
+// 降级：撤销最近一级的属性增长（积分不返还，扣降级费）
+function training_starDowngrade(state, playerId) {
+  const S = CONFIG.STAR;
+  const t = teamById(state, state.humanTeamId);
+  const p = t.players.find(function (x) { return x.id === playerId; });
+  if (!p) return { ok: false, reason: 'no-player' };
+  if (!p.star || p.star <= 0) return { ok: false, reason: 'not-star' };
+  if (state.finance.cash < S.DOWNGRADE_CASH) return { ok: false, reason: 'no-cash' };
+  state.finance.cash -= S.DOWNGRADE_CASH;
+  state.finance.expense += S.DOWNGRADE_CASH;
+  const gains = p.starGains.pop();
+  if (gains) {
+    CONFIG.PLAYER.ATTRS.forEach(function (k) { p.a[k] = clamp(p.a[k] - (gains[k] || 0), CONFIG.PLAYER.ATTR_MIN, CONFIG.PLAYER.ATTR_MAX); });
+  }
+  p.star--;
+  p.overall = players_overall(p);
+  state.log.push('球星降级：' + p.name + ' 回到 ' + p.star + ' 星（-¥' + S.DOWNGRADE_CASH + '）');
+  return { ok: true, level: p.star, player: p.name };
+}
+
 // 每轮结束：训练点入账 + 心情回归基线（AI 球员同样回归）
 function training_tick(state, humanWon) {
   const T = CONFIG.TRAINING, M = CONFIG.MOOD;
@@ -58,5 +117,5 @@ function teamLevel(cash) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { training_apply, training_physio, training_tick, teamLevel };
+  module.exports = { training_apply, training_physio, training_tick, teamLevel, training_star, training_starDowngrade, star_cost };
 }

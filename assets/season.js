@@ -1,135 +1,123 @@
-// cangame v3 · 赛季（赛程 / 积分榜 / 季后赛）
+// cangame v3.2 · 赛季（赛程 / 分联赛积分榜 / 升降级 / 新赛季）
 function idNum(id) { return parseInt(id.slice(1), 10); }
 
-function buildSchedule(teams, rounds, rng) {
-  const arr = teams.map(function (t) { return t.id; });
-  const m = arr.length;            // 30，偶数
-  const half = m / 2;
+// 单循环轮转（m-1 轮）；双循环 = 跑两遍（主客对调）
+function buildSchedule(teamIds, rounds, rng) {
+  const arr = teamIds.slice();
+  const m = arr.length;
+  if (m % 2) arr.push(null); // 轮空
+  const half = arr.length / 2;
   const sched = [];
-  let guard = 0;
-  while (sched.length < rounds && guard < 10000) {
-    guard++;
-    for (let r = 0; r < m - 1; r++) {
-      const games = [];
-      for (let i = 0; i < half; i++) {
-        const a = arr[i], b = arr[m - 1 - i];
-        const home = ((r + sched.length) % 2 === 0) ? a : b;
-        const away = home === a ? b : a;
-        games.push([home, away]);
-      }
-      sched.push(games);
-      if (sched.length >= rounds) break;
-      arr.splice(1, 0, arr.pop()); // 轮转
+  for (let r = 0; r < m - 1 && sched.length < rounds; r++) {
+    const games = [];
+    for (let i = 0; i < half; i++) {
+      const a = arr[i], b = arr[arr.length - 1 - i];
+      if (a == null || b == null) continue;
+      const home = (r % 2 === 0) ? a : b;
+      const away = home === a ? b : a;
+      games.push([home, away]);
     }
+    sched.push(games);
+    arr.splice(1, 0, arr.pop());
   }
+  // 第二循环：主客对调
+  const first = sched.slice(0, Math.min(sched.length, rounds - sched.length));
+  first.forEach(function (games) {
+    sched.push(games.map(function (g) { return [g[1], g[0]]; }));
+  });
   return sched.slice(0, rounds);
 }
 
-function seasonStandings(state) {
-  return state.teams.slice().sort(function (x, y) {
-    if (y.wins - y.losses !== x.wins - x.losses) return (y.wins - y.losses) - (x.wins - x.losses);
-    return (y.pf - y.pa) - (x.pf - x.pa);
-  }).map(function (t, i) { return { rank: i + 1, team: t }; });
+// 为全部联赛生成赛程：state.schedule = { L1: [...], L2a: [...], L2b: [...] }
+function buildAllSchedules(state, rng) {
+  const sched = {};
+  LEAGUE_DEFS.forEach(function (ld) {
+    sched[ld.id] = buildSchedule(state.leagues[ld.id].teamIds, CONFIG.LEAGUE.REGULAR_ROUNDS, rng);
+  });
+  return sched;
 }
 
-function endRegular(state) {
-  // 各联盟取前 8，按胜场排种子
-  const byConf = {};
-  state.teams.forEach(function (t) {
-    (byConf[t.conf] = byConf[t.conf] || []).push(t);
-  });
-  const survivors = {};
-  Object.keys(byConf).forEach(function (conf) {
-    const sorted = byConf[conf].slice().sort(function (a, b) {
-      if (b.wins - b.losses !== a.wins - a.losses) return (b.wins - b.losses) - (a.wins - a.losses);
-      return (b.pf - b.pa) - (a.pf - a.pa);
-    }).slice(0, CONFIG.LEAGUE.PLAYOFF_PER_CONF);
-    sorted.forEach(function (t, i) { t.seed = i + 1; t.alive = true; t.seriesWins = 0; t.seriesOpp = null; });
-    survivors[conf] = sorted;
-  });
-  const series = [];
-  Object.keys(survivors).forEach(function (conf) {
-    const s = survivors[conf];
-    for (let i = 0; i < s.length / 2; i++) {
-      const a = s[i], b = s[s.length - 1 - i];
-      a.seriesOpp = b.id; b.seriesOpp = a.id;
-      series.push(makeSeries(a, b));
-    }
-  });
-  state.playoff = { round: 0, series: series, survivors: survivors, champion: null, done: false, names: ['首轮', '半决赛', '联盟决赛', '总决'] };
-  state.phase = 'PLAYOFF';
-}
-
-function makeSeries(a, b) { return { a: a.id, b: b.id, aw: 0, bw: 0, done: false, winner: null }; }
-
-function advancePlayoff(state, seedBase) {
-  const po = state.playoff;
-  let active = 0;
-  po.series.forEach(function (ser, idx) {
-    if (ser.done) return;
-    active++;
-    const gameNo = ser.aw + ser.bw + 1;
-    const homeIsA = CONFIG.LEAGUE.HOME_GAMES_H2H.indexOf(gameNo) >= 0;
-    const home = homeIsA ? ser.a : ser.b;
-    const away = homeIsA ? ser.b : ser.a;
-    const seed = deriveSeed(seedBase, po.round * 1009 + idx * 31 + gameNo);
-    const res = simulateGame(state, home, away, seed);
-    if (res.winner === ser.a) ser.aw++; else ser.bw++;
-    // 记录玩家队比赛回放
-    if (ser.a === state.humanTeamId || ser.b === state.humanTeamId) state.lastLog = res;
-    if (ser.aw >= CONFIG.LEAGUE.PLAYOFF_WINS_NEEDED || ser.bw >= CONFIG.LEAGUE.PLAYOFF_WINS_NEEDED) {
-      ser.done = true;
-      ser.winner = ser.aw > ser.bw ? ser.a : ser.b;
-      const w = teamById(state, ser.winner);
-      const l = teamById(state, ser.winner === ser.a ? ser.b : ser.a);
-      w.alive = true; l.alive = false;
-    }
-  });
-  if (active === 0 || po.series.every(function (s) { return s.done; })) {
-    // 当前轮全部结束 → 下一轮或冠军
-    if (po.round >= 3) {
-      const final = po.series[0];
-      state.playoff.champion = final.winner;
-      state.playoff.done = true;
-      const champ = teamById(state, final.winner);
-      champ.alive = true;
-      state.phase = 'CHAMPION';
-      state.log.push('🏆 ' + champ.name + ' 夺得总冠军！');
-      return;
-    }
-    buildNextRound(state, po);
-    po.round++;
-  }
-}
-
-function buildNextRound(state, po) {
-  if (po.round < 2) {
-    // 联盟内重排：每联盟胜者按原种子排序后配对
-    const next = [];
-    Object.keys(po.survivors).forEach(function (conf) {
-      const wins = po.survivors[conf].filter(function (t) { return t.alive; })
-        .sort(function (a, b) { return a.seed - b.seed; });
-      for (let i = 0; i < wins.length / 2; i++) {
-        const a = wins[i], b = wins[wins.length - 1 - i];
-        a.seriesOpp = b.id; b.seriesOpp = a.id;
-        next.push(makeSeries(a, b));
-      }
+// 某联赛积分榜（XBA 排名规则：先胜场（胜率）后净胜分）
+function seasonStandings(state, leagueId) {
+  const teams = state.leagues[leagueId].teamIds
+    .map(function (id) { return teamById(state, id); })
+    .sort(function (x, y) {
+      if (y.wins !== x.wins) return y.wins - x.wins;
+      return (y.pf - y.pa) - (x.pf - x.pa);
     });
-    po.series = next;
-  } else if (po.round === 2) {
-    // 总决：东胜者 vs 西胜者
-    const east = po.survivors['东'].find(function (t) { return t.alive; });
-    const west = po.survivors['西'].find(function (t) { return t.alive; });
-    east.seriesOpp = west.id; west.seriesOpp = east.id;
-    po.series = [makeSeries(east, west)];
-  }
-  // 标记本轮存活队
-  po.series.forEach(function (ser) {
-    const a = teamById(state, ser.a), b = teamById(state, ser.b);
-    if (ser.done) { const w = teamById(state, ser.winner); a.alive = (a.id === w.id); b.alive = (b.id === w.id); }
+  return teams.map(function (t, i) { return { rank: i + 1, team: t }; });
+}
+
+// 赛季结束：冠军 + 升降级 + 重排联赛 + 新赛程；返回摘要
+function seasonRoll(state, rng) {
+  const LG = CONFIG.LEAGUE;
+  const summary = { champion: null, promoted: [], relegated: [], humanRank: null };
+
+  const l1Stand = seasonStandings(state, 'L1');
+  summary.champion = l1Stand[0].team.id;
+  l1Stand[0].team.titles++;
+  l1Stand.forEach(function (row) {
+    if (row.team.id === state.humanTeamId) summary.humanRank = row.rank;
   });
+
+  // 升：每个 2级联赛前 2；降：1级联赛后 4
+  const promoted = [], relegated = [];
+  ['L2a', 'L2b'].forEach(function (lid) {
+    const st = seasonStandings(state, lid);
+    for (let i = 0; i < LG.PROMOTE_PER_LEAGUE; i++) promoted.push(st[i].team);
+  });
+  for (let i = 0; i < LG.RELEGATE_PER_LEAGUE; i++) relegated.push(l1Stand[l1Stand.length - 1 - i].team);
+  summary.promoted = promoted.map(function (t) { return t.name; });
+  summary.relegated = relegated.map(function (t) { return t.name; });
+  promoted.forEach(function (t) { t.level = 1; });
+  relegated.forEach(function (t) { t.level = 2; });
+
+  // 重排：1级 = 原1级(去掉降级) + 升级队（按战绩排序）；2级两队 = 剩余 28 队蛇形分组
+  const stayL1 = l1Stand.map(function (r) { return r.team; }).filter(function (t) { return t.level === 1; });
+  const newL1 = stayL1.concat(promoted).slice(0, LG.TEAMS_PER_LEAGUE);
+  const stayL2 = [];
+  ['L2a', 'L2b'].forEach(function (lid) {
+    seasonStandings(state, lid).forEach(function (r) { if (r.team.level === 2) stayL2.push(r.team); });
+  });
+  const pool = stayL2.concat(relegated).filter(function (t) { return newL1.indexOf(t) < 0; });
+  // 按上赛季战绩排序后蛇形分到 A/B 组
+  pool.sort(function (x, y) {
+    if (y.wins !== x.wins) return y.wins - x.wins;
+    return (y.pf - y.pa) - (x.pf - x.pa);
+  });
+  const newL2a = [], newL2b = [];
+  pool.forEach(function (t, i) {
+    const rowN = Math.floor(i / 2);
+    (rowN % 2 === 0 ? (i % 2 === 0 ? newL2a : newL2b) : (i % 2 === 0 ? newL2b : newL2a)).push(t);
+  });
+
+  function assign(leagueId, teams) {
+    state.leagues[leagueId].teamIds = teams.map(function (t) { return t.id; });
+    teams.forEach(function (t) { t.leagueId = leagueId; });
+  }
+  assign('L1', newL1);
+  assign('L2a', newL2a);
+  assign('L2b', newL2b);
+  const restCount = newL1.length + newL2a.length + newL2b.length;
+  if (restCount !== 42) { /* 防御：永远不应发生 */ }
+
+  // 跨赛季重置：战绩清零、赛程重排、年龄+1、合同-1
+  state.teams.forEach(function (t) {
+    t.wins = 0; t.losses = 0; t.pf = 0; t.pa = 0;
+    t.players.forEach(function (p) {
+      p.age++;
+      if (p.contractYears > 1) p.contractYears--;
+      p.stamina = 100; p.injury = 0;
+    });
+  });
+  state.season++;
+  state.round = 0;
+  state.phase = 'REGULAR';
+  state.schedule = buildAllSchedules(state, rng);
+  state.cups = buildCupInstances(state);
+  return summary;
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { buildSchedule, seasonStandings, endRegular, advancePlayoff, idNum };
+  module.exports = { buildSchedule, buildAllSchedules, seasonStandings, seasonRoll, idNum };
 }

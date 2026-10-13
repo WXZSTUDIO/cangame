@@ -42,6 +42,7 @@ PUBLISH = [
     'assets/match.js',
     'assets/season.js',
     'assets/training.js',
+    'assets/cup.js',
     'assets/engine.js',
     'assets/ui.js',
 ]
@@ -157,7 +158,7 @@ def sync(repo, sub, msg):
 
 
 def main():
-    msg = 'feat: cangame v3 篮球经理页游 — 战术板 Chalkboard + 比赛引擎 + 赛季/季后赛'
+    msg = 'feat: cangame v3.2 篮球经理 — 金字塔联赛/升降级 + 街球杯赛(新人/大/小) + 胜者为王 + 球星系统 + 6x6战术相克'
     only = 'both'
     for a in sys.argv[1:]:
         if a.startswith('--msg='):
