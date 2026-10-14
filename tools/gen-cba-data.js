@@ -39,9 +39,13 @@ const PLAYER_FIELDS = [
   ['todo_verify', 'TINYINT(1)', '待人工核对', '占位数据恒为 1']
 ];
 
+// 1 级联赛槽位（对齐 CONFIG.LEAGUE.TEAMS_PER_LEAGUE）。09-10 赛季真实 17 队 > 槽位 14，
+// 故只落库前 14 支；多出的作为 spare 单列，避免与 2 级队名重名（如「青岛双星」）。
+const L1_SLOTS = 14;
+
 function teams() {
   const out = [];
-  CBA_L1_TEAMS.forEach((t, i) => out.push({ id: 'L1' + String(i + 1).padStart(2, '0'), league_id: 'L1', tier: 1, city: t.city, nick: t.nick, name: t.city + t.nick, todo_verify: 0 }));
+  CBA_L1_TEAMS.slice(0, L1_SLOTS).forEach((t, i) => out.push({ id: 'L1' + String(i + 1).padStart(2, '0'), league_id: 'L1', tier: 1, city: t.city, nick: t.nick, name: t.city + t.nick, todo_verify: 0 }));
   CBA_L2_TEAMS.forEach((t, i) => {
     const lg = i < 14 ? 'L2a' : 'L2b';
     const idx = (i % 14) + 1;
@@ -50,16 +54,22 @@ function teams() {
   return out;
 }
 
+function spares() {
+  return CBA_L1_TEAMS.slice(L1_SLOTS).map(t => ({ league_id: 'L1', city: t.city, nick: t.nick, name: t.city + t.nick, note: '09-10 赛季真实参赛队，1级槽位不足暂未启用' }));
+}
+
 function json() {
   return {
     meta: {
       source: 'assets/cba-data.js',
       generated_by: 'tools/gen-cba-data.js',
       generated_at: new Date().toISOString().slice(0, 10),
-      note: '队名为真实可核实队名；球员为占位数据(todo_verify=true)，2000-2025 真实名单须人工核对。',
-      season_start: 2000
+      note: '赛季口径 2009-10；队名为真实可核实队名（1级=当季 CBA 真实参赛队含冠名，2级=真实次级队但 TODO 未对齐 09-10）；球员为占位数据(todo_verify=true)，真实名单须人工核对。',
+      season_start: 2009
     },
     teams: teams(),
+    // 09-10 赛季真实 17 队中，因 1 级槽位 14 而未启用的 3 支（扩容时直接启用）
+    spare_l1_teams: spares(),
     player_schema: PLAYER_FIELDS.reduce((o, f) => (o[f[0]] = { type: f[1], cn: f[2], note: f[3] }, o), {}),
     players: []
   };
@@ -70,6 +80,7 @@ function esc(s) { return String(s).replace(/'/g, "''"); }
 function sql() {
   const L = [];
   L.push('-- cangame v3.5 · CBA 初始化脚本（由 tools/gen-cba-data.js 从 assets/cba-data.js 派生，勿手改）');
+  L.push('-- 赛季口径：2009-10。1 级 = 当季 CBA 真实参赛队（含冠名）；2 级 = 真实次级队名（TODO 未对齐 09-10）。');
   L.push('-- 队名真实可核实；球员为占位数据(todo_verify=1)，须人工核对后启用。');
   L.push('');
   L.push('CREATE TABLE IF NOT EXISTS cba_team (');
@@ -93,6 +104,12 @@ function sql() {
   L.push('-- 球队种子数据（42 队）');
   L.push('INSERT INTO cba_team (id, league_id, tier, city, nick, name, todo_verify) VALUES');
   L.push(teams().map(t => "  ('" + t.id + "','" + t.league_id + "'," + t.tier + ",'" + esc(t.city) + "','" + esc(t.nick) + "','" + esc(t.name) + "',0)").join(',\n') + ';');
+  L.push('');
+  if (spares().length) {
+    L.push('-- 备用：09-10 赛季真实参赛队中因 1 级槽位仅 ' + L1_SLOTS + ' 而未启用的 ' + spares().length + ' 支');
+    L.push('-- （扩容到 17 队时取消注释即可；注意「青岛双星」与 2 级现有队名冲突，需先改名或移除）');
+    spares().forEach(s => L.push("--   " + s.name + "  " + s.note));
+  }
   L.push('');
   L.push('-- 球员：本版不灌入真实名单（AI 无法准确编造 2000-2025 逐季名单）。');
   L.push('-- 真实名单补录后按 cba_player 字段插入，并把 todo_verify 置 0；');

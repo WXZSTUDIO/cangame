@@ -3,48 +3,66 @@
     "source": "assets/cba-data.js",
     "generated_by": "tools/gen-cba-data.js",
     "generated_at": "2026-10-14",
-    "note": "队名为真实可核实队名；球员为占位数据(todo_verify=true)，2000-2025 真实名单须人工核对。",
-    "season_start": 2000
+    "note": "赛季口径 2009-10；队名为真实可核实队名（1级=当季 CBA 真实参赛队含冠名，2级=真实次级队但 TODO 未对齐 09-10）；球员为占位数据(todo_verify=true)，真实名单须人工核对。",
+    "season_start": 2009
   },
   "teams": [
     {
       "id": "L101",
       "league_id": "L1",
       "tier": 1,
-      "city": "八一",
-      "nick": "火箭",
-      "name": "八一火箭",
+      "city": "广东",
+      "nick": "东莞银行",
+      "name": "广东东莞银行",
       "todo_verify": 0
     },
     {
       "id": "L102",
       "league_id": "L1",
       "tier": 1,
-      "city": "上海",
-      "nick": "大鲨鱼",
-      "name": "上海大鲨鱼",
+      "city": "新疆",
+      "nick": "广汇汽车",
+      "name": "新疆广汇汽车",
       "todo_verify": 0
     },
     {
       "id": "L103",
       "league_id": "L1",
       "tier": 1,
-      "city": "广东",
-      "nick": "宏远",
-      "name": "广东宏远",
+      "city": "上海",
+      "nick": "玛吉斯",
+      "name": "上海玛吉斯",
       "todo_verify": 0
     },
     {
       "id": "L104",
       "league_id": "L1",
       "tier": 1,
-      "city": "北京",
-      "nick": "首钢",
-      "name": "北京首钢",
+      "city": "江苏",
+      "nick": "德玛斯特",
+      "name": "江苏德玛斯特",
       "todo_verify": 0
     },
     {
       "id": "L105",
+      "league_id": "L1",
+      "tier": 1,
+      "city": "八一",
+      "nick": "双鹿电池",
+      "name": "八一双鹿电池",
+      "todo_verify": 0
+    },
+    {
+      "id": "L106",
+      "league_id": "L1",
+      "tier": 1,
+      "city": "北京",
+      "nick": "金隅",
+      "name": "北京金隅",
+      "todo_verify": 0
+    },
+    {
+      "id": "L107",
       "league_id": "L1",
       "tier": 1,
       "city": "辽宁",
@@ -53,16 +71,7 @@
       "todo_verify": 0
     },
     {
-      "id": "L106",
-      "league_id": "L1",
-      "tier": 1,
-      "city": "江苏",
-      "nick": "南钢",
-      "name": "江苏南钢",
-      "todo_verify": 0
-    },
-    {
-      "id": "L107",
+      "id": "L108",
       "league_id": "L1",
       "tier": 1,
       "city": "山东",
@@ -71,16 +80,43 @@
       "todo_verify": 0
     },
     {
-      "id": "L108",
+      "id": "L109",
       "league_id": "L1",
       "tier": 1,
       "city": "浙江",
-      "nick": "万马",
-      "name": "浙江万马",
+      "nick": "广厦建设",
+      "name": "浙江广厦建设",
       "todo_verify": 0
     },
     {
-      "id": "L109",
+      "id": "L110",
+      "league_id": "L1",
+      "tier": 1,
+      "city": "福建",
+      "nick": "浔兴",
+      "name": "福建浔兴",
+      "todo_verify": 0
+    },
+    {
+      "id": "L111",
+      "league_id": "L1",
+      "tier": 1,
+      "city": "东莞",
+      "nick": "马可波罗",
+      "name": "东莞马可波罗",
+      "todo_verify": 0
+    },
+    {
+      "id": "L112",
+      "league_id": "L1",
+      "tier": 1,
+      "city": "山西",
+      "nick": "汾酒",
+      "name": "山西汾酒",
+      "todo_verify": 0
+    },
+    {
+      "id": "L113",
       "league_id": "L1",
       "tier": 1,
       "city": "吉林",
@@ -89,48 +125,12 @@
       "todo_verify": 0
     },
     {
-      "id": "L110",
-      "league_id": "L1",
-      "tier": 1,
-      "city": "新疆",
-      "nick": "广汇",
-      "name": "新疆广汇",
-      "todo_verify": 0
-    },
-    {
-      "id": "L111",
-      "league_id": "L1",
-      "tier": 1,
-      "city": "陕西",
-      "nick": "东盛",
-      "name": "陕西东盛",
-      "todo_verify": 0
-    },
-    {
-      "id": "L112",
-      "league_id": "L1",
-      "tier": 1,
-      "city": "北京",
-      "nick": "奥神",
-      "name": "北京奥神",
-      "todo_verify": 0
-    },
-    {
-      "id": "L113",
-      "league_id": "L1",
-      "tier": 1,
-      "city": "沈部",
-      "nick": "雄狮",
-      "name": "沈部雄狮",
-      "todo_verify": 0
-    },
-    {
       "id": "L114",
       "league_id": "L1",
       "tier": 1,
-      "city": "福建",
-      "nick": "浔兴",
-      "name": "福建浔兴",
+      "city": "浙江",
+      "nick": "稠州银行",
+      "name": "浙江稠州银行",
       "todo_verify": 0
     },
     {
@@ -384,6 +384,29 @@
       "nick": "马可波罗",
       "name": "深圳马可波罗",
       "todo_verify": 0
+    }
+  ],
+  "spare_l1_teams": [
+    {
+      "league_id": "L1",
+      "city": "天津",
+      "nick": "荣钢",
+      "name": "天津荣钢",
+      "note": "09-10 赛季真实参赛队，1级槽位不足暂未启用"
+    },
+    {
+      "league_id": "L1",
+      "city": "青岛",
+      "nick": "双星",
+      "name": "青岛双星",
+      "note": "09-10 赛季真实参赛队，1级槽位不足暂未启用"
+    },
+    {
+      "league_id": "L1",
+      "city": "陕西",
+      "nick": "锂源动力",
+      "name": "陕西锂源动力",
+      "note": "09-10 赛季真实参赛队，1级槽位不足暂未启用"
     }
   ],
   "player_schema": {
