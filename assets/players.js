@@ -22,16 +22,31 @@ function genPlayer(rng, opts) {
     if (k === 'STA') v = clamp(v + 4, P.ATTR_MIN, P.ATTR_MAX); // 体力偏高更真实
     a[k] = clamp(Math.round(v), P.ATTR_MIN, P.ATTR_MAX);
   });
+  // 力量（单独属性，参与篮板/对抗，不计入综合）
+  const strBias = { C: 10, PF: 5, SF: 0, SG: -4, PG: -8 }[pos] || 0;
+  a.STR = clamp(randInt(rng, P.STR_RANGE[0], P.STR_RANGE[1]) + strBias, 35, 99);
+  // 身高/体重（按位置区间）
+  const hr = P.HEIGHT[pos] || [185, 205];
+  const height = randInt(rng, hr[0], hr[1]);
+  const weight = Math.round(height * (0.44 + rng() * 0.08));
   const p = {
     id: opts.id || ('p' + Math.floor(rng() * 1e9).toString(36)),
     name: genName(rng), pos: pos, age: age,
+    height: height, weight: weight,
     trait: P.TRAITS[Math.floor(rng() * P.TRAITS.length)],
     a: a, overall: 0,
     salary: 0, contractYears: randInt(rng, 1, 4),
-    stamina: 100, injury: 0, mood: CONFIG.MOOD.BASE
+    stamina: 100, injury: 0, mood: CONFIG.MOOD.BASE,
+    potential: 0, birthday: null, isRookie: false, isFA: !!opts.isFA,
+    todoVerify: !!opts.todoVerify
   };
   p.overall = players_overall(p);
   p.salary = players_salary(p);
+  // 潜力：年轻更高；生日按年龄反推（占位，真实数据需人工核对）
+  const baseYear = opts.baseYear || 2006;
+  p.potential = clamp(p.overall + randInt(rng, 0, 16) + (age <= 22 ? 6 : 0), 35, 99);
+  p.birthday = (baseYear - age) + '-' + String(randInt(rng, 1, 12)).padStart(2, '0') + '-' + String(randInt(rng, 1, 28)).padStart(2, '0');
+  p.isRookie = age >= P.ROOKIE_AGE[0] && age <= P.ROOKIE_AGE[1];
   return p;
 }
 

@@ -12,7 +12,7 @@ const ROOT = process.cwd();
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const dom = new JSDOM(html, { runScripts: 'outside-only', pretendToBeVisual: true });
 const { window } = dom;
-const files = ['config', 'rng', 'players', 'transfer', 'league', 'tactics', 'match', 'season', 'training', 'cup', 'bet', 'championship', 'alliance', 'engine', 'ui'];
+const files = ['config', 'rng', 'players', 'transfer', 'league', 'tactics', 'match', 'season', 'training', 'cup', 'bet', 'championship', 'alliance', 'ad', 'cba-data', 'engine', 'ui'];
 files.forEach(n => { window.eval(fs.readFileSync(path.join(ROOT, 'assets/' + n + '.js'), 'utf8')); });
 // jsdom 构造时 readyState=loading，DOMContentLoaded 已错过：显式派发以触发 boot()
 window.document.dispatchEvent(new window.Event('DOMContentLoaded'));
@@ -25,6 +25,13 @@ ok(doc.getElementById('team-grid').children.length === 42, '选队界面渲染 4
 // 选第一队（1级联赛球队）
 doc.querySelector('#team-grid .team-btn').click();
 ok(!doc.getElementById('screen-game').classList.contains('hidden'), '选队后进入主界面');
+// v3.5 新模块冒烟：赞助商合同制 + 球场等级 + 备用球队池 + CBA 队名骨架
+ok(window.G && window.G.sponsors && window.G.sponsors.length === window.CONFIG.SPONSOR.COUNT, '赞助商已生成（' + (window.G && window.G.sponsors ? window.G.sponsors.length : 0) + ' 个）');
+ok(window.G && typeof window.G.stadiumLevel === 'number', '球场等级已初始化');
+ok(window.G && window.G.reservePool && window.G.reservePool.length > 0, '备用球队池已构建（' + (window.G && window.G.reservePool ? window.G.reservePool.length : 0) + ' 队）');
+// human team 不存在 G.team，需按 humanTeamId 反查
+const humanTeam = window.teamById ? window.teamById(window.G, window.G.humanTeamId) : null;
+ok(humanTeam && humanTeam.name && humanTeam.name.length > 0, 'CBA 队名骨架生效（队名=' + (humanTeam ? humanTeam.name : '') + '）');
 // 顶栏（XBA 状态条）
 ok(doc.querySelector('#hdr .tb-team'), '顶部状态条含球队名');
 const hdrTxt = doc.getElementById('hdr').textContent;

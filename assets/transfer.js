@@ -3,17 +3,22 @@ function transfer_genPool(state, rng) {
   const T = CONFIG.TRANSFER;
   const pool = [];
   for (let i = 0; i < T.poolSize; i++) {
+    const extreme = rng() < T.extremeRate;   // 先定极限，避免受 genPlayer 内部 rng 消耗影响
     const p = genPlayer(rng, { id: 'mkt_' + i, tier: randInt(rng, -4, 14) });
-    const extreme = rng() < T.extremeRate;
     if (extreme) {
       p.isExtreme = true;
       p.overall = clamp(p.overall + randInt(rng, 3, 8), CONFIG.PLAYER.ATTR_MIN, CONFIG.PLAYER.ATTR_MAX);
-      p.a = p.a; // 重算综合已含在 overall
       p.jersey = randInt(rng, 0, 99); // 极限球员专属球衣号码（可刷）
     }
     p.marketPrice = Math.round((p.overall * p.overall * T.priceK + (extreme ? 50000 : 0)) / 100) * 100;
     p.salary = players_salary(p);
     pool.push(p);
+  }
+  // 保证转会池至少有一个极限球员（XBA：市场必出极限球员）
+  if (!pool.some(function (p) { return p.isExtreme; })) {
+    const p = pool[0]; p.isExtreme = true;
+    p.overall = clamp(p.overall + randInt(rng, 3, 8), CONFIG.PLAYER.ATTR_MIN, CONFIG.PLAYER.ATTR_MAX);
+    p.jersey = randInt(rng, 0, 99);
   }
   return pool;
 }

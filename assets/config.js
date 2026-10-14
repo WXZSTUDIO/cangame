@@ -1,7 +1,7 @@
 // cangame v3.4 · 配置（唯一可调数值源）
 // XBA 逆向：金字塔联赛 / 街球杯赛 / 冠军杯(512淘汰) / 联盟系统 / 经营细化 / 竞猜 / 球星 / 6v6 战术
 var CONFIG = {
-  VERSION: '3.4.0',
+  VERSION: '3.5.0',
   SEED_DEFAULT: 20261014,
 
   // —— 职业联赛（XBA 金字塔）：1级联赛×1 + 2级联赛×2，每个联赛 14 队 ——
@@ -30,7 +30,12 @@ var CONFIG = {
       C:  { REB: 1.6, DEF: 1.3, SHO: 0.9, DRV: 0.8, IQ: 0.9, SPD: 0.6, TRE: 0.4, PAS: 0.7, STA: 1.1, CLU: 0.8 }
     },
     TRAIT_USAGE: { 稳重: 0.95, 好胜: 1.10, 独狼: 1.25, 领袖: 1.05, 玻璃人: 0.90, 神经刀: 1.00 },
-    TRAIT_VOLATILE: { 稳重: 0.03, 好胜: 0.04, 独狼: 0.05, 领袖: 0.04, 玻璃人: 0.05, 神经刀: 0.09 }
+    TRAIT_VOLATILE: { 稳重: 0.03, 好胜: 0.04, 独狼: 0.05, 领袖: 0.04, 玻璃人: 0.05, 神经刀: 0.09 },
+    // 篮板位置基础权重（C/PF 最高，PG 最低）—— 修复 PG 篮板异常的核心
+    POS_REB_WEIGHT: { PG: 0.5, SG: 0.85, SF: 1.1, PF: 2.4, C: 3.2 },
+    // 身高区间（cm，按位置）—— 参与篮板/内线对抗
+    HEIGHT: { PG: [178, 193], SG: [188, 200], SF: [195, 208], PF: [201, 214], C: [207, 221] },
+    STR_RANGE: [45, 90]   // 力量属性区间（a.STR，单独存，不参与综合）
   },
 
   MATCH: {
@@ -39,11 +44,18 @@ var CONFIG = {
     SHO_COEF: 0.0042, TRE_COEF: 0.0045, DEF_COEF: 0.0035, IQ_COEF: 0.0020,
     FATIGUE_SHOOT_PENALTY: 0.004, FATIGUE_MIN_THRESHOLD: 24,
     TO_BASE: 0.12, IQ_TO_COEF: 0.0018, PRESS_TO_BONUS: 0.05,
-    REB_COEF: 0.005, REB_BASE: 0.5,
+    REB_COEF: 0.006, REB_BASE: 0.30,   // 进攻篮板率压到真实区间（~25-35%）
+    OREB_FACTOR: 0.82,                  // 进攻篮板相对防守更难
     NOISE: 0.05,
     CLUTCH_DIFF: 3, CLUTCH_BONUS: 0.02,
     STARTER_MIN: 34, BENCH_MIN: 14, FREQ_STARTER_DELTA: -4, FREQ_BENCH_DELTA: 4,
-    FATIGUE_PER_MIN: 0.045
+    FATIGUE_PER_POSSESS: 0.70,          // 每回合在场所耗体力（赛中轮换用）
+    REST_RECOVER_POSSESS: 1.20,         // 板凳每回合恢复体力（短休息→首发快速回归，占比~85%）
+    SUB_STAMINA: 60,                    // 体力≤此值换下
+    FOUL_SUB: 4, FOUL_OUT: 5,           // 4 犯换下 / 5 犯离场
+    FOUL_RATE: 0.10,                    // 每回合出现犯规的概率
+    MIN_ROTATION: 8,                    // 每场至少登场人数
+    ROT_MIN: { 保守: { starter: 42, bench: 14 }, 均衡: { starter: 34, bench: 20 }, 频繁: { starter: 28, bench: 24 } }
   },
 
   // —— 战术系统（XBA 逆向：6 进攻 × 6 防守 + 相克矩阵）——
@@ -87,6 +99,31 @@ var CONFIG = {
   },
   // 球衣销售放大系数（单场战绩 + 球星 + 极限球员）
   JERSEY: { perWin: 1.4, starBonus: 0.10, extremeBonus: 0.20 },
+
+  // —— 球场（广告位数量 = 球场等级 + 球迷/4000）——
+  STADIUM: { DEFAULT_LEVEL: 1, LEVEL_CAP: 3, UPGRADE_COST: [0, 120000, 400000] },
+
+  // —— 赞助商合同制广告（替换原“胜负赔钱”简单模型）——
+  SPONSOR: {
+    COUNT: 14,                          // 生成的赞助商数量
+    industries: ['运动品牌', '饮料', '汽车', '金融', '电子', '餐饮', '地产', '航空', '互联网', '护肤'],
+    namePrefix: ['锐', '腾', '恒', '昇', '星', '云', '海', '极', '光', '川', '宇', '晟'],
+    nameSuffix: ['动', '驰', '达', '耀', '联', '峰', '润', '锐', '源', '创', '盛', '通'],
+    basePrice: [2000, 7000],            // 单轮基础单价区间
+    roundsOpts: [5, 10, 20],            // 合同轮次选项
+    FAN_COEF_CAP: 1.5,                  // 球迷系数上限 = min(1.5, 球迷/4000)
+    RECORD_WIN_BONUS: 0.5,              // 战绩系数 = 1 + 胜率×0.5 + 连胜加成
+    STREAK_BONUS: 0.15,
+    IMPORTANCE: { REGULAR: 1.0, CUP: 1.2, PLAYOFF: 1.5 },  // 比赛重要性系数
+    FIT_RANGE: [0.8, 1.2],              // 品牌契合度
+    DYNAMIC_DOWN: 0.92,                 // 签得多 → 单价下降
+    DYNAMIC_UP: 1.04,                   // 没人签 → 单价回升
+    BREACH_PENALTY: 0.5,                // 提前解约扣已得收入比例
+    bonuses: { champion: 50000, playoff: 20000, streak3: 5000, rankTop4: 15000 }  // 奖金条款
+  },
+
+  // —— CBA 真实队名导入（阶段3）——
+  USE_CBA: true,                        // 新游戏用真实 CBA 队名 + 占位球员(TODO)
 
   // —— 训练（普通训练：训练点制）——
   TRAINING: {

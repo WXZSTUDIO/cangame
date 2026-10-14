@@ -46,6 +46,8 @@ PUBLISH = [
     'assets/bet.js',
     'assets/championship.js',
     'assets/alliance.js',
+    'assets/ad.js',
+    'assets/cba-data.js',
     'assets/transfer.js',
     'assets/engine.js',
     'assets/ui.js',
@@ -162,7 +164,7 @@ def sync(repo, sub, msg):
 
 
 def main():
-    msg = 'feat: cangame v3.4 篮球经理 — 冠军杯512淘汰+报名三阶段 + 联盟系统(首页/盟战/威望/联盟杯赛/至尊杯邀请函) + 经营细化(票价/上座率/广告/球衣) + 有奖竞猜 + 极限球员刷球衣 + 特殊比分20:0'
+    msg = 'feat: cangame v3.5 篮球经理 — 篮板按位置权重重铸(首发按位置选派+赛中双向轮换) + 比分/技术统计一致性校验 + 职业联赛升降级(2升4降+备用球队池补齐) + 赞助商合同制广告收益 + CBA真实队名骨架(占位球员TODO) + 球员身高/体重/力量/潜力字段'
     only = 'both'
     for a in sys.argv[1:]:
         if a.startswith('--msg='):

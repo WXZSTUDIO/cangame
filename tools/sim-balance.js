@@ -1,7 +1,7 @@
 // cangame v3.2 · 平衡脚本（批量赛季：冠军分布 / 升降级流通 / 确定性）
 const fs = require('fs'), vm = require('vm'), path = require('path');
 const ROOT = process.cwd();
-const FILES = ['config', 'rng', 'players', 'transfer', 'league', 'tactics', 'match', 'season', 'training', 'cup', 'bet', 'championship', 'alliance', 'engine']
+const FILES = ['config', 'rng', 'players', 'transfer', 'league', 'tactics', 'match', 'season', 'training', 'cup', 'bet', 'championship', 'alliance', 'ad', 'cba-data', 'engine']
   .map(n => 'assets/' + n + '.js');
 const ctx = { console, Math, JSON, Date, isNaN, parseInt, parseFloat, Number, String, Array, Object, Boolean };
 vm.createContext(ctx);
@@ -15,18 +15,25 @@ const seedBase = parseInt(process.argv[3] || '1', 10);
 const champCount = {};
 let detOk = true, guardMax = 0, scoreSum = 0, gamesSum = 0;
 
+// 采样 1 级场均得分：必须在 REGULAR 阶段取，SEASON_END 后 seasonRoll 会把 wins/losses/pf 归零
+function sampleL1(s, bucket) {
+  const l1t = s.leagues.L1.teamIds.map(id => M.teamById(s, id));
+  l1t.forEach(t => { const gp = t.wins + t.losses; if (gp) { bucket.sum += t.pf / gp; bucket.n++; } });
+}
 function runSeason(seed, count) {
   const s = M.engine_newGame(seed, 't0');
   s.simQuiet = true; // 批量模式：跳过 play-by-play 字符串
   let g = 0;
-  while (s.phase !== 'SEASON_END' && g < 100) { M.engine_advanceRound(s); g++; }
+  const bucket = { sum: 0, n: 0 };
+  while (s.phase !== 'SEASON_END' && g < 100) {
+    M.engine_advanceRound(s); g++;
+    if (s.phase === 'REGULAR') { bucket.sum = 0; bucket.n = 0; sampleL1(s, bucket); }
+  }
   guardMax = Math.max(guardMax, g);
   if (count && s.seasonSummary) {
     champCount[s.seasonSummary.champion] = (champCount[s.seasonSummary.champion] || 0) + 1;
-    // 平均比分采样（1级联赛）
-    const l1t = s.leagues.L1.teamIds.map(id => M.teamById(s, id));
-    l1t.forEach(t => { const gp = t.wins + t.losses; if (gp) { scoreSum += t.pf / gp; gamesSum++; } });
   }
+  if (count && bucket.n) { scoreSum += bucket.sum; gamesSum += bucket.n; }
   return s;
 }
 
@@ -43,7 +50,7 @@ const maxTeam = Object.keys(champCount).sort((x, y) => champCount[y] - champCoun
 const maxRate = maxTeam ? (champCount[maxTeam] / N * 100).toFixed(1) : '0';
 const avgScore = gamesSum ? (scoreSum / gamesSum).toFixed(1) : '-';
 
-console.log('=== cangame v3.4 平衡报告（金字塔联赛 + 冠军杯512 + 联盟 + 经营 + 竞猜） ===');
+console.log('=== cangame v3.5 平衡报告（金字塔联赛 + 冠军杯512 + 联盟 + 经营 + 竞猜 + 赞助商广告 + CBA 队名） ===');
 console.log('赛季数 N =', N, ' 种子基 =', seedBase);
 console.log('不同冠军队伍数 =', distinct, '/ 14（1级联赛规模）');
 console.log('最热队夺冠占比 =', maxRate + '%');

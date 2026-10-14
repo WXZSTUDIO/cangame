@@ -100,6 +100,8 @@ function seasonRoll(state, rng) {
   assign('L2b', newL2b);
   const restCount = newL1.length + newL2a.length + newL2b.length;
   if (restCount !== 42) { /* 防御：永远不应发生 */ }
+  // 备用球队池填充：保证每个联赛恰好 14 队（升降级空缺由真实地名备用队补齐）
+  seasonFillFromReserve(state);
 
   // 跨赛季重置：战绩清零、赛程重排、年龄+1、合同-1
   state.teams.forEach(function (t) {
@@ -123,6 +125,20 @@ function seasonRoll(state, rng) {
   return summary;
 }
 
+// 从备用球队池补齐，使每个联赛恰好 TEAMS_PER_LEAGUE 队
+function seasonFillFromReserve(state) {
+  const need = CONFIG.LEAGUE.TEAMS_PER_LEAGUE;
+  ['L1', 'L2a', 'L2b'].forEach(function (lid) {
+    const lg = state.leagues[lid];
+    while (lg.teamIds.length < need && (state.reservePool || []).length) {
+      const t = state.reservePool.shift();
+      t.leagueId = lid; t.level = (lid === 'L1' ? 1 : 2);
+      lg.teamIds.push(t.id);
+      if (state.teams.indexOf(t) < 0) state.teams.push(t);
+    }
+  });
+}
+
 if (typeof module !== 'undefined') {
-  module.exports = { buildSchedule, buildAllSchedules, seasonStandings, seasonRoll, idNum };
+  module.exports = { buildSchedule, buildAllSchedules, seasonStandings, seasonRoll, seasonFillFromReserve, idNum };
 }

@@ -36,6 +36,11 @@ function engine_newGame(seed, humanTeamId) {
     allianceCup: null,           // 联盟杯赛
     supremeInvite: false,        // 至尊杯邀请函
     supremeCup: null,            // 至尊杯
+    stadiumLevel: CONFIG.STADIUM.DEFAULT_LEVEL,  // 球场等级（广告位 = 等级 + 球迷/4000）
+    sponsors: null,              // 赞助商池
+    adContracts: [],             // 已签赞助合同
+    adRevenueLogs: [],           // 每轮广告收入日志
+    winStreak: 0,                // 当前连胜（赞助商战绩系数用）
     seasonSummary: null,         // 赛季结束摘要（冠军/升降级/排名）
     lastResults: [], lastResult: null, lastCupResult: null, lastKingsResult: null, lastChampResult: null,
     log: []
@@ -53,6 +58,9 @@ function engine_newGame(seed, humanTeamId) {
   state.cups = buildCupInstances(state);
   state.transferPool = transfer_genPool(state, rng);
   alliance_init(state);   // 生成 AI 联盟池（独立子种子，不影响联赛）
+  ad_genSponsors(state);  // 生成赞助商池（独立子种子，不影响联赛确定性）
+  state.reservePool = buildReservePool(makeRNG(deriveSeed(seed, 4242)));  // 备用球队池（真实地名）
+  if (CONFIG.USE_CBA) cba_apply(state);  // CBA 真实队名套用（占位球员标记 TODO）
   const caps = teams.map(function (t) { return t.players.reduce(function (s, p) { return s + p.salary; }, 0); });
   state.finance.salaryCap = Math.round(caps.reduce(function (a, b) { return a + b; }, 0) / caps.length);
   const human = teamById(state, state.humanTeamId);
@@ -73,21 +81,14 @@ function engine_setTactics(state, teamId, tac) {
 
 function engine_applyPostGame(state, roundIdx) {
   const rng = makeRNG(deriveSeed(state.seed, state.season * 31 + roundIdx * 977 + 13));
-  const M = CONFIG.MATCH, IN = CONFIG.INJURY;
+  const IN = CONFIG.INJURY;
+  // 赛中体力/犯规已由 simulateGame 管理；此处仅做赛后伤病判定（上场越久概率略高）
   state.teams.forEach(function (t) {
-    const line = getLineup(t, tactics_resolve(t));
-    const onCourt = {};
-    line.forEach(function (x) { onCourt[x.player.id] = true; });
     t.players.forEach(function (p) {
       if (p.injury > 0) { p.injury--; p.stamina = clamp(p.stamina + IN.REST_RECOVER, 0, 100); return; }
-      if (onCourt[p.id]) {
-        p.stamina = clamp(p.stamina - M.STARTER_MIN * M.FATIGUE_PER_MIN * 2.2, 0, 100);
-        let chance = IN.BASE + Math.max(0, p.age - 30) * IN.AGE_FACTOR;
-        if (p.trait === '玻璃人') chance *= IN.GLASS_MULT;
-        if (rng() < chance) p.injury = randInt(rng, 1, IN.MAX_DNP);
-      } else {
-        p.stamina = clamp(p.stamina + IN.REST_RECOVER, 0, 100);
-      }
+      let chance = IN.BASE + Math.max(0, p.age - 30) * IN.AGE_FACTOR;
+      if (p.trait === '玻璃人') chance *= IN.GLASS_MULT;
+      if (rng() < chance) p.injury = randInt(rng, 1, IN.MAX_DNP);
     });
   });
 }
@@ -140,6 +141,7 @@ function engine_advanceRound(state) {
     });
   });
   state.lastResults = results;
+  results.forEach(function (r) { assertBoxConsistent(r, state); }); // 比分 = 统计一致性校验
   // 竞猜结算（本轮回合内已押注比赛）
   bet_tick(state, results.map(function (r) { return { homeId: r.homeId, awayId: r.awayId, winner: r.winner }; }));
 
@@ -162,6 +164,8 @@ function engine_advanceRound(state) {
     return (r.homeId === state.humanTeamId && r.winner === r.homeId) || (r.awayId === state.humanTeamId && r.winner === r.awayId);
   });
 
+  // 连胜（赞助商战绩系数用）
+  state.winStreak = humanWon ? (state.winStreak || 0) + 1 : 0;
   let adInc = 0, gateInc = 0, jerseyInc = 0;
   if (humanHome) {
     // 上座率：基准受票价档影响，威望/球迷小幅加成；高票价拉低上座率
@@ -169,9 +173,8 @@ function engine_advanceRound(state) {
     gateInc = Math.round(priceOpt.price * F.STADIUM_CAP * att);
     rev.gate += gateInc;
   }
-  // 广告位：球迷越多广告位越多，威望放大单价
-  const adSlots = Math.floor((state.fans || 0) / 4000) + 1;
-  adInc = Math.round(adSlots * F.AD_PER_SLOT * (1 + (state.prestige || 0) / 300));
+  // 广告：赞助商合同制结算（替换原“球迷/4000 × 单价”固定发钱）
+  adInc = ad_settle(state, 'REGULAR');
   rev.ad += adInc;
   // 球衣销售：随上轮战绩 + 球星/极限球员加成
   const stars = human.players.filter(function (p) { return p.star; }).length;

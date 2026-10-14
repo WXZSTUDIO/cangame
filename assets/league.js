@@ -78,6 +78,29 @@ function leagueTeamIds(state, leagueId) {
   return state.leagues[leagueId].teamIds;
 }
 
+// 备用球队池（真实地名+队名，用于升降级空缺填充 / 低级别联赛）
+// 注：队名为真实次级联赛/ABL 等公开队名；球员为占位数据，须 TODO 人工核对
+var RESERVE_TEAM_NAMES = [
+  ['石家庄', '翔蓝'], ['合肥', '狂风'], ['长沙', '勇胜'], ['武汉', '锟鹏'], ['广西', '威壮'],
+  ['陕西', '信达'], ['安徽', '文一'], ['河南', '赊店老酒'], ['贵州', '森航'], ['重庆', '华熙'],
+  ['佛山', '功夫小子'], ['东莞', '麻涌'], ['拉萨', '净土'], ['江苏', '国立'], ['江西', '鑫业'],
+  ['河北', '翔蓝'], ['山西', '国投'], ['宁夏', '哈纳斯'], ['天津', '雄狮'], ['北京', '东方雄鹿']
+];
+function buildReservePool(rng) {
+  return RESERVE_TEAM_NAMES.map(function (nm, i) {
+    const id = 'r' + i;
+    const players = buildRoster(rng, id, 250 + i); // 低级别（leagueIdx 2 → baseTier -6）
+    return {
+      id: id, name: nm[0] + nm[1], city: nm[0], nick: nm[1],
+      leagueId: null, level: 2, color: TEAM_COLORS[i % TEAM_COLORS.length],
+      players: players,
+      tactics: { offense: '整体', defense: '2-3联防', rotation: '均衡' },
+      lineup: players.slice(0, 5).map(function (p) { return p.id; }),
+      wins: 0, losses: 0, pf: 0, pa: 0, titles: 0, isReserve: true
+    };
+  });
+}
+
 if (typeof module !== 'undefined') {
-  module.exports = { buildLeague, teamById, buildRoster, leagueTeamIds, LEAGUE_DEFS };
+  module.exports = { buildLeague, teamById, buildRoster, leagueTeamIds, LEAGUE_DEFS, RESERVE_TEAM_NAMES, buildReservePool };
 }

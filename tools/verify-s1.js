@@ -1,7 +1,7 @@
 // cangame v3.4 · 验证脚本（vm 沙箱：金字塔联赛/杯赛/冠军杯512/联盟/经营/竞猜/球星/战术相克）
 const fs = require('fs'), vm = require('vm'), path = require('path');
 const ROOT = process.cwd();
-const FILES = ['config', 'rng', 'players', 'transfer', 'league', 'tactics', 'match', 'season', 'training', 'cup', 'bet', 'championship', 'alliance', 'engine']
+const FILES = ['config', 'rng', 'players', 'transfer', 'league', 'tactics', 'match', 'season', 'training', 'cup', 'bet', 'championship', 'alliance', 'ad', 'cba-data', 'engine']
   .map(n => 'assets/' + n + '.js');
 
 const ctx = { console, Math, JSON, Date, isNaN, parseInt, parseFloat, Number, String, Array, Object, Boolean };
@@ -15,7 +15,7 @@ function ok(cond, msg) {
 }
 
 const C = vm.runInContext('CONFIG', ctx);
-const M = vm.runInContext('({makeRNG,deriveSeed,buildLeague,teamById,simulateGame,availableCount,tactics_resolve,tactics_counterBonus,seasonStandings,seasonRoll,buildAllSchedules,engine_newGame,engine_advanceRound,training_apply,training_physio,teamLevel,cup_register,cup_tick,kings_start,kings_next,kings_claim,training_star,training_starDowngrade,star_cost,buildCupInstances,championship_build,championship_tick,championship_register,championship_registerOpen,championship_phaseText,transfer_genPool,transfer_buy,transfer_jersey,alliance_init,alliance_create,alliance_join,alliance_leave,alliance_warTick,alliance_cup_tick,alliance_supremeCheck,supreme_tick,bet_featured,bet_place,bet_tick})', ctx);
+const M = vm.runInContext('({makeRNG,deriveSeed,buildLeague,teamById,simulateGame,availableCount,tactics_resolve,tactics_counterBonus,seasonStandings,seasonRoll,seasonFillFromReserve,buildReservePool,buildAllSchedules,engine_newGame,engine_advanceRound,training_apply,training_physio,teamLevel,cup_register,cup_tick,kings_start,kings_next,kings_claim,training_star,training_starDowngrade,star_cost,buildCupInstances,championship_build,championship_tick,championship_register,championship_registerOpen,championship_phaseText,transfer_genPool,transfer_buy,transfer_jersey,alliance_init,alliance_create,alliance_join,alliance_leave,alliance_warTick,alliance_cup_tick,alliance_supremeCheck,supreme_tick,bet_featured,bet_place,bet_tick,ad_genSponsors,ad_slotCount,ad_available,ad_sign,ad_settle,ad_terminate,cba_apply,pickRebounder,buildCourt,rebWeight,assertBoxConsistent})', ctx);
 
 // 1. 金字塔联赛生成（XBA：1级×14 + 2级×2×14 = 42 队）
 const teams = M.buildLeague(M.makeRNG(C.SEED_DEFAULT));
@@ -158,10 +158,15 @@ if (exP) {
   ok(jr.ok === true && s8x.fans > fansB, '刷球衣成功 + 球迷增长');
 } else ok(true, '（本池无极限球员，跳过）');
 
-// 13. 经营细化（票价/上座率/广告/球衣）
+// 13. 经营细化（票价/上座率/广告/球衣）—— 广告改为赞助商合同制
 const s6 = M.engine_newGame(42, 't0');
+// 签一个 10 轮赞助合同，下一轮应有广告收入
+const sp0 = M.ad_available(s6)[0];
+M.ad_sign(s6, sp0.id, 10);
+ok(s6.adContracts.length === 1, '赞助合同已签订');
 M.engine_advanceRound(s6);
-ok(s6.finance.revenue.ad > 0 && s6.finance.revenue.jersey > 0, '广告+球衣收入入账');
+ok(s6.finance.revenue.ad > 0 && s6.finance.revenue.jersey > 0, '广告(赞助商)+球衣收入入账');
+ok(s6.adRevenueLogs.length > 0, '广告收入日志已生成');
 ok(s6.finance.revenue.gate >= 0, '门票收入字段存在');
 // 低价上座率 > 高价
 s6.finance.ticketPrice = 'low'; const loOpt = C.PRICE.options.find(o => o.key === 'low');
