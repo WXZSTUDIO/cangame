@@ -46,24 +46,33 @@ var CBA_L2_TEAMS = [
   { city: '深圳', nick: '马可波罗' }
 ];
 
-// 将真实队名套用到当前联赛（保留 team.id / 球员结构，仅改名 + 标记球员待核对）
-function cba_apply(state) {
-  function assign(leagueId, names) {
-    const ids = state.leagues[leagueId].teamIds;
-    ids.forEach(function (id, i) {
-      const t = teamById(state, id);
+// 按球队自身的 leagueId 分组套用真实队名。
+// 关键：抽成"数组版"是为了让 engine_newGame 与**选队界面 renderPick 共用**——
+// 选队界面直接 buildLeague() 造队、没有 state/leagues，若只走 cba_apply(state) 会导致
+// 选队页显示原始生成队名、进游戏后才变成 CBA 队名（两处不一致）。
+function cba_applyTeams(teams) {
+  const byLeague = { L1: [], L2a: [], L2b: [] };
+  teams.forEach(function (t) { if (byLeague[t.leagueId]) byLeague[t.leagueId].push(t); });
+  function assign(list, names) {
+    list.forEach(function (t, i) {
       const nm = names[i % names.length];
       t.city = nm.city; t.nick = nm.nick; t.name = nm.city + nm.nick;
       // 占位球员：标记待人工核对（非真实名单）
       t.players.forEach(function (p) { p.todoVerify = true; });
     });
   }
-  assign('L1', CBA_L1_TEAMS);
-  assign('L2a', CBA_L2_TEAMS.slice(0, 14));
-  assign('L2b', CBA_L2_TEAMS.slice(14, 28));
+  assign(byLeague.L1, CBA_L1_TEAMS);
+  assign(byLeague.L2a, CBA_L2_TEAMS.slice(0, 14));
+  assign(byLeague.L2b, CBA_L2_TEAMS.slice(14, 28));
+  return teams;
+}
+
+// 将真实队名套用到当前存档（保留 team.id / 球员结构，仅改名 + 标记球员待核对）
+function cba_apply(state) {
+  cba_applyTeams(state.teams);
   state.usingCBA = true;
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { CBA_L1_TEAMS, CBA_L2_TEAMS, cba_apply };
+  module.exports = { CBA_L1_TEAMS, CBA_L2_TEAMS, cba_apply, cba_applyTeams };
 }

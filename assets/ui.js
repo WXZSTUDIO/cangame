@@ -29,6 +29,8 @@ function renderPick() {
   const grid = document.getElementById('team-grid');
   const rng = makeRNG(CONFIG.SEED_DEFAULT);
   const teams = buildLeague(rng);
+  // 选队界面必须同样套用 CBA 队名，否则选队页是生成队名、进游戏才变 CBA 队名（两处不一致）
+  if (CONFIG.USE_CBA && typeof cba_applyTeams === 'function') cba_applyTeams(teams);
   grid.innerHTML = '';
   teams.forEach(function (t) {
     const b = document.createElement('button');

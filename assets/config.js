@@ -1,7 +1,7 @@
 // cangame v3.4 · 配置（唯一可调数值源）
 // XBA 逆向：金字塔联赛 / 街球杯赛 / 冠军杯(512淘汰) / 联盟系统 / 经营细化 / 竞猜 / 球星 / 6v6 战术
 var CONFIG = {
-  VERSION: '3.5.0',
+  VERSION: '3.5.1',
   SEED_DEFAULT: 20261014,
 
   // —— 职业联赛（XBA 金字塔）：1级联赛×1 + 2级联赛×2，每个联赛 14 队 ——
@@ -39,8 +39,10 @@ var CONFIG = {
   },
 
   MATCH: {
-    POSSESSIONS: 68,
-    BASE_2P: 0.50, BASE_3P: 0.36,
+    POSSESSIONS: 100,                   // 每队回合数（对齐真实篮球 ~100 回合/场）
+    // 本作不模拟罚球（真实比赛约 20% 得分来自罚球），故投篮命中率基线调高以补偿，
+    // 使每队场均落在真实区间（~100 分）；同时打铁减少 → 篮板回落，各位置篮板才不超标。
+    BASE_2P: 0.63, BASE_3P: 0.44,
     SHO_COEF: 0.0042, TRE_COEF: 0.0045, DEF_COEF: 0.0035, IQ_COEF: 0.0020,
     FATIGUE_SHOOT_PENALTY: 0.004, FATIGUE_MIN_THRESHOLD: 24,
     TO_BASE: 0.12, IQ_TO_COEF: 0.0018, PRESS_TO_BONUS: 0.05,

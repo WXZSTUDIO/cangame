@@ -22,6 +22,9 @@ function ok(c, m) { if (c) pass++; else { fail++; console.log('  ✗ ' + m); } }
 
 const doc = window.document;
 ok(doc.getElementById('team-grid').children.length === 42, '选队界面渲染 42 队');
+// 选队界面必须已套用 CBA 队名（不能等进游戏才变），否则两处队名不一致
+const gridTxt = doc.getElementById('team-grid').textContent;
+ok(!window.CONFIG.USE_CBA || gridTxt.indexOf('东莞银行') >= 0, '选队界面已套用 CBA 队名（含 09-10 冠名）');
 // 选第一队（1级联赛球队）
 doc.querySelector('#team-grid .team-btn').click();
 ok(!doc.getElementById('screen-game').classList.contains('hidden'), '选队后进入主界面');
