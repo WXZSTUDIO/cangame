@@ -38,9 +38,17 @@ function champ_priorityClubs(state) {
   const out = [];
   ['L1', 'L2a', 'L2b'].forEach(function (lid) {
     seasonStandings(state, lid).slice(0, 2).forEach(function (r) {
+      if (r.team.id === state.humanTeamId) {
+        // 人类统一用 HUMAN 标识（避免与自由报名重复入签）
+        if (!out.some(function (c) { return c.id === 'HUMAN'; })) {
+          const rt = tactics_lineupRating(r.team, tactics_resolve(r.team));
+          out.push({ id: 'HUMAN', name: r.team.name + '（你）', rating: Math.round((rt.off + rt.def + rt.reb) / 3), human: true });
+        }
+        return;
+      }
       if (out.some(function (c) { return c.id === r.team.id; })) return;
       const rt = tactics_lineupRating(r.team, tactics_resolve(r.team));
-      out.push({ id: r.team.id, name: r.team.name, rating: Math.round((rt.off + rt.def + rt.reb) / 3), human: r.team.id === state.humanTeamId });
+      out.push({ id: r.team.id, name: r.team.name, rating: Math.round((rt.off + rt.def + rt.reb) / 3), human: false });
     });
   });
   return out;
@@ -99,7 +107,8 @@ function championship_registerOpen(state) {
 function championship_lock(state, rng) {
   const c = state.championship;
   const entrants = c.entrants.slice();
-  if (c.humanEntry) entrants.push(c.humanClub);
+  // 人类统一以 HUMAN 标识入签（优先邀请函已用 HUMAN，避免重复）
+  if (c.humanEntry && !entrants.some(function (e) { return e.id === 'HUMAN'; })) entrants.push(c.humanClub);
   const usedIds = {};
   entrants.forEach(function (e) { usedIds[e.id] = true; });
   let pi = 0;
