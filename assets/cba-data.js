@@ -31,7 +31,8 @@ var CBA_L2_TEAMS = [
   { city: '河北', nick: '翔蓝' }, { city: '山西', nick: '国投' }, { city: '宁夏', nick: '哈纳斯' },
   { city: '天津', nick: '雄狮' }, { city: '北京', nick: '东方雄鹿' }, { city: '香港', nick: '飞龙' },
   { city: '云南', nick: '红河' }, { city: '四川', nick: '金强' }, { city: '广州', nick: '龙狮' },
-  { city: '青岛', nick: '双星' }, { city: '浙江', nick: '广厦' }, { city: '江苏', nick: '同曦' }
+  { city: '青岛', nick: '双星' }, { city: '浙江', nick: '广厦' }, { city: '江苏', nick: '同曦' },
+  { city: '深圳', nick: '马可波罗' }
 ];
 
 // 将真实队名套用到当前联赛（保留 team.id / 球员结构，仅改名 + 标记球员待核对）

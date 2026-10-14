@@ -109,5 +109,24 @@ function band(x, lo, hi) { return x >= lo && x <= hi; }
   ok(s.reservePool.length === reserveBefore - 1, '备用池消耗 1 队');
 })();
 
+// ============ 6. CBA 队名骨架：42 队队名唯一（防队名池不足导致取模回绕重名） ============
+(function () {
+  const s = M.engine_newGame(2026, 't0');
+  const names = s.teams.map(t => t.name);
+  const uniq = new Set(names);
+  ok(s.teams.length === 42, 'CBA 骨架共 42 队（实际 ' + s.teams.length + '）');
+  ok(uniq.size === names.length, '42 队队名无重复（唯一 ' + uniq.size + ' / ' + names.length + '）');
+  // 各联赛内也不重名
+  let dupInLeague = 0;
+  ['L1', 'L2a', 'L2b'].forEach(lg => {
+    const ns = s.leagues[lg].teamIds.map(id => teamById(s, id).name);
+    if (new Set(ns).size !== ns.length) dupInLeague++;
+  });
+  ok(dupInLeague === 0, '各联赛内队名无重复');
+  // 占位球员必须标记待人工核对
+  const marked = s.teams.every(t => t.players.every(p => p.todoVerify === true));
+  ok(marked, '占位球员全部标记 todoVerify=true（非真实名单）');
+})();
+
 console.log('\nverify-v35: 通过 ' + pass + ' / ' + (pass + fail) + (fail ? '  ❌' : '  ✅'));
 process.exit(fail ? 1 : 0);
