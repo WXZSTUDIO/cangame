@@ -1,3 +1,9 @@
+/* cangame v4 · 3D / Liquid Glass 视觉层（全在 style.css：deploy.py 白名单，不新增文件）
+   铁律（node tools/lint-3d.js 机器可查）：G1 preserve-3d 仅 #board | G2 表格 transform:none
+   G3 .token / svg.board 无 transform | G4 玻璃宿主与入场动画无 opacity<1
+   G5 无常驻 will-change、外投影≤1 层、blur≤24px | G6 主区 .card 不加 blur | G7 不加 overflow
+   token → 选择器映射见 design/engineering/3d-ui-impl.md */
+/* §0 变量：v3 原样保留 + v4 追加（只增不改） */
 :root{
   --board:#1c2b26; --board-2:#16211d;
   --chalk:#eef2ee; --chalk-dim:#9fb0a8;
@@ -12,152 +18,430 @@
   --d-fast:120ms; --d:220ms; --d-slow:360ms;
   --ease-out:cubic-bezier(.22,.61,.36,1); --ease-in:cubic-bezier(.4,0,.2,1);
   --shadow-2:0 8px 24px rgba(0,0,0,.45);
+  --card-2:rgba(11,17,20,.62);
 }
-@media (prefers-reduced-motion: reduce){ *{transition:none!important;animation:none!important} }
+:root{
+  --stage-0:#070b0d; --stage-1:#0c1418; --stage-2:#121d22;
+  --light-1:rgba(255,255,255,.16);
+  --chalk-2:#c3cec9;
+  --glass-floor:rgba(11,17,20,.62); --glass-floor-strong:rgba(11,17,20,.78);
+  --glass-stroke:rgba(255,255,255,.14); --glass-stroke-hi:rgba(255,255,255,.42);
+  --glass-hi-top:rgba(255,255,255,.34); --glass-ao-bottom:rgba(0,0,0,.34);
+  --glass-inset:inset 0 1px 0 var(--glass-hi-top), inset 0 -1px 0 var(--glass-ao-bottom);
+  --blur-panel:12px; --blur-chrome:16px; --sat:180%;
+  --z-panel:8px; --z-raise:18px; --z-lift:28px; --z-back:-24px;
+  --persp-card:900px; --persp-chrome:1400px; --persp-nav:700px;
+  --persp-grid:1000px; --persp-court:900px;
+  --tilt-card:1deg; --tilt-nav:2.5deg; --tilt-side:-2.5deg;
+  --tilt-court:12deg; --tilt-grid-max:0deg;
+  --shadow-panel:0 18px 38px -14px rgba(0,0,0,.70);
+  --shadow-raise:0 28px 56px -18px rgba(0,0,0,.78);
+  --accent-hi:#ffb066; --accent-deep:#d9541a;
+  --accent-a15:rgba(255,122,60,.15); --accent-a30:rgba(255,122,60,.30);
+  --hardwood-a:#c08a4e; --hardwood-b:#8a5527; --hardwood-key:#e6b277;
+  --line-glass:rgba(255,255,255,.09); --line-glass-strong:rgba(255,255,255,.16);
+  --r-glass:14px; --r-glass-lg:16px; --r-pill:999px;
+  --d-press:90ms; --ease-sheet:cubic-bezier(.32,.72,0,1);
+}
+/* §1 舞台 L0：深空渐变 + 两盏冷白顶光 + 一抹橙（唯一暖源）。
+   写在 html 上（会传播到画布），不用 body::before，避开 z-index 层叠风险 */
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
-body{
-  background:radial-gradient(120% 120% at 50% 0%,var(--board),var(--board-2));
-  color:var(--chalk); font-family:var(--font-ui); font-size:var(--fs-m); line-height:1.5;
-  -webkit-font-smoothing:antialiased;
+html{
+  background:
+    radial-gradient(60% 40% at 18% -6%, rgba(190,225,235,.10), transparent 70%),
+    radial-gradient(50% 36% at 84% -4%, rgba(190,225,235,.07), transparent 70%),
+    radial-gradient(45% 30% at 50% 108%, rgba(255,122,60,.10), transparent 72%),
+    radial-gradient(140% 90% at 50% -10%, var(--stage-2) 0%, var(--stage-1) 38%, var(--stage-0) 100%),
+    var(--stage-0);
+  background-attachment:fixed;
 }
-.num{font-family:var(--font-num); font-variant-numeric:tabular-nums; font-weight:var(--w-semi)}
+body{color:var(--chalk); font-family:var(--font-ui); font-size:var(--fs-m); line-height:1.5;
+  -webkit-font-smoothing:antialiased}
+.num{font-family:var(--font-num); font-variant-numeric:tabular-nums; font-weight:var(--w-semi); letter-spacing:.01em}
 .accent{color:var(--accent)} .win{color:var(--win)} .lose{color:var(--lose)} .warn{color:var(--warn)}
 .hidden{display:none!important}
 .app{max-width:1100px; margin:0 auto; padding:var(--s5)}
-.title{font-size:var(--fs-xxl); font-weight:var(--w-bold); margin:var(--s5) 0 var(--s2)}
-.sub{color:var(--chalk-dim); margin:0 0 var(--s5)}
-.screen{animation:fade .3s var(--ease-out)}
-@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-
-/* 选队网格 */
-.team-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:var(--s3)}
-.team-btn{display:flex; flex-direction:column; gap:2px; padding:var(--s3); border:1px solid var(--line);
-  border-radius:var(--r1); background:rgba(255,255,255,.02); text-align:left; color:var(--chalk); transition:border-color var(--d),transform var(--d)}
-.team-btn:hover{border-color:var(--accent); transform:translateY(-2px)}
-.team-btn .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:middle}
-.team-btn b{font-size:var(--fs-l)}
-.team-btn small{color:var(--chalk-dim)}
-
-/* 头部 */
-.hdr{display:flex; align-items:center; justify-content:space-between; gap:var(--s4); margin-bottom:var(--s4); flex-wrap:wrap}
-.hdr .name{font-size:var(--fs-xl); font-weight:var(--w-bold)}
-.hdr .rec{color:var(--chalk-dim)}
-.btn{font-family:inherit; cursor:pointer; border:0; border-radius:var(--r1); padding:10px 18px; font-weight:var(--w-semi); transition:filter var(--d),background var(--d)}
-.btn-primary{background:var(--accent); color:#1c1410}
-.btn-primary:hover{filter:brightness(1.08)}
-.btn-ghost{background:transparent; color:var(--chalk); border:1px solid var(--line-strong)}
-
-.grid2{display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:var(--s5)}
-@media (max-width:820px){ .grid2{grid-template-columns:1fr} }
-.col-main,.col-side{display:flex; flex-direction:column; gap:var(--s4)}
-.card{border:1px solid var(--line); border-radius:var(--r1); background:rgba(255,255,255,.02); padding:var(--s4); box-shadow:var(--shadow-2)}
-.card-h{font-size:var(--fs-l); font-weight:var(--w-semi); margin:0 0 var(--s3); display:flex; align-items:center; gap:var(--s2)}
-
-/* 战术板 SVG */
-.board-wrap{display:flex; justify-content:center}
-svg.board{width:100%; max-width:460px; height:auto; touch-action:none}
-.court{fill:none; stroke:var(--chalk); stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
-.court-dim{fill:none; stroke:var(--chalk-dim); stroke-width:1.5; stroke-dasharray:2 5; stroke-linecap:round}
-.token{cursor:grab; transition:filter var(--d-fast)}
-.token:active{cursor:grabbing}
-.token circle{r:15; stroke:var(--board); stroke-width:2}
-.token.home circle{fill:var(--accent)}
-.token.away circle{fill:var(--chalk-dim)}
-.token text{fill:var(--board); font-family:var(--font-num); font-weight:var(--w-bold); font-size:12px; text-anchor:middle; dominant-baseline:central}
-.pos-label{fill:var(--chalk-dim); font-size:10px; text-anchor:middle}
-
-/* 战术控件 */
-.tactic-controls{display:grid; grid-template-columns:repeat(2,1fr); gap:var(--s3); margin-top:var(--s4)}
-.tc{display:flex; flex-direction:column; gap:4px}
-.tc label{color:var(--chalk-dim); font-size:var(--fs-xs)}
-.tc select{background:var(--board-2); color:var(--chalk); border:1px solid var(--line); border-radius:var(--r1); padding:8px; font-family:inherit}
-.lineup-controls{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:var(--s2); margin-top:var(--s3)}
-.lc{display:flex; flex-direction:column; gap:2px; font-size:var(--fs-s)}
-.lc select{background:var(--board-2); color:var(--chalk); border:1px solid var(--line); border-radius:var(--r1); padding:6px; font-family:inherit}
-
-/* 表格 */
-table{width:100%; border-collapse:collapse}
-th,td{padding:6px 8px; text-align:right; font-size:var(--fs-s)}
-th:first-child,td:first-child{text-align:left}
-tbody tr{border-bottom:1px solid var(--line)}
-.you{color:var(--accent); font-weight:var(--w-semi)}
-.tag{font-size:var(--fs-xs); padding:1px 7px; border-radius:999px; border:1px solid var(--line); display:inline-block}
-.tag.win{color:var(--win); border-color:var(--win)}
-.tag.lose{color:var(--lose); border-color:var(--lose)}
-.tag.warn{color:var(--warn); border-color:var(--warn)}
-
-/* 荣誉/奖杯列表 */
-.trophy-list{list-style:none; padding:0; margin:8px 0 0}
-.trophy-list li{padding:6px 10px; border:1px solid var(--line); border-radius:8px; margin-bottom:6px; background:var(--card-2)}
-
-/* 能力条 */
-.bar{height:6px; background:var(--line); border-radius:3px; overflow:hidden; margin-top:3px}
-.bar > i{display:block; height:100%; background:var(--accent)}
-.attr-mini{display:grid; grid-template-columns:repeat(5,1fr); gap:2px 8px; font-size:var(--fs-xs); color:var(--chalk-dim); margin-top:4px}
-.attr-mini b{color:var(--chalk); font-family:var(--font-num)}
-
-/* 战报 */
-.score-big{font-family:var(--font-num); font-size:var(--fs-xxl); font-weight:var(--w-bold); letter-spacing:1px}
-.pbp{max-height:240px; overflow:auto; font-family:var(--font-num); font-size:var(--fs-xs); color:var(--chalk-dim); line-height:1.7; border-top:1px solid var(--line); margin-top:var(--s3); padding-top:var(--s2)}
-.pbp div:nth-child(odd){opacity:.8}
-
-/* 冠军 */
-.champion{margin-top:var(--s5); padding:var(--s6); text-align:center; border:1px solid var(--accent); border-radius:var(--r2); background:rgba(255,122,60,.08)}
-.champion h2{font-size:var(--fs-xxl); color:var(--accent); margin:0 0 var(--s2)}
-:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
-.fin-row{display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid var(--line); font-size:var(--fs-s)}
-.fin-row .num{font-size:var(--fs-m)}
-
-/* ===== XBA 三栏架构（顶栏 / 左导航 / 主区 / 右面板）===== */
-.topbar{display:flex; align-items:center; justify-content:space-between; gap:var(--s4);
-  border:1px solid var(--line); border-radius:var(--r1); background:rgba(255,255,255,.03);
-  padding:var(--s2) var(--s4); margin-bottom:var(--s4); flex-wrap:wrap}
-.topbar .tb-item{display:flex; flex-direction:column; line-height:1.25; font-size:var(--fs-s)}
+.title{font-size:var(--fs-xxl); font-weight:var(--w-bold); margin:var(--s5) 0 var(--s2);
+  text-shadow:0 2px 0 rgba(0,0,0,.45)}
+.sub{color:var(--chalk-2); margin:0 0 var(--s5)}
+/* §2 入场动画：绝不能含 opacity —— 祖先 opacity<1 会创建 Backdrop Root，
+   使内部玻璃采不到背景，动画结束"啪"地出现。改为纯 transform（从深处推进来） */
+@keyframes screenIn{
+  from{transform:perspective(1200px) translateZ(var(--z-back)) rotateX(2.5deg)} to{transform:none}}
+@keyframes viewIn{
+  from{transform:perspective(900px) translateZ(-18px) rotateX(1.5deg)} to{transform:none}}
+.screen{animation:screenIn 320ms var(--ease-out)}
+.main .view{animation:viewIn 220ms var(--ease-out)}
+@media (prefers-reduced-motion: reduce){ *{transition:none!important;animation:none!important} }
+/* §3 玻璃底座（选择器分组 + 参数化变量，不新增 class）：
+   ① 保底层 --glass-bg ② 上亮下暗厚度渐变 ③ 左上主光 ④ 发丝渐变边框（background-clip:border-box）
+   本块不含 backdrop-filter 与 transform —— blur 与 3D 由 §4 逐元素指派 */
+.card,.topbar,.nav,.tabs,.side > .card,.team-btn,.cup-card{
+  position:relative; background-color:transparent;
+  background-image:
+    linear-gradient(180deg, rgba(255,255,255,.085) 0%, rgba(255,255,255,.022) 46%, rgba(255,255,255,.055) 100%),
+    radial-gradient(120% 80% at 22% -12%, var(--light-1), transparent 62%),
+    linear-gradient(var(--glass-bg,var(--glass-floor)), var(--glass-bg,var(--glass-floor))),
+    linear-gradient(180deg, var(--glass-hi-top), var(--glass-stroke));
+  background-origin:border-box;
+  background-clip:padding-box,padding-box,padding-box,border-box;
+  border:1px solid transparent; border-radius:var(--r-glass);
+  box-shadow:var(--glass-inset), inset 1px 0 0 rgba(255,255,255,.10);
+}
+/* §4 容器级 flat tilt：一律 transform:perspective() 函数（自带透视，不依赖父级
+   preserve-3d），因此不需要任何包裹层 → index.html 零改动 */
+.card{--glass-bg:var(--glass-floor); padding:var(--s4); border-radius:var(--r-glass-lg);
+  box-shadow:var(--glass-inset), var(--shadow-panel);
+  transform:perspective(var(--persp-card)) translateZ(var(--z-panel)) rotateX(var(--tilt-card));
+  transform-origin:50% 0%;
+  transition:transform var(--d) var(--ease-out), box-shadow var(--d) var(--ease-out)}
+.card:hover{transform:perspective(var(--persp-card)) translateZ(var(--z-raise)) rotateX(0deg);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.42), inset 0 -1px 0 var(--glass-ao-bottom),
+             var(--shadow-raise)}
+#view-tactics .card,#view-tactics .card:hover{
+  transform:perspective(var(--persp-card)) translateZ(var(--z-panel)) rotateX(var(--tilt-card))}
+.card-h{position:relative; padding-left:12px; margin:0 0 var(--s3); font-size:var(--fs-l);
+  font-weight:var(--w-semi); color:var(--chalk); text-shadow:0 1px 0 rgba(0,0,0,.45)}
+.card-h::before{content:''; position:absolute; left:0; top:.28em; width:3px; height:.92em;
+  border-radius:2px; background:linear-gradient(180deg, var(--accent-hi), var(--accent-deep));
+  box-shadow:0 0 10px -2px rgba(255,122,60,.55)}
+.topbar{--glass-bg:var(--glass-floor-strong);
+  display:flex; align-items:center; justify-content:space-between; gap:var(--s4);
+  padding:10px var(--s4); margin-bottom:var(--s4); flex-wrap:wrap;
+  -webkit-backdrop-filter:blur(var(--blur-chrome)) saturate(var(--sat));
+          backdrop-filter:blur(var(--blur-chrome)) saturate(var(--sat));
+  box-shadow:inset 0 1px 0 var(--glass-stroke-hi), inset 0 -1px 0 var(--glass-ao-bottom),
+             0 20px 42px -18px rgba(0,0,0,.76);
+  transform:perspective(var(--persp-chrome)) translateZ(12px) rotateX(1.2deg);
+  transform-origin:50% 0%}
+.topbar::before{content:''; position:absolute; left:12%; right:12%; top:0; height:1px;
+  pointer-events:none;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.60), transparent)}
+.topbar .tb-item{display:flex; flex-direction:column; line-height:1.25; font-size:var(--fs-s);
+  padding:4px 12px; border-radius:10px;
+  background:linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.015));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18);
+  transition:transform var(--d-fast) var(--ease-out), background var(--d-fast) linear}
+.topbar .tb-item:hover{transform:perspective(700px) translateZ(6px);
+  background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.03))}
 .topbar .tb-item small{color:var(--chalk-dim); font-size:var(--fs-xs)}
-.topbar .tb-item b{font-family:var(--font-num); font-weight:var(--w-semi)}
-.topbar .tb-team{font-size:var(--fs-l); font-weight:var(--w-bold)}
+.topbar .tb-item b{font-family:var(--font-num); font-weight:var(--w-semi); font-variant-numeric:tabular-nums}
+.topbar .tb-team{font-size:var(--fs-xl); font-weight:var(--w-bold); letter-spacing:.5px;
+  background:linear-gradient(180deg, #fff, #cfd9d4);
+  -webkit-background-clip:text; background-clip:text; color:transparent}
+@supports not ((-webkit-background-clip:text) or (background-clip:text)){
+  .topbar .tb-team{color:var(--chalk); background:none}}
+.broadcast{flex-basis:100%; color:var(--chalk-2); font-size:var(--fs-xs);
+  border-top:1px solid var(--line-glass); padding-top:6px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.nav{--glass-bg:var(--glass-floor-strong);
+  display:flex; flex-direction:column; gap:6px; align-self:start; padding:12px 10px;
+  -webkit-backdrop-filter:blur(var(--blur-chrome)) saturate(var(--sat));
+          backdrop-filter:blur(var(--blur-chrome)) saturate(var(--sat));
+  box-shadow:inset 0 1px 0 var(--glass-stroke-hi), inset -1px 0 0 rgba(255,255,255,.08),
+             0 18px 38px -16px rgba(0,0,0,.72);
+  transform:perspective(var(--persp-nav)) translateZ(var(--z-panel)) rotateY(var(--tilt-nav));
+  transform-origin:0% 50%}
+.tabs{--glass-bg:var(--glass-floor);
+  display:flex; gap:3px; padding:3px; overflow:hidden;
+  -webkit-backdrop-filter:blur(var(--blur-panel)) saturate(var(--sat));
+          backdrop-filter:blur(var(--blur-panel)) saturate(var(--sat));
+  box-shadow:inset 0 1px 0 var(--glass-stroke-hi), inset 0 -1px 0 var(--glass-ao-bottom),
+             0 14px 30px -16px rgba(0,0,0,.68);
+  transform:perspective(var(--persp-card)) translateZ(6px); transform-origin:50% 0%}
 .shell{display:grid; grid-template-columns:150px minmax(0,1fr) 220px; gap:var(--s4)}
 @media (max-width:960px){ .shell{grid-template-columns:130px minmax(0,1fr)} .side{display:none} }
 @media (max-width:680px){ .shell{grid-template-columns:1fr} .nav{flex-direction:row; flex-wrap:wrap} }
-.nav{display:flex; flex-direction:column; gap:6px; align-self:start;
-  border:1px solid var(--line); border-radius:var(--r1); background:rgba(255,255,255,.02); padding:var(--s3)}
-.nav-h{color:var(--chalk-dim); font-size:var(--fs-xs); letter-spacing:2px; margin:var(--s2) 2px 2px}
-.nav-btn{font-family:inherit; cursor:pointer; text-align:left; color:var(--chalk);
-  background:transparent; border:1px solid transparent; border-radius:var(--r1);
-  padding:8px 10px; font-size:var(--fs-s); transition:background var(--d-fast),border-color var(--d-fast)}
-.nav-btn:hover{background:rgba(255,255,255,.05)}
-.nav-btn.active{background:rgba(255,122,60,.14); border-color:var(--accent); color:var(--accent); font-weight:var(--w-semi)}
-.nav-team{margin-top:var(--s3); padding-top:var(--s3); border-top:1px dashed var(--line); font-size:var(--fs-xs); color:var(--chalk-dim); line-height:1.7}
 .main{display:flex; flex-direction:column; gap:var(--s4)}
 .side{display:flex; flex-direction:column; gap:var(--s4); align-self:start}
-.side-roster-row{display:flex; align-items:center; justify-content:space-between; padding:4px 0; border-bottom:1px solid var(--line); font-size:var(--fs-s)}
-.side-roster-row .pos{color:var(--chalk-dim); font-size:var(--fs-xs); width:24px}
-.side-roster-row .ovr{font-family:var(--font-num); font-weight:var(--w-semi)}
-.main .view{animation:fade .25s var(--ease-out)}
-.train-row{display:flex; align-items:center; justify-content:space-between; gap:var(--s2);
-  padding:6px 0; border-bottom:1px solid var(--line); font-size:var(--fs-s); flex-wrap:wrap}
-.train-row select{background:var(--board-2); color:var(--chalk); border:1px solid var(--line); border-radius:var(--r1); padding:4px 6px; font-family:inherit; font-size:var(--fs-xs)}
+.side > .card{--glass-bg:var(--glass-floor); padding:var(--s3);
+  -webkit-backdrop-filter:blur(var(--blur-panel)) saturate(var(--sat));
+          backdrop-filter:blur(var(--blur-panel)) saturate(var(--sat));
+  box-shadow:var(--glass-inset), var(--shadow-panel);
+  transform:perspective(var(--persp-nav)) translateZ(var(--z-panel)) rotateY(var(--tilt-side));
+  transform-origin:100% 50%}
+.side > .card:hover{
+  transform:perspective(var(--persp-nav)) translateZ(var(--z-raise)) rotateY(calc(var(--tilt-side) * .4));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.42), inset 0 -1px 0 var(--glass-ao-bottom),
+             var(--shadow-raise)}
+/* §5 导航 / Tab / 侧栏 */
+.nav-h{position:relative; color:var(--chalk-dim); font-size:var(--fs-xs); letter-spacing:2px;
+  margin:14px 4px 6px; padding-left:2px}
+.nav-h::after{content:''; position:absolute; left:0; right:0; bottom:-3px; height:1px;
+  background:linear-gradient(90deg, var(--line-glass-strong), transparent 78%)}
+.nav-h:first-child{margin-top:2px}
+.nav-btn{font-family:inherit; cursor:pointer; text-align:left; color:var(--chalk-2);
+  background:transparent; border:1px solid transparent; border-radius:10px;
+  padding:8px 10px; font-size:var(--fs-s);
+  transform:perspective(700px) translateZ(0) rotateY(0deg); transform-origin:0% 50%;
+  transition:transform var(--d) var(--ease-out), background var(--d-fast) linear,
+             box-shadow var(--d-fast) var(--ease-out), color var(--d-fast) linear}
+.nav-btn:hover{transform:perspective(700px) translateZ(10px) rotateY(-4deg); color:var(--chalk);
+  background:linear-gradient(90deg, rgba(255,255,255,.11), rgba(255,255,255,.03));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 10px 20px -12px rgba(0,0,0,.70)}
+.nav-btn.active{color:var(--accent); font-weight:var(--w-semi);
+  transform:perspective(700px) translateZ(6px) rotateY(-2deg);
+  background:linear-gradient(90deg, var(--accent-a30), var(--accent-a15) 55%, rgba(255,122,60,.04));
+  box-shadow:inset 3px 0 0 var(--accent), inset 0 1px 0 rgba(255,255,255,.22),
+             inset 0 0 0 1px rgba(255,122,60,.45), 0 8px 20px -10px rgba(255,122,60,.40)}
+.nav-team{margin-top:14px; padding-top:12px; border-top:1px solid var(--line-glass);
+  font-size:var(--fs-xs); color:var(--chalk-dim); line-height:1.7}
+.tab-btn{position:relative; flex:1; font-family:inherit; cursor:pointer; background:transparent;
+  color:var(--chalk-dim); border:0; border-radius:11px; padding:10px 4px; font-size:var(--fs-s);
+  transform:perspective(700px) translateZ(0);
+  transition:transform var(--d) var(--ease-out), color var(--d-fast) linear,
+             background var(--d-fast) linear, box-shadow var(--d-fast) var(--ease-out)}
+.tab-btn:hover{color:var(--chalk-2); background:rgba(255,255,255,.06);
+  transform:perspective(700px) translateZ(5px)}
+.tab-btn.active{color:var(--accent); font-weight:var(--w-semi);
+  transform:perspective(700px) translateZ(10px);
+  background:linear-gradient(180deg, rgba(255,255,255,.11), rgba(255,122,60,.10));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.30), inset 0 -1px 0 rgba(0,0,0,.20),
+             inset 0 0 0 1px rgba(255,122,60,.45), 0 8px 18px -10px rgba(255,122,60,.36)}
+.tab-btn.active::after{content:''; position:absolute; left:10px; right:10px; bottom:3px;
+  height:2px; border-radius:2px;
+  background:linear-gradient(90deg, transparent, var(--accent-hi), transparent);
+  box-shadow:0 0 12px -2px rgba(255,122,60,.85)}
+.side-tabs{display:flex; gap:3px; margin-bottom:var(--s2); padding:3px; border-radius:10px;
+  background:rgba(255,255,255,.05); border:1px solid var(--glass-stroke);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16), inset 0 -1px 0 rgba(0,0,0,.22)}
+.side-tab{flex:1; font-family:inherit; cursor:pointer; background:transparent; color:var(--chalk-dim);
+  border:0; border-radius:8px; padding:6px 0; font-size:var(--fs-xs);
+  transition:transform var(--d-fast) var(--ease-out), background var(--d-fast) linear,
+             color var(--d-fast) linear, box-shadow var(--d-fast) linear}
+.side-tab:hover{color:var(--chalk-2); background:rgba(255,255,255,.06)}
+.side-tab.active{color:var(--accent); font-weight:var(--w-semi);
+  background:linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,122,60,.12));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28), inset 0 0 0 1px rgba(255,122,60,.40);
+  transform:perspective(700px) translateZ(6px)}
+.side-roster-row{position:relative; display:flex; align-items:center; gap:6px;
+  padding:6px 8px; border-radius:9px; margin:2px -4px; font-size:var(--fs-s); border-bottom:0;
+  transition:transform var(--d-fast) var(--ease-out), background var(--d-fast) linear,
+             box-shadow var(--d-fast) linear}
+.side-roster-row:hover{transform:perspective(700px) translateZ(7px);
+  background:linear-gradient(90deg, rgba(255,255,255,.10), rgba(255,255,255,.02));
+  box-shadow:inset 2px 0 0 rgba(255,122,60,.60), inset 0 1px 0 rgba(255,255,255,.20)}
+.side-roster-row .pos{display:inline-flex; align-items:center; justify-content:center;
+  width:26px; height:18px; border-radius:6px; font-size:10px; color:var(--chalk-2);
+  background:linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.03));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.30)}
+.side-roster-row .ovr{font-family:var(--font-num); font-variant-numeric:tabular-nums;
+  font-weight:var(--w-semi); min-width:26px; text-align:right; padding:1px 6px; border-radius:6px;
+  background:linear-gradient(180deg, rgba(255,122,60,.22), rgba(255,122,60,.06));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.20)}
+/* §6 表格（G2：transform:none —— 中文笔画不发虚、列对齐不歪） */
+table{width:100%; border-collapse:collapse; transform:none}
+thead,tbody,tr,th,td{transform:none}
+th,td{padding:7px 10px; text-align:right; font-size:var(--fs-s); transform:none}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--chalk); font-weight:var(--w-semi); white-space:nowrap; letter-spacing:.02em;
+  border-bottom:1px solid var(--line-glass-strong)}
+td{color:var(--chalk-2); border-bottom:1px solid var(--line-glass)}
+tbody td:first-child{color:var(--chalk)}
+tbody tr{transition:background-color var(--d-fast) linear}
+tbody tr:nth-child(even){background-color:rgba(255,255,255,.028)}
+tbody tr:hover{background-color:rgba(255,255,255,.065)}
+tbody tr:hover td:first-child{box-shadow:inset 3px 0 0 rgba(255,122,60,.55)}
+tbody tr:last-child td{border-bottom:0}
+tbody tr.you{background:linear-gradient(90deg, rgba(255,122,60,.16), rgba(255,122,60,.03) 62%, transparent)}
+tbody tr.you td{color:var(--accent); font-weight:var(--w-semi)}
+tbody tr.you td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+tbody tr.you:hover{background:linear-gradient(90deg, rgba(255,122,60,.24), rgba(255,122,60,.06) 62%, transparent)}
+.you{color:var(--accent); font-weight:var(--w-semi)}
+td.num,th.num,.num{font-family:var(--font-num); font-variant-numeric:tabular-nums;
+  font-weight:var(--w-semi); letter-spacing:.01em}
+.tag{font-size:var(--fs-xs); padding:2px 8px; border-radius:var(--r-pill); display:inline-block;
+  border:1px solid var(--glass-stroke); background:rgba(255,255,255,.06);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.20)}
+.tag.win{color:var(--win); border-color:rgba(111,207,127,.45); background:rgba(111,207,127,.10)}
+.tag.lose{color:var(--lose); border-color:rgba(226,109,109,.45); background:rgba(226,109,109,.10)}
+.tag.warn{color:var(--warn); border-color:rgba(242,193,78,.45); background:rgba(242,193,78,.10)}
+.bar{height:6px; border-radius:3px; overflow:hidden; margin-top:4px;
+  background:rgba(255,255,255,.07); box-shadow:inset 0 1px 2px rgba(0,0,0,.45)}
+.bar > i{display:block; height:100%; border-radius:3px;
+  background:linear-gradient(90deg, var(--accent-deep), var(--accent) 60%, var(--accent-hi));
+  box-shadow:0 0 8px -2px rgba(255,122,60,.70)}
+/* §7 战术板：CSS 3D 透视木地板（全局唯一 preserve-3d）
+   #board 舞台 → ::before 木地板(rotateX 12°, 后退 -14px) → svg.board ★保持平面
+   → ::after 玻璃罩反光(平面 +10px, pointer-events:none)
+   ⚠ svg.board 绝不加 3D 旋转：getBoundingClientRect() 会返回投影后外接矩形，
+     ui.js attachDrag 的线性换算失效（本轮禁止改 attachDrag） */
+#board{
+  --court-persp:var(--persp-court); --court-tilt:var(--tilt-court);
+  --court-deg:12;
+  position:relative;
+  perspective:var(--court-persp); perspective-origin:50% 34%;
+  transform-style:preserve-3d;         /* ★ 全局唯一（G1） */
+  max-width:520px; margin:0 auto; padding:26px 0 34px;
+}
+#board::before{content:''; position:absolute; inset:-3% -5% -9%; border-radius:14px;
+  pointer-events:none;
+  background:
+    radial-gradient(70% 50% at 50% 10%, var(--hardwood-key), transparent 66%),
+    repeating-linear-gradient(90deg, rgba(0,0,0,.055) 0 2px, rgba(255,255,255,.030) 2px 4px, transparent 4px 22px),
+    linear-gradient(180deg, var(--hardwood-b) 0%, var(--hardwood-a) 62%, #a06e37 100%);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.22), inset 0 -14px 26px -10px rgba(0,0,0,.55),
+             0 34px 60px -22px rgba(0,0,0,.85);
+  transform:rotateX(var(--court-tilt)) translateZ(-14px); transform-origin:50% 46%}
+#board::after{content:''; position:absolute; inset:-3% -5% -9%; border-radius:14px;
+  pointer-events:none;
+  background:linear-gradient(104deg, transparent 36%, rgba(255,255,255,.10) 47%, transparent 58%);
+  transform:translateZ(10px); transform-origin:50% 46%}
+#board svg.board{display:block; width:100%; max-width:460px; height:auto; margin:0 auto;
+  touch-action:none; filter:drop-shadow(0 16px 18px rgba(0,0,0,.55))}
+#board .court{stroke:#fff8ee; stroke-width:2.2}
+#board .court-dim{stroke:rgba(255,248,238,.62); stroke-width:1.6}
+/* ⚠ .token 绝不能有 CSS transform：会覆盖 SVG transform 属性，5 个棋子全塌到原点 */
+.token{cursor:grab; transition:filter var(--d-fast) var(--ease-out);
+  filter:drop-shadow(0 7px 7px rgba(0,0,0,.55))}
+.token:active{cursor:grabbing; filter:drop-shadow(0 3px 3px rgba(0,0,0,.60))}
+.token circle{r:15; stroke:#2a1710; stroke-width:2}
+.token.home circle{fill:var(--accent)}
+.token text{fill:#1c1410; font-family:var(--font-num); font-weight:var(--w-bold); font-size:12px;
+  text-anchor:middle; dominant-baseline:central}
+/* §8 选队网格：42 张卡共享一个消失点才有"一叠卡片"感 */
+#team-grid{perspective:var(--persp-grid); perspective-origin:50% 40%;
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:var(--s3)}
+.team-btn{--glass-bg:var(--glass-floor); display:flex; flex-direction:column; gap:3px;
+  padding:14px; border-radius:var(--r-glass); text-align:left; color:var(--chalk);
+  box-shadow:var(--glass-inset), 0 12px 26px -14px rgba(0,0,0,.66);
+  transform:translateZ(0);
+  transition:transform var(--d) var(--ease-out), box-shadow var(--d) var(--ease-out)}
+@media (hover:hover) and (pointer:fine){
+  .team-btn:hover{transform:translateZ(var(--z-lift));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.42), inset 0 -1px 0 var(--glass-ao-bottom),
+               0 30px 60px -20px rgba(0,0,0,.82)}
+}
+.team-btn:active{transform:translateZ(6px) scale(.99); transition-duration:var(--d-press)}
+.team-btn .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px;
+  vertical-align:middle; box-shadow:0 0 8px -1px currentColor, inset 0 1px 0 rgba(255,255,255,.5)}
+.team-btn b{font-size:var(--fs-l); text-shadow:0 1px 0 rgba(0,0,0,.45)}
+.team-btn small{color:var(--chalk-dim)}
+/* §9 控件与装饰 */
+.btn{font-family:inherit; cursor:pointer; border:0; border-radius:12px; padding:10px 18px;
+  font-weight:var(--w-semi);
+  transition:transform var(--d-press) var(--ease-out), box-shadow var(--d-press) var(--ease-out),
+             filter var(--d) linear}
+.btn-primary{color:#1c1410;
+  background:linear-gradient(180deg, var(--accent-hi), var(--accent) 42%, var(--accent-deep));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55), inset 0 -2px 0 rgba(0,0,0,.22),
+             0 10px 22px -10px rgba(255,122,60,.55);
+  transform:perspective(700px) translateZ(4px)}
+.btn-primary:hover{filter:brightness(1.06); transform:perspective(700px) translateZ(10px)}
+.btn-primary:active{transform:perspective(700px) translateZ(1px) scale(.985);
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.34), 0 4px 10px -6px rgba(255,122,60,.45)}
 .mini-btn{font-family:inherit; cursor:pointer; background:transparent; color:var(--chalk);
-  border:1px solid var(--line-strong); border-radius:var(--r1); padding:4px 10px; font-size:var(--fs-xs); transition:border-color var(--d-fast),color var(--d-fast)}
-.mini-btn:hover{border-color:var(--accent); color:var(--accent)}
-.mini-btn:disabled{opacity:.4; cursor:not-allowed}
-.stat-note{color:var(--chalk-dim); font-size:var(--fs-xs); margin:var(--s2) 0 0}
-
-/* ===== v3.2 · XBA 逆向追加（Tab 行 / 广播 / 杯赛 / 胜者为王 / 球星）===== */
-.topbar{flex-wrap:wrap}
-.broadcast{flex-basis:100%; color:var(--chalk-dim); font-size:var(--fs-xs); border-top:1px dashed var(--line); padding-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.tabs{display:flex; gap:2px; border:1px solid var(--line); border-radius:var(--r1); overflow:hidden; background:rgba(255,255,255,.02)}
-.tab-btn{flex:1; font-family:inherit; cursor:pointer; background:transparent; color:var(--chalk-dim); border:0; padding:10px 4px; font-size:var(--fs-s); border-bottom:2px solid transparent; transition:color var(--d-fast),background var(--d-fast)}
-.tab-btn:hover{color:var(--chalk); background:rgba(255,255,255,.04)}
-.tab-btn.active{color:var(--accent); background:rgba(255,122,60,.10); border-bottom-color:var(--accent); font-weight:var(--w-semi)}
-.star{color:#c084fc; font-weight:var(--w-semi)}
-.cup-card{border:1px solid var(--line); border-radius:var(--r1); padding:var(--s3); margin-bottom:var(--s3); background:rgba(255,255,255,.02)}
+  border:1px solid var(--glass-stroke); border-radius:9px; padding:4px 10px; font-size:var(--fs-xs);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22);
+  transition:transform var(--d-fast) var(--ease-out), border-color var(--d-fast) linear,
+             color var(--d-fast) linear, background var(--d-fast) linear}
+.mini-btn:hover{color:var(--accent); border-color:rgba(255,122,60,.55);
+  background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.02));
+  transform:perspective(700px) translateZ(5px)}
+.mini-btn:disabled{opacity:.4; cursor:not-allowed; box-shadow:none; transform:none}
+.tactic-controls{display:grid; grid-template-columns:repeat(2,1fr); gap:var(--s3); margin-top:var(--s4)}
+.tc{display:flex; flex-direction:column; gap:4px; position:relative}
+.tc label{color:var(--chalk-dim); font-size:var(--fs-xs)}
+.lineup-controls{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:var(--s2); margin-top:var(--s3)}
+.lc{display:flex; flex-direction:column; gap:2px; font-size:var(--fs-s); position:relative}
+.tc select,.lc select,.train-attr{
+  background-color:rgba(11,17,20,.72);
+  background-image:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.015));
+  color:var(--chalk); border:1px solid var(--glass-stroke); border-radius:10px;
+  font-family:inherit; font-size:var(--fs-s);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.20), inset 0 -1px 0 rgba(0,0,0,.28);
+  transition:border-color var(--d-fast) linear, box-shadow var(--d-fast) linear,
+             transform var(--d-fast) var(--ease-out)}
+.tc select{padding:8px}
+.lc select{padding:6px}
+/* 训练表的属性下拉在 12 行 × 9 列表格里，保持紧凑，避免横向溢出 */
+.train-attr{padding:3px 5px; font-size:var(--fs-xs); border-radius:8px}
+.tc select:hover,.lc select:hover{border-color:rgba(255,122,60,.55);
+  transform:perspective(700px) translateZ(4px)}
+.train-attr:hover{border-color:rgba(255,122,60,.55)}
+.tc select:focus-visible,.lc select:focus-visible,.train-attr:focus-visible{
+  border-color:var(--accent);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.20), 0 0 0 3px rgba(255,122,60,.22)}
+.cup-card{border-radius:12px; padding:var(--s3); margin-bottom:var(--s3);
+  transition:transform var(--d) var(--ease-out), box-shadow var(--d) var(--ease-out)}
+.cup-card:hover{transform:perspective(700px) translateZ(10px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.30), inset 0 -1px 0 var(--glass-ao-bottom),
+             0 16px 30px -16px rgba(0,0,0,.70)}
 .cup-head{display:flex; align-items:center; gap:var(--s3); flex-wrap:wrap; margin-bottom:4px}
-.cup-head b{font-size:var(--fs-l)}
+.cup-head b{font-size:var(--fs-l); text-shadow:0 1px 0 rgba(0,0,0,.45)}
 .bracket-r{font-size:var(--fs-xs); color:var(--chalk-dim); margin-top:4px; line-height:1.9}
 .bracket-r b{color:var(--chalk); margin-right:var(--s2)}
-.log-line{padding:5px 0; border-bottom:1px solid var(--line); font-size:var(--fs-s); color:var(--chalk-dim)}
-.side-tabs{display:flex; gap:2px; margin-bottom:var(--s2)}
-.side-tab{flex:1; font-family:inherit; cursor:pointer; background:transparent; color:var(--chalk-dim); border:1px solid var(--line); border-radius:var(--r1); padding:5px 0; font-size:var(--fs-xs)}
-.side-tab.active{color:var(--accent); border-color:var(--accent); background:rgba(255,122,60,.10)}
+.log-line{padding:6px 0; border-bottom:1px solid var(--line-glass); font-size:var(--fs-s);
+  color:var(--chalk-dim)}
+.fin-row{display:flex; justify-content:space-between; align-items:center; gap:var(--s2);
+  padding:5px 0; border-bottom:1px solid var(--line-glass); font-size:var(--fs-s)}
+.fin-row .num{font-size:var(--fs-m)}
+.stat-note{color:var(--chalk-dim); font-size:var(--fs-xs); margin:var(--s2) 0 0}
+.trophy-list{list-style:none; padding:0; margin:8px 0 0}
+.trophy-list li{padding:6px 10px; border-radius:10px; margin-bottom:6px;
+  background-color:var(--card-2); border:1px solid var(--glass-stroke)}
+.trophy-list li:hover{transform:perspective(700px) translateZ(6px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.26), 0 12px 22px -14px rgba(0,0,0,.68)}
+.score-big{font-family:var(--font-num); font-size:var(--fs-xxl); font-weight:var(--w-bold);
+  letter-spacing:1px; background:linear-gradient(180deg,#fff,#c9d4cf);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  text-shadow:0 2px 0 rgba(0,0,0,.5)}
+@supports not ((-webkit-background-clip:text) or (background-clip:text)){
+  .score-big{color:var(--chalk); background:none}}
+/* 滚动区：不启用 blur（G6） */
+.pbp{max-height:240px; overflow:auto; font-family:var(--font-num); font-size:var(--fs-xs);
+  color:var(--chalk-dim); line-height:1.7; margin-top:var(--s3); padding:var(--s2) 10px;
+  background:rgba(0,0,0,.22); border:1px solid var(--line-glass); border-radius:10px;
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.45)}
+.pbp div:nth-child(odd){opacity:.8}
+.champion{margin-top:var(--s5); padding:var(--s6); text-align:center;
+  border:1px solid rgba(255,122,60,.55); border-radius:var(--r-glass);
+  background:linear-gradient(180deg, rgba(255,122,60,.16), rgba(255,122,60,.05));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 0 40px -12px rgba(255,122,60,.55);
+  transform:perspective(900px) translateZ(28px); transform-origin:50% 100%}
+.champion h2{font-size:var(--fs-xxl); color:var(--accent); margin:0 0 var(--s2)}
+.star{color:#c084fc; font-weight:var(--w-semi); text-shadow:0 0 10px rgba(192,132,252,.45)}
+:focus-visible{outline:2px solid var(--accent); outline-offset:3px;
+  box-shadow:0 0 0 4px rgba(255,122,60,.20)}
+/* §10 降级矩阵：所有 3D 量走变量 → 一处归零即可 */
+@media (prefers-reduced-motion: reduce){
+  :root{
+    --tilt-card:0deg; --tilt-nav:0deg; --tilt-side:0deg; --tilt-court:0deg; --tilt-grid-max:0deg;
+    --z-panel:0px; --z-raise:0px; --z-lift:0px; --z-back:0px;
+    --d-press:0ms; --d-fast:80ms; --d:100ms; --d-slow:140ms;
+  }
+  .card,.nav,.side > .card,.topbar,.tabs,.team-btn,.champion,#board::before,#board::after,
+  .side-roster-row,.nav-btn,.tab-btn,.side-tab,.mini-btn,.cup-card,.trophy-list li,.btn-primary{
+    transform:none!important}
+  #board{perspective:none}
+  .card,.nav-btn,.tab-btn,.team-btn{
+    transition:opacity 80ms linear, color 80ms linear, background-color 80ms linear!important}
+}
+@media (prefers-reduced-transparency: reduce){
+  :root{--glass-floor:rgba(11,17,20,.94); --glass-floor-strong:rgba(11,17,20,.96)}
+  .card,.topbar,.nav,.tabs,.side > .card,.team-btn{
+    -webkit-backdrop-filter:none!important; backdrop-filter:none!important}
+  tbody tr:nth-child(even){background-color:rgba(255,255,255,.05)}
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
+  :root{--glass-floor:rgba(11,17,20,.90); --glass-floor-strong:rgba(11,17,20,.93)}
+}
+:root[data-perf="low"]{
+  --blur-panel:6px; --blur-chrome:8px;
+  --tilt-grid-max:0deg; --tilt-court:0deg; --z-lift:0px; --z-raise:0px;
+  --d-slow:200ms;
+}
+@media (forced-colors: active){
+  .card,.topbar,.nav,.tabs,.side > .card,.team-btn{
+    background:Canvas!important; border:1px solid CanvasText!important;
+    -webkit-backdrop-filter:none!important; backdrop-filter:none!important;
+    box-shadow:none!important; transform:none!important}
+  .nav-btn.active,.tab-btn.active,tbody tr.you{border:2px solid Highlight!important}
+}
+@media (max-width:680px){
+  :root{--tilt-card:0deg; --tilt-nav:0deg; --tilt-side:0deg; --tilt-court:8deg}
+  #board{perspective:1200px}
+  .side > .card{transform-origin:50% 50%}
+}
